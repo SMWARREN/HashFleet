@@ -1,0 +1,230 @@
+[
+  {
+    "colorSpace" : "sRGB",
+    "height" : 1254,
+    "mode" : "dark",
+    "samples" : [
+      {
+        "actualPixelNearestMean" : "#E9931E",
+        "meanHex" : "#E9931E",
+        "medianHex" : "#E9931E",
+        "name" : "casingGold",
+        "opaquePixels" : 2700,
+        "rect" : [
+          895,
+          258,
+          45,
+          60
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#DC820E",
+        "meanHex" : "#DC820E",
+        "medianHex" : "#DC830E",
+        "name" : "frontGold",
+        "opaquePixels" : 3000,
+        "rect" : [
+          465,
+          335,
+          300,
+          10
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#373737",
+        "meanHex" : "#373737",
+        "medianHex" : "#373637",
+        "name" : "hubGraphite",
+        "opaquePixels" : 6400,
+        "rect" : [
+          600,
+          620,
+          80,
+          80
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#21201E",
+        "meanHex" : "#21201E",
+        "medianHex" : "#211F1E",
+        "name" : "bladeShadow",
+        "opaquePixels" : 200,
+        "rect" : [
+          785,
+          693,
+          10,
+          20
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#4A4747",
+        "meanHex" : "#484747",
+        "medianHex" : "#605D5F",
+        "name" : "fanHighlight",
+        "opaquePixels" : 1350,
+        "rect" : [
+          590,
+          385,
+          45,
+          30
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#FED028",
+        "meanHex" : "#FED028",
+        "medianHex" : "#FED028",
+        "name" : "displayGlow",
+        "opaquePixels" : 1050,
+        "rect" : [
+          548,
+          266,
+          175,
+          6
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#8A7769",
+        "meanHex" : "#897869",
+        "medianHex" : "#837161",
+        "name" : "metalHighlight",
+        "opaquePixels" : 100,
+        "rect" : [
+          369,
+          205,
+          10,
+          10
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#773700",
+        "meanHex" : "#743A03",
+        "medianHex" : "#834001",
+        "name" : "bronzeEdge",
+        "opaquePixels" : 770,
+        "rect" : [
+          284,
+          900,
+          14,
+          55
+        ]
+      }
+    ],
+    "sha256" : "12c46ce38ae06f21e41880502a8fc3addb942f51755b25e30c02147fb82637cc",
+    "sourceFile" : "selected-logo-master.png",
+    "width" : 1254
+  },
+  {
+    "colorSpace" : "sRGB",
+    "height" : 1254,
+    "mode" : "light",
+    "samples" : [
+      {
+        "actualPixelNearestMean" : "#FDF7EE",
+        "meanHex" : "#FDF7EE",
+        "medianHex" : "#FDF6EE",
+        "name" : "ivoryBackdrop",
+        "opaquePixels" : 6400,
+        "rect" : [
+          40,
+          40,
+          80,
+          80
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#FEFDF8",
+        "meanHex" : "#FEFDF8",
+        "medianHex" : "#FEFDF8",
+        "name" : "litBackdrop",
+        "opaquePixels" : 4000,
+        "rect" : [
+          540,
+          120,
+          100,
+          40
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#FEFBF4",
+        "meanHex" : "#FEFBF4",
+        "medianHex" : "#FEFBF4",
+        "name" : "warmBackdrop",
+        "opaquePixels" : 4800,
+        "rect" : [
+          160,
+          170,
+          80,
+          60
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#F19411",
+        "meanHex" : "#F19411",
+        "medianHex" : "#F29511",
+        "name" : "frontGold",
+        "opaquePixels" : 3000,
+        "rect" : [
+          465,
+          335,
+          300,
+          10
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#FED52A",
+        "meanHex" : "#FED52A",
+        "medianHex" : "#FED52A",
+        "name" : "displayGlow",
+        "opaquePixels" : 1050,
+        "rect" : [
+          548,
+          266,
+          175,
+          6
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#484949",
+        "meanHex" : "#484949",
+        "medianHex" : "#484849",
+        "name" : "hubGraphite",
+        "opaquePixels" : 6400,
+        "rect" : [
+          600,
+          620,
+          80,
+          80
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#A29586",
+        "meanHex" : "#A19489",
+        "medianHex" : "#9E8F82",
+        "name" : "metalHighlight",
+        "opaquePixels" : 100,
+        "rect" : [
+          369,
+          205,
+          10,
+          10
+        ]
+      },
+      {
+        "actualPixelNearestMean" : "#925309",
+        "meanHex" : "#924F06",
+        "medianHex" : "#AF5A05",
+        "name" : "bronzeEdge",
+        "opaquePixels" : 770,
+        "rect" : [
+          284,
+          900,
+          14,
+          55
+        ]
+      }
+    ],
+    "sha256" : "9bf03db9693140413297ec136e96d22d5e62912f4e5209eadcb6d3f20849eee6",
+    "sourceFile" : "selected-logo-light-master.png",
+    "width" : 1254
+  }
+]

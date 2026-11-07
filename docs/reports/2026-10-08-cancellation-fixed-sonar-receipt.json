@@ -1,0 +1,135 @@
+{
+  "project": "hashfleet",
+  "ceTaskId": "d27d2afa-149f-49e7-bdbf-4de84b4ac28a",
+  "analysisId": "951ae330-1e23-4e16-919c-a2de6054466c",
+  "processedAt": "2026-10-08T13:14:29+0000",
+  "ceStatus": "SUCCESS",
+  "qualityGate": {
+    "status": "OK",
+    "conditions": [
+      {
+        "status": "OK",
+        "metricKey": "new_coverage",
+        "comparator": "LT",
+        "errorThreshold": "80",
+        "actualValue": "87.0"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_duplicated_lines_density",
+        "comparator": "GT",
+        "errorThreshold": "3",
+        "actualValue": "0.0"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_violations",
+        "comparator": "GT",
+        "errorThreshold": "0",
+        "actualValue": "0"
+      }
+    ],
+    "ignoredConditions": false,
+    "period": {
+      "mode": "PREVIOUS_VERSION",
+      "date": "2026-10-08T03:20:07+0000"
+    },
+    "caycStatus": "compliant"
+  },
+  "unresolvedIssues": 0,
+  "issues": [],
+  "measures": [
+    {
+      "metric": "coverage",
+      "value": "55.7",
+      "bestValue": false
+    },
+    {
+      "metric": "code_smells",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "duplicated_lines_density",
+      "value": "0.0",
+      "bestValue": true
+    },
+    {
+      "metric": "new_coverage",
+      "period": {
+        "index": 1,
+        "value": "87.0",
+        "bestValue": false
+      }
+    },
+    {
+      "metric": "security_hotspots",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "bugs",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "test_failures",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "lines_to_cover",
+      "value": "32976"
+    },
+    {
+      "metric": "tests",
+      "value": "1355"
+    },
+    {
+      "metric": "new_violations",
+      "period": {
+        "index": 1,
+        "value": "0",
+        "bestValue": true
+      }
+    },
+    {
+      "metric": "uncovered_lines",
+      "value": "14601",
+      "bestValue": false
+    },
+    {
+      "metric": "vulnerabilities",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "new_uncovered_lines",
+      "period": {
+        "index": 1,
+        "value": "151",
+        "bestValue": false
+      }
+    },
+    {
+      "metric": "line_coverage",
+      "value": "55.7",
+      "bestValue": false
+    },
+    {
+      "metric": "new_lines_to_cover",
+      "period": {
+        "index": 1,
+        "value": "1160"
+      }
+    },
+    {
+      "metric": "new_duplicated_lines_density",
+      "period": {
+        "index": 1,
+        "value": "0.0",
+        "bestValue": true
+      }
+    }
+  ]
+}

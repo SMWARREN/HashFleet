@@ -1,0 +1,556 @@
+{
+  "roles": {
+    "canvas": {
+      "light": "#EBE3DA",
+      "dark": "#21201E",
+      "derivation": "Light: ivory backdrop + 20% metallic midtone. Dark: blade shadow."
+    },
+    "surface": {
+      "light": "#FDF7EE",
+      "dark": "#373737",
+      "derivation": "Direct regional means: light ivory backdrop, dark fan hub."
+    },
+    "raised": {
+      "light": "#FEFDF8",
+      "dark": "#484747",
+      "derivation": "Direct regional means: light lit backdrop, dark blade highlight."
+    },
+    "ink": {
+      "light": "#21201E",
+      "dark": "#FDF7EE",
+      "derivation": "Direct sampled graphite and ivory, neither pure black nor pure white."
+    },
+    "secondary": {
+      "light": "#5C5854",
+      "dark": "#D8CFC6",
+      "derivation": "Light: graphite + 35% metallic midtone. Dark: metallic midtone + 60% ivory."
+    },
+    "accent": {
+      "light": "#743A03",
+      "dark": "#F1A922",
+      "derivation": "Light: sampled bronze. Dark: casing gold + 36% display glow, lifted to pass on raised graphite."
+    },
+    "charcoal": {
+      "light": "#373737",
+      "dark": "#484747",
+      "derivation": "Branded dark inset for onboarding/live logs, with dedicated panel text."
+    },
+    "panelInk": {
+      "light": "#FDF7EE",
+      "dark": "#FDF7EE",
+      "derivation": "Sampled ivory on dark insets in either mode."
+    },
+    "panelSecondary": {
+      "light": "#D8CFC6",
+      "dark": "#D8CFC6",
+      "derivation": "Metallic midtone + 60% ivory, opaque rather than fragile white opacity."
+    },
+    "panelAccent": {
+      "light": "#F1A922",
+      "dark": "#F1A922",
+      "derivation": "Casing gold + 36% display glow, valid on both dark inset levels."
+    },
+    "hashrateSurface": {
+      "light": "#F19411",
+      "dark": "#E9931E",
+      "derivation": "Direct gold material sample from the matching mode artwork."
+    },
+    "hashrateInk": {
+      "light": "#21201E",
+      "dark": "#21201E",
+      "derivation": "Sampled deep graphite on gold."
+    },
+    "hashrateSecondary": {
+      "light": "#4F2E0F",
+      "dark": "#4F2E0F",
+      "derivation": "Bronze + 45% blade shadow. Unmodified bronze failed 4.5:1 on gold."
+    },
+    "marqueeSurface": {
+      "light": "#FADFB9",
+      "dark": "#473829",
+      "derivation": "Light: ivory + 24% casing gold. Dark: graphite + 26% bronze."
+    },
+    "marqueeInk": {
+      "light": "#743A03",
+      "dark": "#FDF7EE",
+      "derivation": "Sampled bronze on pale gold, sampled ivory on deep bronze."
+    },
+    "marqueeSecondary": {
+      "light": "#653910",
+      "dark": "#D8CFC6",
+      "derivation": "Light: bronze + 25% graphite. Dark: opaque silver-ivory."
+    },
+    "comparisonBorder": {
+      "light": "#924F06",
+      "dark": "#FED028",
+      "derivation": "Direct bronze/glow samples. Decorative outlines use 25% opacity, not control boundaries."
+    },
+    "positive": {
+      "light": "#356447",
+      "dark": "#A5CAA5",
+      "derivation": "Functional sage companion, NOT extracted from the gold/gray artwork. Retains recognizable success/online semantics with text."
+    },
+    "warning": {
+      "light": "#864705",
+      "dark": "#FEE48B",
+      "derivation": "Light: blend of sampled bronzes. Dark: sampled glow + 50% ivory. Always accompanied by warning wording/symbols."
+    },
+    "separator": {
+      "light": "#CABFB6",
+      "dark": "#6C6660",
+      "derivation": "Low-emphasis structural separators from metal and surface blends. Not interactive outlines."
+    },
+    "controlBorder": {
+      "light": "#897869",
+      "dark": "#A19489",
+      "derivation": "Sampled metallic midtones for visible control boundaries, checked at 3:1."
+    },
+    "chartFourth": {
+      "light": "#897869",
+      "dark": "#BDB2A7",
+      "derivation": "Metallic data series replacing unrelated hardcoded slate blue."
+    },
+    "buttonInk": {
+      "light": "#FDF7EE",
+      "dark": "#21201E",
+      "derivation": "Sampled ivory on bronze actions, sampled graphite on bright-gold actions."
+    }
+  },
+  "contrastChecks": [
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "canvas",
+      "ratio": 12.815672248344063,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "surface",
+      "ratio": 15.283067006768185,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "raised",
+      "ratio": 15.984061261903738,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "canvas",
+      "ratio": 5.5497225268256,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "surface",
+      "ratio": 6.61820773837329,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "raised",
+      "ratio": 6.9217675933316425,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "canvas",
+      "ratio": 7.037670098049995,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "surface",
+      "ratio": 8.39262908693101,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "raised",
+      "ratio": 8.777577001692933,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "canvas",
+      "ratio": 5.39354265380301,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "surface",
+      "ratio": 6.431958635067671,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "raised",
+      "ratio": 6.7269757314695395,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "canvas",
+      "ratio": 5.667326085182664,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "surface",
+      "ratio": 6.758453449076262,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "raised",
+      "ratio": 7.0684460074616595,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "panelInk",
+      "background": "charcoal",
+      "ratio": 11.176001839680938,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "panelSecondary",
+      "background": "charcoal",
+      "ratio": 7.743583769239083,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "panelAccent",
+      "background": "charcoal",
+      "ratio": 5.917189653237627,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "hashrateInk",
+      "background": "hashrateSurface",
+      "ratio": 6.9644025019147895,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "hashrateSecondary",
+      "background": "hashrateSurface",
+      "ratio": 5.192738374232334,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "marqueeInk",
+      "background": "marqueeSurface",
+      "ratio": 6.947410200776829,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "marqueeSecondary",
+      "background": "marqueeSurface",
+      "ratio": 7.604784537353559,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "marqueeSurface",
+      "ratio": 5.324369106437442,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "marqueeSurface",
+      "ratio": 5.594641196130552,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "buttonInk",
+      "background": "accent",
+      "ratio": 8.39262908693101,
+      "minimum": 4.5
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "canvas",
+      "ratio": 3.337028515138741,
+      "minimum": 3
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "surface",
+      "ratio": 3.979504891516817,
+      "minimum": 3
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "raised",
+      "ratio": 4.162034358017339,
+      "minimum": 3
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "canvas",
+      "ratio": 3.337028515138741,
+      "minimum": 3
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "surface",
+      "ratio": 3.979504891516817,
+      "minimum": 3
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "raised",
+      "ratio": 4.162034358017339,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "canvas",
+      "ratio": 15.283067006768185,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "surface",
+      "ratio": 11.176001839680938,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "raised",
+      "ratio": 8.693546560480378,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "canvas",
+      "ratio": 10.58927077102039,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "surface",
+      "ratio": 7.743583769239083,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "raised",
+      "ratio": 6.0235500144461325,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "canvas",
+      "ratio": 8.091695693991387,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "surface",
+      "ratio": 5.917189653237627,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "raised",
+      "ratio": 4.60284138241361,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "canvas",
+      "ratio": 8.98545089902482,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "surface",
+      "ratio": 6.570763298583456,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "raised",
+      "ratio": 5.111240808077902,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "canvas",
+      "ratio": 12.93341045830422,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "surface",
+      "ratio": 9.457775655327865,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "raised",
+      "ratio": 7.356979195031874,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelInk",
+      "background": "charcoal",
+      "ratio": 8.693546560480378,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelSecondary",
+      "background": "charcoal",
+      "ratio": 6.0235500144461325,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelAccent",
+      "background": "charcoal",
+      "ratio": 4.60284138241361,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "hashrateInk",
+      "background": "hashrateSurface",
+      "ratio": 6.710725630337586,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "hashrateSecondary",
+      "background": "hashrateSurface",
+      "ratio": 5.003593989580244,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "marqueeInk",
+      "background": "marqueeSurface",
+      "ratio": 10.56784415151346,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "marqueeSecondary",
+      "background": "marqueeSurface",
+      "ratio": 7.3222058855570165,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "marqueeSurface",
+      "ratio": 6.213206072440739,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "marqueeSurface",
+      "ratio": 8.943117635379378,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "buttonInk",
+      "background": "accent",
+      "ratio": 8.091695693991387,
+      "minimum": 4.5
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "canvas",
+      "ratio": 5.513565830557177,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "surface",
+      "ratio": 4.031888484047109,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "raised",
+      "ratio": 3.1363103519074644,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "canvas",
+      "ratio": 7.821533334006748,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "surface",
+      "ratio": 5.71962884748681,
+      "minimum": 3
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "raised",
+      "ratio": 4.449163520870793,
+      "minimum": 3
+    }
+  ],
+  "blendSpace": "encoded sRGB, rounded to nearest 8-bit value; contrast computed after linearization"
+}

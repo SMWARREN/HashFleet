@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Technical support and contact information for Hash Fleet on iPhone, iPad and Mac.">
+  <link rel="canonical" href="https://hashfleet.app/support/">
+  <link rel="icon" href="/favicon.png">
+  <title>Help &amp; contact · Hash Fleet</title>
+  <style>
+    :root { color-scheme: dark; --page:#050b0e; --card:#0c151a; --text:#f2f4f3; --muted:#aebabc; --line:#29383e; --gold:#ffc247; --soft:#152128; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--page); color:var(--text); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--gold); text-underline-offset:4px; overflow-wrap:anywhere; }
+    a:hover { text-decoration-thickness:2px; }
+    a:focus-visible { outline:3px solid var(--gold); outline-offset:6px; border-radius:3px; }
+    .skip { position:absolute; left:20px; top:-80px; padding:12px; background:var(--card); z-index:2; }
+    .skip:focus { top:12px; }
+    .wrap { width:min(1040px,calc(100% - 48px)); margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:32px 0; border-bottom:1px solid var(--line); }
+    .brand { display:inline-flex; gap:12px; align-items:center; color:var(--text); font-size:19px; font-weight:750; text-decoration:none; }
+    .brand img { width:42px; height:42px; border-radius:11px; }
+    .back { font-size:14px; }
+    main { padding:64px 0; }
+    .eyebrow { margin:0 0 16px; color:var(--gold); letter-spacing:.17em; font:11px/1.5 ui-monospace,SFMono-Regular,monospace; }
+    h1 { margin:0 0 20px; font-size:clamp(36px,6vw,64px); line-height:1.04; letter-spacing:-.055em; }
+    .intro { max-width:640px; color:var(--muted); font-size:19px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:36px; }
+    .card { min-width:0; padding:30px; border:1px solid var(--line); border-radius:22px; background:var(--card); }
+    h2 { margin:0 0 18px; font-size:23px; line-height:1.2; letter-spacing:-.025em; }
+    address { font-style:normal; }
+    dl { margin:0; }
+    dt { margin-top:20px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.1em; }
+    dt:first-child { margin-top:0; }
+    dd { margin:4px 0 0; font-size:18px; }
+    ul { margin:0; padding-left:20px; color:var(--muted); }
+    li+li { margin-top:12px; }
+    .note { margin-top:24px; padding:22px 26px; border-left:3px solid var(--gold); background:var(--soft); border-radius:0 14px 14px 0; color:var(--muted); }
+    .note strong { color:var(--text); }
+    .privacy { margin:24px 0 0; color:var(--muted); }
+    footer { padding:24px 0 36px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    footer p { margin:0; }
+    @media (prefers-color-scheme:light) { :root { color-scheme:light; --page:#f5f3ed; --card:#fff; --text:#18211e; --muted:#52615c; --line:#d8dfd9; --gold:#805000; --soft:#ebe8de; } }
+    @media (max-width:680px) { .wrap { width:calc(100% - 36px); } header { padding:22px 0; gap:12px; } main { padding:42px 0; } .grid { grid-template-columns:1fr; gap:18px; margin-top:28px; } .card { padding:24px; } .intro { font-size:17px; } dd { font-size:17px; } .back { max-width:95px; text-align:right; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/" aria-label="Hash Fleet home"><img src="/images/brand.png" width="42" height="42" alt=""><span>Hash Fleet.</span></a>
+      <a class="back" href="/">Back to the website</a>
+    </header>
+    <main id="main" tabindex="-1">
+      <p class="eyebrow">HELP FOR YOUR FLEET</p>
+      <h1>A real person.<br>A little help.</h1>
+      <p class="intro">Technical support for Hash Fleet on iPhone, iPad and Mac. Contact the developer with app questions, a bug report, a privacy question or a data-removal request.</p>
+      <div class="grid">
+        <section class="card" aria-labelledby="contact-title">
+          <h2 id="contact-title">Contact the developer</h2>
+          <address>
+            <dl>
+              <dt>Name</dt><dd>Sean Warren</dd>
+              <dt>Email</dt><dd><a href="mailto:support@hashfleet.app">support@hashfleet.app</a></dd>
+            </dl>
+          </address>
+        </section>
+        <section class="card" aria-labelledby="report-title">
+          <h2 id="report-title">For a useful bug report</h2>
+          <ul>
+            <li>Tell us whether you use iPhone, iPad or Mac, your operating-system version and the Hash Fleet app version.</li>
+            <li>Describe what you expected, what happened and the steps that reproduce the problem.</li>
+            <li>If a miner is involved, include its model and firmware version. Available readings and controls vary by hardware.</li>
+            <li>Review screenshots and logs before sharing. Remove miner addresses, wallet details and other private information.</li>
+          </ul>
+        </section>
+      </div>
+      <div class="note"><strong>Keep your hardware and credentials safe.</strong> Never send passwords, private keys, recovery phrases or unredacted miner configuration. Use a trusted VPN for remote access, not a publicly exposed miner API.</div>
+      <p class="privacy">Questions about data? Read the <a href="/#privacy">Hash Fleet privacy policy</a>. This page has no contact form, tracking scripts or account signup. The email link opens your own mail app only when you choose it.</p>
+    </main>
+    <footer><p>© 2026 Sean Warren. Hash Fleet is an independent project.</p></footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+.watch-device { display: block; position: relative; width: 300px; max-width: 100%; margin-inline: auto; padding-block: 30px; isolation: isolate; }
+.watch-case { position: relative; display: block; background: #000; padding: 10px; border: 2px solid #7e8588; border-radius: 55px; box-shadow: inset 0 0 0 4px #292e30, inset 0 0 0 5px #5a6063, 0 22px 36px #0005; }
+.watch-case::before { content: ''; position: absolute; right: -8px; top: 24%; height: 37px; width: 8px; border-radius: 3px; background: repeating-linear-gradient(to bottom, #333a3e, #333a3e 2px, #687075 2px, #687075 3px); border: 1px solid #81898b; z-index: -1; }
+.watch-case::after { content: ''; position: absolute; right: -5px; top: 49%; height: 48px; width: 4px; border-radius: 3px; background: #727a7e; z-index: -1; }
+.watch-case > img { display: block; width: 100%; height: auto; border-radius: 42px; background: #000; }
+.watch-band { position: absolute; left: 20%; right: 20%; height: 64px; z-index: -1; background: linear-gradient(90deg, #242c30, #424d52 20%, #333e43 65%, #1e272b); border: 1px solid #535c60; }
+.watch-band--top { top: 0; border-radius: 20px 20px 0 0; }
+.watch-band--bottom { bottom: 0; border-radius: 0 0 20px 20px; }
+.hero-watch { position: absolute; width: 126px; left: calc(100% - 305px); bottom: 26px; z-index: 3; padding: 0; transform: rotate(-10deg); transition: transform 180ms; }
+.hero-watch:hover { transform: rotate(-5deg) translateY(-5px); }
+.hero-watch .watch-device { padding-block: 17px; }
+.hero-watch .watch-case { padding: 5px; border-radius: 26px; box-shadow: inset 0 0 0 2px #292e30, 0 18px 25px #0008; }
+.hero-watch .watch-case > img { border-radius: 20px; }
+.hero-watch .watch-case::before { height: 19px; width: 5px; right: -5px; }
+.hero-watch .watch-case::after { height: 21px; width: 3px; right: -4px; }
+.hero-watch .watch-band { height: 32px; border-radius: 10px; }
+.watch-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(26px, 6vw, 86px); padding: 42px clamp(20px, 4vw, 60px); background: var(--surface); }
+.watch-stage-copy > h3 { font-size: clamp(32px, 4vw, 48px); font-weight: 500; letter-spacing: -1.8px; line-height: 1.13; margin-top: 18px; }
+.watch-stage-copy > h3 > span { color: var(--accent-ink); }
+.watch-stage-copy > p:not(.watch-browser-note) { max-width: 36ch; margin-top: 20px; color: var(--dim); font-size: 14px; line-height: 1.85; }
+.watch-product-facts { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 22px; font-size: 10px; color: var(--dim); line-height: 1.6; }
+.watch-product-facts > span { display: inline-flex; align-items: center; gap: 6px; }
+.watch-product-facts svg { color: var(--accent-ink); }
+.watch-tour-steps { list-style: none; padding: 0; margin: 30px 0 0; border-top: 1px solid var(--line); }
+.watch-tour-steps button { display: flex; width: 100%; align-items: center; gap: 15px; min-height: 53px; padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); color: var(--dim); border-radius: 5px; font-size: 12px; }
+.watch-tour-steps button > span:first-child { font: 10px 'SFMono-Regular', Consolas, monospace; color: var(--muted); }
+.watch-tour-steps button > svg { margin-left: auto; opacity: 0; }
+.watch-tour-steps button[aria-current='step'] { background: color-mix(in srgb, var(--accent-ink) 9%, transparent); color: var(--ink); }
+.watch-tour-steps button[aria-current='step'] > span:first-child { color: var(--accent-ink); }
+.watch-tour-steps button[aria-current='step'] > svg, .watch-tour-steps button:hover > svg { color: var(--accent-ink); opacity: 1; }
+.watch-tour-steps button:hover { background: var(--raised); }
+.watch-browser-note { display: flex; align-items: flex-start; gap: 9px; color: var(--muted); margin-top: 22px; font-size: 10px; line-height: 1.9; max-width: 48ch; }
+.watch-browser-note > svg { margin-top: 2px; }
+.watch-tour-viewer { min-width: 0; padding: 22px; border: 1px solid var(--line); background: var(--canvas); border-radius: 18px; }
+.watch-capture-label { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; font: 8px/1.7 'SFMono-Regular', Consolas, monospace; letter-spacing: .7px; }
+.watch-capture-label > span { display: flex; align-items: center; gap: 6px; color: var(--accent-ink); }
+.watch-capture-label small { font-size: 7px; color: var(--muted); }
+.watch-sample-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.watch-display-stage { padding: 26px 15px; background: radial-gradient(ellipse, #c78d2710, transparent 70%); }
+.watch-hotspot { position: absolute; border: 1px solid #ffca5277; border-radius: 20px; background: #ffca5208; }
+.watch-hotspot:hover { background: #ffca5220; border-color: #ffca52; }
+.watch-hotspot:focus-visible { outline: 3px solid #ffca52; outline-offset: -3px; }
+.watch-screen-status { position: relative; min-height: 106px; padding-top: 17px; border-top: 1px solid var(--line); padding-right: 36px; }
+.watch-screen-status h4 { font-size: 15px; font-weight: 600; width: fit-content; }
+.watch-screen-status p { margin-top: 8px; color: var(--dim); font-size: 11px; line-height: 1.8; }
+.watch-screen-count { position: absolute; right: 0; top: 20px; color: var(--muted); font: 9px 'SFMono-Regular', Consolas, monospace; }
+.watch-tour-controls { display: flex; gap: 6px; margin-top: 17px; }
+.watch-tour-controls button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 44px; padding: 9px 11px; font-size: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.watch-tour-controls button:last-child { margin-left: auto; color: var(--accent-ink); }
+.watch-tour-controls button:not(:disabled):hover { background: var(--raised); }
+.watch-tour-controls button:disabled { cursor: default; opacity: .45; }
+.watch-back-icon { transform: rotate(180deg); }
+.watch-viewer-fineprint { margin-top: 16px; color: var(--muted); font-size: 9px; line-height: 1.8; }
+.watch-load-error { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; min-height: 300px; padding: 25px; color: #f4f6f7; font-size: 13px; text-align: center; line-height: 1.8; }
+.watch-load-error button { min-height: 44px; border: 1px solid #b9c1c6; border-radius: 7px; padding: 8px; }
+@media (max-width: 900px) {
+  .watch-stage { gap: 28px; padding: 28px 20px; }
+  .watch-stage-copy > h3 { font-size: 32px; }
+  .watch-tour-viewer { padding: 18px; }
+}
+@media (max-width: 640px) {
+  .hero-watch { width: 102px; left: calc(100% - 235px); bottom: 70px; }
+  .watch-stage { grid-template-columns: minmax(0, 1fr); padding: 24px 12px; gap: 24px; }
+  .watch-stage-copy { padding: 0 4px; }
+  .watch-stage-copy > h3 { font-size: 34px; }
+  .watch-stage-copy > p:not(.watch-browser-note) { font-size: 12px; }
+  .watch-product-facts { gap: 9px 12px; font-size: 9px; }
+  .watch-tour-steps { margin-top: 22px; }
+  .watch-tour-steps button { min-height: 48px; }
+  .watch-tour-viewer { padding: 14px; }
+  .watch-display-stage { padding: 24px 8px; }
+  .watch-device { width: 286px; }
+  .watch-case { border-radius: 42px; padding: 8px; }
+  .watch-case > img { border-radius: 32px; }
+  .watch-tour-controls { gap: 4px; }
+  .watch-tour-controls button { padding-inline: 7px; font-size: 9px; }
+  .demo-section .platform-tabs { max-width: 400px; }
+  .platform-tabs[role='tablist'] > button { flex-direction: column; font-size: 10px; gap: 5px; min-height: 55px; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-watch { transition: none; } }

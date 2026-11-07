@@ -1,0 +1,755 @@
+{
+  "schema": 1,
+  "date": "2026-09-10",
+  "source_head": "8d14a5b8240528a1f8c0b00062856026eb86a8d6",
+  "source_state": "Functional changes present in working tree during capture. Multiple capture runs, not one atomic snapshot. Artwork changes belong to a separate task.",
+  "boards": [
+    {
+      "id": "detail",
+      "title": "Miner detail",
+      "note": "Telemetry hierarchy proposal. Preserve missing, stale and zero states.",
+      "file": "proposals/detail.png",
+      "sha256": "9760aaeae4dc6e13fd305e182e16726164be76482e843ba1c5663e0587836bb6",
+      "original": "1789040845424-ig_06461ced03d60f53016aa2988991c087d1804b73afa165bf63.png",
+      "prompt": "Create one premium high-fidelity iPhone UI redesign image for Hash Fleet's miner detail page, based on the attached real app screenshot of Little Supra. This is a proposed design mockup for later implementation, not a screenshot of working software. Produce a single flat portrait screen, 1206x2622 proportions, edge-to-edge UI without a phone frame. Preserve actual product semantics: Bitcoin miner management, demo data clearly marked DEMO / READ ONLY, miner Little Supra, 638 GH/s hashrate, BM1368, CKPool, accepted 13,926 and rejected 3, 0.02% rejection, best share18.4G and session9.2M. These numbers are sample telemetry, not financial earnings. Design direction: sophisticated native iOS26 industrial instrument panel, deep graphite background #0B0D0F, layered graphite cards not the harsh white hero in the reference, restrained warm amber #FFB13B, very legible SF Pro typography with monospaced numerals, restrained frosted-glass navigation controls only. Clear compact top navigation with back, miner name, refresh and more. A modest amber DEMO label and subdued synthetic address supra-demo.invalid. Main hashrate hero large numeric 638 with smaller GH/s and tiny amber sparkline. A compact horizontal secondary stats row Accepted / Rejected / Rate. Then a two-column thermal/power row with sample Temperature 58\u00b0C and Power 10.8 W, explicitly sample data. A Best shares card with both metrics and small explanatory copy that a share is not a mined block. Replace overwhelming 4 giant quick-action tiles with a compact Control miner section: Tuning and Cooling prominent reviewed-draft navigation buttons, Pools and Diagnostics secondary rows. Restart separate outlined action with confirmation affordance, not a dangerous one-tap switch. No false live-connected claims. Bottom native floating tabbar Fleet selected amber, Settings, About, with content ending above it. Generous but efficient spacing, 20pt page gutters, 20pt card radii, strong readable hierarchy, actual polished production UI rather than sci-fi or decoration. Keep all text readable and correctly spelled. Include subtle top statusbar 9:41. No commentary or external annotations in the image.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "fleet",
+      "title": "Welcome, Add Miner, Fleet, History",
+      "note": "History is a dashboard state, not a separate existing route. Chart units and probabilities must come from source models.",
+      "file": "proposals/fleet.png",
+      "sha256": "3fec1d56668f0a08506fb7dc6f0ec5e2558d59905e1cdc04d5368f28d3a6b654",
+      "original": "1789041401900-ig_06461ced03d60f53016aa29aa85b7c87d18d538bc2b3081d20.png",
+      "prompt": "EDIT THE ATTACHED FOUR-COLUMN BOARD IMAGE (1536x1024, labels01 WELCOME /02 ADD MINER /03 FLEET /04 HISTORY), NOT OTHER SCREENSHOTS. Keep all FOUR columns and same landscape1536x1024 layout. Preserve almost everything. Make these small corrections only: in fourth HISTORY column button reads 'Clear' with X symbol instead of '44pt'. Change graph axis label to GH/s with ticks0,1000,2000 and all three traces below2000: orange and green traces close together at1180 and1150, yellow at665. Replace its footer with 'Simulated readings. Select a time to inspect each miner.' In second ADD MINER column make bottom Add miner button enabled amber and replace invalid-address message beneath with 'Connecting reads telemetry. It does not change miner settings.' Remove redundant Add label in top-right navbar, leave Cancel. In first WELCOME column small bottom privacy card text should read 'Connect directly to miners on your local network.' Remove 'No account, no cloud, no tracking' from this small card. NO OTHER CHANGES. Keep original four-screen board intact and all screens same size, title positions and spacing.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "forms",
+      "title": "Settings hub, General, Cooling, Display",
+      "note": "Demo remains read only. Firmware encoding ranges are not hardware-safe ranges.",
+      "file": "proposals/forms.png",
+      "sha256": "a558aebba5fa01c56a417929288f948b370b7d4a9b5b7229620d241dfee79972",
+      "original": "1789041904073-ig_06461ced03d60f53016aa29caa953887d1be9514b5d2f0aa5d.png",
+      "prompt": "Create a NEW four-column landscape high-fidelity UI design board for Hash Fleet, showing four DIFFERENT native iPhone settings pages side by side, all four full-height screens entirely visible, no device frames. Do not repeat the welcome/dashboard board. Use the same graphite #0B0D0F layered charcoal and restrained warm amber visual design as the attached four-screen reference, elegant SF Pro, readable monospaced values, no glaring white cards, compact useful spacing. Labels above columns: SETTINGS HUB, GENERAL, COOLING, DISPLAY. These are mockups of proposed pages, not screenshots of implemented features. All pages target a synthetic miner named Workshop Gamma at workshop-demo.invalid and visibly say DEMO \u00b7 READ ONLY so all final review actions are disabled. Column1 title 'Settings & pools': two-segment Easy / Expert picker with Easy selected; Power user mode toggle off with concise 'Optional 10-minute session. Exact review still required.' Easy settings card with Device name Workshop Gamma, On-device history30sec, Automatic fan control on, Temperature target55\u00b0C, disabled Review common changes. Expert route rows General, Cooling, Display, Pools, Manual tuning, Advanced tools. No frequency/voltage presets inside Easy. Column2 title General: device identity compact header, editable-looking demo-disabled Hostname workshop-gamma field with disabled Review hostname change button; separate On-device history card showing30 seconds and short note 'Stored by miner firmware. Not the app refresh rate.' disabled Review statistics interval. Column3 title Cooling: current sample telemetry chip58\u00b0C, fan65%. Automatic fan control on, Target temperature55\u00b0C, Minimum fan speed40%, manual speed65% shown muted as unavailable while automatic mode enabled. Clear modest amber warning 'Cooling settings can overheat hardware. Verify your board and cooling.' Disabled Review cooling changes. No fan curve graph or invented safe operating range. Column4 title Display: native fields Screen rotation90\u00b0, Invert colors off, Display timeout60seconds; tiny illustrative miner-screen preview may show638GH/s and is labeled Preview; disabled Review display changes. Back buttons on each page, compact Workshop Gamma context, no action hidden by bottom Fleet/Settings/About tabbar. Each page readable at board scale, polished production UI rather than decorative concept art. Keep numbers and labels exact and spelling clean.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "tuning",
+      "title": "Manual tuning, Pools, Guided setup, Custom JSON",
+      "note": "No tuning presets are implemented. Pool drafts must preserve the exact full-slot semantics. Custom JSON always retains typed review.",
+      "file": "proposals/tuning.png",
+      "sha256": "8f361d782b3ee64b73eb956cbe0c6764c3b71273a1d45acb309cb653e0c810d7",
+      "original": "1789041983117-ig_06461ced03d60f53016aa29cf4d10c87d19f1121aef1b2d55d.png",
+      "prompt": "Create a NEW Hash Fleet high-fidelity UI redesign board with FOUR DIFFERENT portrait iPhone pages in one landscape image, all four complete screens visible side by side. Same polished native graphite/charcoal cards and restrained amber accents, white SF Pro and monospaced values as previous board. No phone frames, no white hero panels. Above columns label MANUAL TUNING, POOLS, MINING SETUP, CUSTOM JSON. Do NOT repeat prior pages. These are proposed designs for later implementation. All hardware pages show synthetic Workshop Gamma, workshop-demo.invalid, DEMO \u00b7 READ ONLY and disabled write review buttons. 1 MANUAL TUNING page: small BM1370 board context, large amber caution 'Hardware-risk settings'; two separate numeric fields Frequency500 MHz and Core voltage1150mV with current reported reference labels. No invented Eco/Boost/Max OC presets, no automatic optimization or safe-range gauges. Footnote 'Firmware encoding limits are not safe operating limits.' review tuning change button disabled. 2 POOLS page: heading Pools, simple Guided mining setup navigation card; active primary Slot0, fallback Slot1; active slot0 card showing sample pool host pool.example.invalid, port3333, protocol SV1, username 'your-wallet.worker', masked password with Include replacement password toggle off; warning 'Replacing a slot resets omitted fields. Review the complete slot.' disabled Review pool change. All account strings synthetic. 3 MINING SETUP: heading Mining setup, compact coin picker Bitcoin selected, Bitcoin Cash/DigiByte/eCash/Bitcoin II alternatives; mining mode Solo selected vs Reward-splitting pool, simple pool choice cards CKPool and Public-Pool, small copy 'Choose a preset to prepare a draft. Nothing is sent to your miner.' Use preset button is enabled as draft-only action even in demo, no claim mining success or guarantee. 4 CUSTOM JSON: heading Custom firmware JSON, 'PATCH /api/system' target chip, monospaced code editor with exactly JSON {\"customFeature\":{\"enabled\":true,\"level\":3}} formatted as readable nested lines. Buttons Format, Paste, Import JSON in a compact toolbar. Validation chip 'Valid JSON object \u00b7 local draft', concise 'Unknown fields are preserved. Verify against your firmware documentation.' Stage for review button enabled for safe preview in demo, footnote 'Custom JSON always keeps typed confirmation. Nothing is sent while editing.' No pretend one-tap write. Native back and tidy bottom Fleet/Settings/About tabbar, content above tabbar, visually cohesive and readable.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostics, Live console, Compatibility, Endpoints",
+      "note": "Diagnostics is currently an inline disclosure. Use the refinement board for compatibility. Endpoint paths and capabilities must follow MinerEndpoint.swift, not image text.",
+      "file": "proposals/diagnostics.png",
+      "sha256": "c601296b2ab2872afd1186ac8425e723673f3890b04aab6ca4a6e9e537077ed9",
+      "original": "1789042700676-ig_06461ced03d60f53016aa29fc0276487d1a31e468de922be2c.png",
+      "prompt": "Create a NEW FOUR-PAGE Hash Fleet iPhone UI redesign board in landscape format. FOUR full portrait screens side by side, all visible, no phone hardware frames. Labels above screens DIAGNOSTICS, LIVE CONSOLE, COMPATIBILITY, ENDPOINT EXPLORER. Use warm neutral black/graphite/charcoal only (#10100F, #22211F) with restrained orange-gold accents and white/light gray text. No blue, no slate blue, no cyan surfaces. Elegant native iOS typography, tidy grouped data, efficient spacing and readable monospaced telemetry. Consistent app shell Fleet/Settings/About tabbar Fleet selected. These are visual proposals. Screen1 Diagnostics, synthetic Workshop Gamma, clear SAMPLE READINGS: compact categories Electrical & clocks with Configured frequency500MHz, measured frequency498MHz, Input voltage5.1V, Power19W; Thermal with Chip58\u00b0C, Fan65%, Fan4200RPM; Shares Accepted12400 Rejected3; secondary data groups Pool connection and Firmware, values unavailable must say Not reported. No action to tune or fake medical-style green safety score. Screen2 Live console, Workshop Gamma at workshop-demo.invalid, DEMO \u00b7 READ ONLY; Telemetry/Logs picker with Telemetry selected, exact endpoint /api/ws/live, status Disconnected, disabled Connect button and Clear. Large charcoal monospace empty console 'No frames yet'; note 'Demo mode does not open a miner connection. Live streams stop when you leave the page.' Counter0/200. No fabricated received frames. Screen3 Firmware compatibility, DEMO PREVIEW banner; one button Run compatibility check disabled; two rows GET /api/system/info and GET /api/system/asic with Not checked; explanatory 'Two read-only checks. No settings are changed.' Field coverage list frequency, coreVoltage, manualFanSpeed all Not reported, not Unsupported. Do NOT show a checked PATCH or websocket test, no unsolicited network scans. Screen4 Endpoint explorer, prominent 'Advanced tools' context and caution 'Writes always require exact review'; grouped endpoint catalog READ with GET System info, GET ASIC info, GET Statistics; WRITE with PATCH Update settings, POST Restart, POST Firmware update. Method badges differentiated by shape/icon not only color. Each row leads to a request editor, not immediate execution. Search field and dense but usable rows. Pixel-sharp readable labels, warm industrial native design, no excessive ornamentation.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "controls",
+      "title": "Advanced tools, Request editor, Confirmation, Siri",
+      "note": "Hardware commands authenticate and confirm before sending. Typed APPLY remains for raw JSON, voltage, credentials, pool routing and uploads. Native quick review still requires risk acknowledgment and a final send tap.",
+      "file": "proposals/controls.png",
+      "sha256": "ee5ba03ae7d91a390f03a25b3766685c352d94bc1d6906731e79f03775b64312",
+      "original": "1789042786344-ig_06461ced03d60f53016aa2a0159f8887d184e758d17e2f5505.png",
+      "prompt": "Generate a NEW 4-screen Hash Fleet proposed iOS UI board, landscape canvas, FOUR complete portrait pages side by side, no device frames. Match polished warm graphite/black/charcoal with restrained orange/gold, no blue or cyan surfaces, light gray SF Pro labels and crisp monospaced values. Four headings above screens: ADVANCED TOOLS, REQUEST EDITOR, CONFIRM CHANGE, SIRI & CONTROLS. Do not repeat existing diagnostics pages. Screen1 Advanced tools for synthetic Workshop Gamma: grouped rows Custom firmware JSON, All settings JSON editor, ASIC references, Scan Wi-Fi networks, then Firmware OTA update and Custom web UI update clearly flagged Requires confirmation. No action happens by selecting a row. Screen2 Update settings request editor for Workshop Gamma at fixture.invalid (synthetic test target), method PATCH /api/system exact; code editor {\"hostname\":\"workshop-new\"}, local draft badge, concise note 'Only included fields will be sent.' Review request button amber, no auto-send. Screen3 Review before sending modal with Cancel top left; selected target Workshop Gamma / fixture.invalid; exact method PATCH /api/system and compact JSON {\"hostname\":\"workshop-new\"}; caution 'May interrupt connectivity. Changes are not automatically undone.' switch 'I reviewed the target, payload and risks' on, field Type APPLY visibly filled APPLY. Keyboard dismissed and bottom Send confirmed request button fully visible above safe area. This is a synthetic fixture review, not demo mode. Small 'Nothing is sent until you tap Send' note. Screen4 Shortcuts & Controls: Open Shortcuts button; separate Saved readings card with Saved-reading access Off, private aggregate-only summary explanation; hardware commands Restart miner, Set frequency, Set manual fan speed with lock/check icons, concise 'Authenticate, confirm the exact miner and value, then send.' Amber warning 'Manual fan speed disables automatic cooling. Incorrect settings can damage hardware.' separate Control Center card Open Fleet, launcher-only note. No one-tap immediate restart button, no claim widgets execute tuning. Bottom Settings tab selected on screen4, Fleet on other workspace pages. All text sharp, every screen compact and readable, safety balanced with clean visual hierarchy.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "system",
+      "title": "Settings, Preferences, Widgets, Live Activity",
+      "note": "Widget and Live Activity columns are superseded by the refinement board. Pool icon demo previews appearance only, not routing. Final colors must use existing neutral theme tokens.",
+      "file": "proposals/system.png",
+      "sha256": "e69690b982f148bc54cbe3e46c04eae617d51c39fe1bb0fca5d0a02ccdd0c4be",
+      "original": "1789043626454-ig_06461ced03d60f53016aa2a3592b7887d1b0b4c31155695fa3.png",
+      "prompt": "Create a NEW four-column Hash Fleet UI redesign board, landscape, FOUR full portrait iPhone pages side by side. This is a design proposal. Labels above columns SETTINGS, PREFERENCES, WIDGETS, LIVE ACTIVITY. Match prior polished graphite/charcoal native iOS screens, warm amber accents and readable off-white SF Pro typography, monospaced numbers. No blue/cyan surfaces, no phone frames. Screen1 Settings hub with understated miner logo and title Settings, grouped navigation rows Fleet preferences, Widgets, Live Activity, Shortcuts & Controls, Pool icon demo, Frame pacing; small note 'Miner controls live inside each miner in Fleet.' Bottom Settings tab selected. Screen2 Preferences: Color mode System/Light/Dark with System selected; Sort by Name, Direction Ascending; Compact miner cards on; Realtime miner readings on; Public network & pool data section with Show external data off and note 'External lookups contact public providers when enabled.' Block-found alerts off with note 'Only explicit firmware block events, not high-difficulty shares.' No subscription or cloud login controls. Screen3 Widgets: Share fleet readings toggle OFF, crisp widget sample preview labeled SAMPLE 3.02 TH/s and3 miners, compact privacy card 'Hashrate, power and counts only. Never miner addresses or credentials.' How to add Home Screen widget and Lock Screen widget rows. Note 'Saved snapshots, not live streaming. iOS controls refresh timing. Readings are marked stale after a minute.' Preview never implies sharing is enabled. Screen4 Live Activity: status Not running, beautifully restrained sample lockscreen activity preview3.02TH/s/51W/3miners clearly SAMPLE. Primary Start Live Activity button, note 'Starts only when you choose. Ending an activity never pauses miners.' Separate small info card 'Updates while Hash Fleet is open. Saved readings become stale after one minute.' iOS permission note. All four screens have clear back navigation except root Settings, consistent bottom Fleet/Settings/About tabbar, Settings selected, no hidden content. Readable concise production-quality interface, no claims of continuous background connection.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "network",
+      "title": "Network insights, CKPool, Pool icon demo, About",
+      "note": "Example statistics are synthetic, not live readings or financial promises. Provider disclosure remains mandatory.",
+      "file": "proposals/network.png",
+      "sha256": "fd5dfd9d80ae7b666dcb4078fd9625b26dc7e66e1cb6d63e8115e924a65d32ee",
+      "original": "1789043719434-ig_06461ced03d60f53016aa2a3af2f2c87d185a2d3aad5cc468f.png",
+      "prompt": "Create a NEW FOUR-SCREEN Hash Fleet iOS redesign board in landscape, four full portrait app pages side by side, no device frames. Labels NETWORK & POOLS, CKPOOL LOOKUP, POOL ICON DEMO, ABOUT. Same premium warm graphite/black native iOS design as other boards, orange-gold accents, SF Pro, monospaced metrics, no blue/cyan surfaces. Every screen completely visible with bottom safe area. Screen1 Network & pools: visible DEMO \u00b7 SAMPLE DATA, BTC price$80,000 explicitly sample, network hashrate and difficulty small sample values, Fee estimates card with Fast/Normal/Economy labeled sat/vB, compact explanatory probability section 'Solo estimates are probabilities, not payouts or guarantees.' CKPool lookup navigation row. Keep external source timestamps visible and samples clearly synthetic. Screen2 CKPool lookup: title CKPool lookup, Bitcoin address empty text field with Paste button, Look up button disabled until valid input; compact privacy explanation 'This is a public account lookup. The address is sent to CKPool when you choose Look up.' No seed phrase/private key fields, no connect-wallet button. A muted sample result preview can be omitted, focus on empty state and what is shared. Screen3 Pool icon demo: clear DEMO \u00b7 SIMULATED READINGS banner, title Pool icon demo, short 'Preview supported pool and coin artwork. No real miners are changed.' cards for CKPool, Public-Pool, OCEAN, Braiins with simplified recognizable marks, coin badges BTC and relevant sample miner mini metrics, Exit demo action clearly visible. This is a demo gallery, not payment or pool login. Screen4 About: modest single amber miner icon, Hash Fleet title and descriptive line 'A clear view of your Bitcoin miners.' clean grouped sections Direct local connections, Read-only monitoring, Reviewed device controls, Privacy; source/credits links with GitHub icon and 'Open source'; small disclaimer 'Independent app. Not affiliated with miner firmware or pool providers.' Do not invent version numbers, star ratings or app-wide no-tracking promises. Fleet tab selected first3, About selected fourth. Clean readable compact production UI, not glossy marketing poster.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "states",
+      "title": "Launch, Frame pacing, Offline, Firmware upload",
+      "note": "Launch is exploratory only. Preserve the existing black logo launch unless separately approved. Frame pacing remains off by default.",
+      "file": "proposals/states.png",
+      "sha256": "756d026ae6cacdafdac8934049aeb01a707c567ab1b3c6243e9bebb1929f5580",
+      "original": "1789043806534-ig_06461ced03d60f53016aa2a40e531087d1b24b81940df128ef.png",
+      "prompt": "Create a NEW four-column high-fidelity Hash Fleet iPhone UI proposal board, landscape, FOUR full portrait screens side by side without phone frames. Labels LAUNCH, FRAME PACING, OFFLINE SETTINGS, FIRMWARE UPDATE. Warm graphite/charcoal and black native iOS surfaces, restrained amber accents, off-white SF Pro text, crisp monospaced metrics, avoid blue surfaces. 1 LAUNCH: calm premium amber miner artwork centered above Hash Fleet wordmark, concise subtitle 'Your fleet, in focus.', three short feature lines Local connections / Live readings / Reviewed controls, Continue to Hash Fleet button, no new user account flow and no loading progress bar. 2 FRAME PACING: title Frame Pacing with monitoring toggle OFF, explanatory 'Local display-link callback timing, not GPU-rendered FPS.' Empty metrics grid callback FPS --, p95 interval --ms, slow gaps --. No invented live60FPS when disabled. Section Screen reports empty 'Enable diagnostics to record timings while using the app.' Reset reports button disabled, modest disclosure CPU/thermal state if not measured says Not recorded. Diagnostics default off. 3 OFFLINE SETTINGS: miner Workshop Gamma at fixture.invalid, clear amber OFFLINE \u00b7 LAST KNOWN badge, timestamp 'Last seen 10 minutes ago', headline 'Saved settings, read only'; recognizable General/Cooling cards showing cached hostname workshop-gamma, Frequency500MHz, Fan65% explicitly Last known. All editor fields and Review changes action disabled. Refresh connection button leads to read-only refresh, note 'Reconnect and refresh before changing settings. Cached readings are not live.' No green connected badge. 4 FIRMWARE UPDATE: title Upload firmware, synthetic Workshop Gamma / fixture.invalid, method POST /api/system/OTA, serious but compact amber warning 'Incorrect firmware can leave this miner unbootable. Verify board and image compatibility.' File picker Choose firmware file, status No file selected, maximum16MiB noted. Disabled Review firmware upload button, footer 'Selecting a file sends nothing. Upload requires exact review and typed confirmation.' No percent-complete or fake firmware image chosen. All pages have appropriate back controls and Fleet/Settings/About tabbar except launch overlay. Every button fully above safe area, crisp clean readable production design, no dangerous immediate actions.",
+      "generator": "image_generation",
+      "provider": "openai"
+    },
+    {
+      "id": "refinements",
+      "title": "Widgets, Live Activity, Compatibility, Web upload",
+      "note": "Preferred aggregate-only previews. Correction required before implementation: compatibility field coverage is derived from system info, not solely ASIC. Remove the image\u2019s FROM /API/SYSTEM/ASIC subtitle. Use existing navigation back affordances.",
+      "file": "proposals/refinements.png",
+      "sha256": "0a3ad798056d3bbb629d7a17452387b1e40a548b89c96f0b06202bb406f984f0",
+      "original": "1789045079832-ig_05f1b2a0fd0669af016aa2a90e29ec87d18373e53cfac4609c.png",
+      "prompt": "Create a NEW Hash Fleet iOS design proposal board with FOUR complete portrait app screens arranged side by side on a landscape canvas, no phone hardware frames. This is NOT executable UI and not a screenshot. Match the attached board's refined native typography and structure, but use STRICTLY NEUTRAL warm charcoal #161513, black #080808, gray and restrained orange-gold. No blue, teal or cyan surfaces. Four labels above screens: WIDGETS, LIVE ACTIVITY, COMPATIBILITY, WEB INTERFACE UPDATE. Correctness is more important than decoration. WIDGETS: native title Widgets. Share fleet readings toggle OFF. Example preview clearly labeled SAMPLE showing 3.02 TH/s and 3 miners, no bitcoin badge, no per-miner identity, no mini chart. Privacy paragraph exactly 'Aggregate fleet readings only. No miner names, addresses or credentials.' Below: Add Home Screen widget and Add Lock Screen widget as instruction rows. Footer 'Saved snapshots, not live streaming. iOS controls refresh timing.' LIVE ACTIVITY: title Live Activity; status Not running. Sample preview labeled SAMPLE showing 3.02 TH/s, 51 W, 3 miners ONLY, no temperature, no currency or bitcoin symbol, no mini chart. Start Live Activity button, note 'Starts only when you choose. Ending an activity never pauses miners.' Further note 'Updates while Hash Fleet is open. Saved readings become stale after one minute.' COMPATIBILITY: synthetic Workshop Gamma with DEMO PREVIEW badge, title Check compatibility. Disabled Run compatibility check button. Exactly two endpoint rows GET /api/system/info and GET /api/system/asic, each status Not checked. Note 'Two read-only checks. No settings are changed.' Field coverage frequency, coreVoltage, manualFanSpeed each Not reported. No PATCH support check or websocket probe. WEB INTERFACE UPDATE: title Upload web interface, Workshop Gamma / fixture.invalid synthetic target. Exact endpoint POST /api/system/OTAWWW. Caution 'A mismatched image can break the miner web interface. Verify firmware compatibility.' Choose web interface file button with No file selected label, Maximum 16 MiB. Disabled Review upload button, note 'Selecting a file sends nothing. Upload requires exact review and typed confirmation.' All four layouts clear, fully above bottom safe area. Fleet/Settings/About tabs, Settings selected on first two and Fleet on last two. Pixel-sharp labels, no fake progress or one-tap hardware operations.",
+      "generator": "image_generation",
+      "provider": "openai"
+    }
+  ],
+  "captures": [
+    {
+      "file": "current/01_dashboard_empty_state.png",
+      "sha256": "e907e88b68117d8d85c78f4f69408a1f8e2e9c9bce13925e013cd588897fc643",
+      "captured_mtime": 1789040469.1308658
+    },
+    {
+      "file": "current/02_add_miner_sheet_empty.png",
+      "sha256": "c7301247ff86c13f9d9f554f5f3d1ff3a836f0b0d45e4b775231773865b6ea33",
+      "captured_mtime": 1789040471.5256982
+    },
+    {
+      "file": "current/03_add_miner_sheet_filled.png",
+      "sha256": "b21947f1fdf774123bcca7bc62c10a569ad886f9ce58b965ebdcb626bc8aae25",
+      "captured_mtime": 1789040473.952446
+    },
+    {
+      "file": "current/04_launch_splash.png",
+      "sha256": "2a3db90dc18f21d3f1890ad1479e3a6fbfc8ad061cebfe181b1d9b224122d343",
+      "captured_mtime": 1789040482.0971165
+    },
+    {
+      "file": "current/05_dashboard_demo_top.png",
+      "sha256": "2548ff1859e2b6ca0f3fa04e2e7164166836753bd729a8e049476b27a87dd190",
+      "captured_mtime": 1789040489.4378483
+    },
+    {
+      "file": "current/06_dashboard_demo_miners.png",
+      "sha256": "5bc395bd26ca3634f680c0a342e95277400eeb4377e99a4ab3431319bddd8adf",
+      "captured_mtime": 1789040491.3340783
+    },
+    {
+      "file": "current/07_dashboard_history_expanded.png",
+      "sha256": "84f0de8c974ae4f257064230f53682235cc3403bcecb52c828a3eff6f5b1c6cc",
+      "captured_mtime": 1789040494.2460022
+    },
+    {
+      "file": "current/08_dashboard_history_point_selected.png",
+      "sha256": "5de27c4d93e88b883c32672104fe8a2118297bb0a42da09f6b523fd2b20dbf2f",
+      "captured_mtime": 1789040496.118731
+    },
+    {
+      "file": "current/10_dashboard_chain_card.png",
+      "sha256": "67f6c668db868ed598c7f386fcc426180c86f69de5cd8413b7fd2f15005d5c4e",
+      "captured_mtime": 1789040521.2120402
+    },
+    {
+      "file": "current/11_dashboard_card_settings_menu_opened.png",
+      "sha256": "34dea56dda985ba1795c1e3fb40fecb61b594c60117876ca2ca55b170f3b58ed",
+      "captured_mtime": 1789040541.6421146
+    },
+    {
+      "file": "current/12_pool_icon_demo_gallery_top.png",
+      "sha256": "073861fe7721cd62934fe5c153ee0290dd2a6cb756aed1af1cd0c36264eece66",
+      "captured_mtime": 1789040550.4275677
+    },
+    {
+      "file": "current/13_pool_icon_demo_gallery_scrolled.png",
+      "sha256": "6524c5ff8c813cb6fdbab41a0c39532010d2b1c3335d0c01cd8dc71fc18f2928",
+      "captured_mtime": 1789040553.1942377
+    },
+    {
+      "file": "current/14_network_insights_top.png",
+      "sha256": "6b1a83c589940f1c6746e3d94ae6891c67a91404ec2cb52e685f9bf21b8b001e",
+      "captured_mtime": 1789043605.2752702
+    },
+    {
+      "file": "current/15_network_insights_scrolled.png",
+      "sha256": "63a5416608353b4a2a2eeac09128789aacdc9165c328f86b2efd2f00a37e85fd",
+      "captured_mtime": 1789043607.9599712
+    },
+    {
+      "file": "current/16_ckpool_lookup_empty.png",
+      "sha256": "27e9bd81de14cd98ded0f20173e174228987e79e31159d70f13f7d66ce8eed20",
+      "captured_mtime": 1789043618.6573832
+    },
+    {
+      "file": "current/17_ckpool_lookup_address_entered.png",
+      "sha256": "3f8577c31bf09fe3b73e6d247afa9212051f8b511a7ac6b777fe942c04087191",
+      "captured_mtime": 1789043621.4217882
+    },
+    {
+      "file": "current/18_miner_detail_top.png",
+      "sha256": "999739acc3bcca1ccc2799c8e5e4918c09360f94cc71ad286d885262ac366f5e",
+      "captured_mtime": 1789045374.2106733
+    },
+    {
+      "file": "current/19_miner_detail_diagnostics_expanded.png",
+      "sha256": "de6127d534ced30d19f04c16826f0c9459d2b03811841b151bc36d6f0288b1c3",
+      "captured_mtime": 1789045388.0602317
+    },
+    {
+      "file": "current/20_miner_detail_middle.png",
+      "sha256": "6cd8d0145e61ebea6f90d1b7d6962cbc842d7ed152980828964899f43dcb1ae6",
+      "captured_mtime": 1789045391.222389
+    },
+    {
+      "file": "current/21_miner_detail_tools_bottom.png",
+      "sha256": "3ecfb179f5d3d351bc8bd98189f0ed162b576b686e201084a3a1e4d53048e5fc",
+      "captured_mtime": 1789045393.0231624
+    },
+    {
+      "file": "current/22_miner_detail_advanced_tools_expanded.png",
+      "sha256": "c23a4b103ce40606ec35280031ca0b538f28421a07c7b16bea780d5d526b786a",
+      "captured_mtime": 1789045394.8640552
+    },
+    {
+      "file": "current/23_miner_settings_main_easy_mode.png",
+      "sha256": "b0051485c3463c3e63d8a8bcdee753c072e3b51d2517207d6f93c10dc0ffa221",
+      "captured_mtime": 1789044030.803041
+    },
+    {
+      "file": "current/24_miner_settings_main_expert_mode.png",
+      "sha256": "020dba7cc550975a96d48c53e3201977510492fe53d2f2f12526312b8ecbaf61",
+      "captured_mtime": 1789044032.1358292
+    },
+    {
+      "file": "current/25_miner_settings_category_general.png",
+      "sha256": "ba2413760c2159a4f507f0dfcd229c11c4475fd8a1e45104e769a509c12e795f",
+      "captured_mtime": 1789044034.2296762
+    },
+    {
+      "file": "current/26_miner_settings_category_cooling.png",
+      "sha256": "b202ac36927398d4660d876063b5a781f454d4d558d4301dd0e02628dae5f26f",
+      "captured_mtime": 1789044038.0333016
+    },
+    {
+      "file": "current/27_miner_settings_category_display.png",
+      "sha256": "8d1a670cc8720d667d380e4fd82135949b7e83a6fe7503b0686eaeb41f5997d2",
+      "captured_mtime": 1789044045.066343
+    },
+    {
+      "file": "current/28_miner_settings_category_pools.png",
+      "sha256": "8e09fd5f15acac53bdce4e975fe8322e2c4a15f43372502d8aa39d9ef4945c98",
+      "captured_mtime": 1789044048.9356368
+    },
+    {
+      "file": "current/29_mining_setup_catalog_modal.png",
+      "sha256": "dc95118a66f145366ca19029a74cd2e76b5bc7478720c937a58ad2e8f3271546",
+      "captured_mtime": 1789044050.955793
+    },
+    {
+      "file": "current/30_mining_setup_catalog_scrolled.png",
+      "sha256": "244bad72172c0ab2f870c5b5c47f962157d679fc6e1f7be3d0c8997c3115631b",
+      "captured_mtime": 1789044052.8143864
+    },
+    {
+      "file": "current/31_miner_settings_category_tuning.png",
+      "sha256": "ba7c53828f7e975938ae7e9c8bcb94e035cb984d94367ec90276f3d8d2a717cd",
+      "captured_mtime": 1789044057.297901
+    },
+    {
+      "file": "current/32_miner_settings_category_advanced.png",
+      "sha256": "f77f81c9b7c3246bd91eee2699fb1e3c297ee3c79974ec587c84b0065047db8f",
+      "captured_mtime": 1789044061.1578705
+    },
+    {
+      "file": "current/32b_miner_settings_json_patch_editor.png",
+      "sha256": "d9fcd5e685cff0d319d5a078a84ecbf32a752d34b5ee622466b144735d1b438f",
+      "captured_mtime": 1789044065.7451584
+    },
+    {
+      "file": "current/33_miner_compatibility_view.png",
+      "sha256": "c0c0bd5b78931c83a81e320821a75329547a2bd457ee36c55472fc39cfd9fa3d",
+      "captured_mtime": 1789045084.1592402
+    },
+    {
+      "file": "current/34_miner_compatibility_view_scrolled.png",
+      "sha256": "388ba374873d44e6f9c623f1d0f9e8d7d6d8678a4837618426e010f59d7725c2",
+      "captured_mtime": 1789045085.8962512
+    },
+    {
+      "file": "current/35_endpoint_explorer_catalog.png",
+      "sha256": "88e4205d0daa898fe6683bbf7ccd54b84db88823856817c39218640f46a97017",
+      "captured_mtime": 1789045092.0290494
+    },
+    {
+      "file": "current/36_miner_endpoint_read_view.png",
+      "sha256": "a5b984561671da0a16f6aee0642eda032e09bb166876d4606daa252348e9e4f2",
+      "captured_mtime": 1789045095.147136
+    },
+    {
+      "file": "current/37_miner_endpoint_write_view.png",
+      "sha256": "11f9a1105dbd9d8ff930c79b76d3cefe11d5363ac7b1e8ea68736653103d7e26",
+      "captured_mtime": 1789045104.8917377
+    },
+    {
+      "file": "current/38_write_confirmation_apply_revealed.png",
+      "sha256": "4222670d50239dd9864c7808a2f46dd779f9a663c6a9e565d217d9084de7cf20",
+      "captured_mtime": 1789045347.5774808
+    },
+    {
+      "file": "current/39_miner_live_console.png",
+      "sha256": "69b7aaa52e6e33e98b3f71ed6ab988df2af392eb1e098d3693456cd435cbed18",
+      "captured_mtime": 1789045110.965579
+    },
+    {
+      "file": "current/40_settings_main_menu.png",
+      "sha256": "7b24e72fac41c2a514fc50051ea116b79b50e26703b5b4de3e9fe60dce942756",
+      "captured_mtime": 1789043717.0123343
+    },
+    {
+      "file": "current/41_settings_fleet_preferences.png",
+      "sha256": "b648c23cc9537d94af2de5664829e3a7aa47e904b43ab09bc8937b8e7dd2dd4b",
+      "captured_mtime": 1789043720.5676072
+    },
+    {
+      "file": "current/42_settings_widgets_page.png",
+      "sha256": "cc896a23abc43b7224810d50cf7a80313e0a21c74eda3ed13b237432f9943358",
+      "captured_mtime": 1789043724.8751943
+    },
+    {
+      "file": "current/43_settings_live_activity_page.png",
+      "sha256": "06a41489e70012b96d6160649536fbd218283c67a64ff4b0cc1341d968ddd661",
+      "captured_mtime": 1789043729.1096625
+    },
+    {
+      "file": "current/44_settings_shortcuts_and_controls.png",
+      "sha256": "8f6ac63171255da8daec87dfffd2d1ac155e2050cd02f4ed5b09cd9a33d59dc5",
+      "captured_mtime": 1789043733.4028752
+    },
+    {
+      "file": "current/45_settings_frame_pacing_diagnostics.png",
+      "sha256": "9ba69548c79d6d23f865992c465de1a7c9fcbba5a208136e4598b11891269965",
+      "captured_mtime": 1789043737.5861309
+    },
+    {
+      "file": "current/46_about_page_top.png",
+      "sha256": "9d6b7f45d60ccfddcebbf05b5c9d8b88d2ca897a1fd7e9df8bbb2590b9d367f6",
+      "captured_mtime": 1789040757.4987705
+    },
+    {
+      "file": "current/47_about_page_bottom.png",
+      "sha256": "062a61a9a44eae17db67a4960979ebbe3ca62accc736a38411c8d594700b3877",
+      "captured_mtime": 1789040760.3050916
+    },
+    {
+      "file": "current/48_light_dashboard_demo.png",
+      "sha256": "c54ff75eb1702c8ac0a2f7c948ab7a884151428da0edb2726d813ae26ace1058",
+      "captured_mtime": 1789040766.3854203
+    },
+    {
+      "file": "current/49_light_settings_tab.png",
+      "sha256": "b3e18feeac9104be1770c8bcd59604ed5598e30f3acf559afbb2001752baaeb0",
+      "captured_mtime": 1789040768.4199972
+    },
+    {
+      "file": "current/50_light_about_tab.png",
+      "sha256": "e068e15b31f519e212c0fd6ad60b93b1468e072c658002dfd142439f480228c9",
+      "captured_mtime": 1789040770.3075118
+    },
+    {
+      "file": "current/51_custom_firmware_json.png",
+      "sha256": "91c6703b3e943c9b57b6274c474f6fd91afaf3ffbe78469f259e033175023138",
+      "captured_mtime": 1789044063.1221864
+    },
+    {
+      "file": "current/52_firmware_update.png",
+      "sha256": "38c0f3e0284e27a53b16b90073a46995fb73d4f0bab7cc6eace9c0a1d43870d9",
+      "captured_mtime": 1789044068.3718638
+    },
+    {
+      "file": "current/53_web_interface_update.png",
+      "sha256": "f54bbe8f923eeebc4ed35493fb188be271d8c51eaa1eecf2dc69192ff735e19d",
+      "captured_mtime": 1789044070.9582713
+    },
+    {
+      "file": "current/54_custom_json_typed_confirmation.png",
+      "sha256": "95610493793eb4b87e1eb85f424b034e61e8d333bd1c9e77bd215504aaebd8f0",
+      "captured_mtime": 1789045347.5410845
+    },
+    {
+      "file": "current/55_power_user_review.png",
+      "sha256": "337bb1b3c7acc4fa996ef9d1d502f5e822003e21aed77a0165fa897a4b8a9fea",
+      "captured_mtime": 1789045347.5589123
+    },
+    {
+      "file": "current/56_offline_settings.png",
+      "sha256": "6fee7a6a6c8ea9e79e1b6e9260ffcbd4a36371967d1fc26667210b86fc8711e4",
+      "captured_mtime": 1789045347.5473123
+    }
+  ],
+  "pages": [
+    {
+      "id": "launch",
+      "title": "Launch overlay",
+      "current": [
+        "current/04_launch_splash.png"
+      ],
+      "board": "states",
+      "note": "State, not a new account/onboarding flow.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "dashboard",
+      "title": "Fleet dashboard",
+      "current": [
+        "current/01_dashboard_empty_state.png",
+        "current/05_dashboard_demo_top.png",
+        "current/06_dashboard_demo_miners.png",
+        "current/07_dashboard_history_expanded.png",
+        "current/08_dashboard_history_point_selected.png",
+        "current/10_dashboard_chain_card.png",
+        "current/11_dashboard_card_settings_menu_opened.png",
+        "current/48_light_dashboard_demo.png"
+      ],
+      "board": "fleet",
+      "note": "Empty/demo/light and history states share one route.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "add",
+      "title": "Add Miner sheet",
+      "current": [
+        "current/02_add_miner_sheet_empty.png",
+        "current/03_add_miner_sheet_filled.png"
+      ],
+      "board": "fleet",
+      "note": "Address input and discovery remain user initiated.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "miner",
+      "title": "Miner detail",
+      "current": [
+        "current/18_miner_detail_top.png",
+        "current/19_miner_detail_diagnostics_expanded.png",
+        "current/20_miner_detail_middle.png",
+        "current/21_miner_detail_tools_bottom.png",
+        "current/22_miner_detail_advanced_tools_expanded.png"
+      ],
+      "board": "detail",
+      "note": "Diagnostics and advanced tools disclosures are inline states. Diagnostics concept also appears on its own board.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "miner-settings",
+      "title": "Settings & pools",
+      "current": [
+        "current/23_miner_settings_main_easy_mode.png",
+        "current/24_miner_settings_main_expert_mode.png"
+      ],
+      "board": "forms",
+      "note": "Easy and Expert share one route.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "general",
+      "title": "General",
+      "current": [
+        "current/25_miner_settings_category_general.png"
+      ],
+      "board": "forms",
+      "note": "Hostname and on-device statistics interval.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "cooling",
+      "title": "Cooling",
+      "current": [
+        "current/26_miner_settings_category_cooling.png"
+      ],
+      "board": "forms",
+      "note": "Automatic/manual fan controls and firmware-dependent fields.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "display",
+      "title": "Display",
+      "current": [
+        "current/27_miner_settings_category_display.png"
+      ],
+      "board": "forms",
+      "note": "Display settings depend on firmware support.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "pools",
+      "title": "Pools",
+      "current": [
+        "current/28_miner_settings_category_pools.png"
+      ],
+      "board": "tuning",
+      "note": "Exact primary/fallback slot drafts, no immediate pool switching.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "guided",
+      "title": "Guided Pool Setup",
+      "current": [
+        "current/29_mining_setup_catalog_modal.png",
+        "current/30_mining_setup_catalog_scrolled.png"
+      ],
+      "board": "tuning",
+      "note": "Choosing a preset prepares a draft, never sends it.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "tuning",
+      "title": "Manual tuning",
+      "current": [
+        "current/31_miner_settings_category_tuning.png"
+      ],
+      "board": "tuning",
+      "note": "Frequency and core voltage, without invented safe presets.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced tools",
+      "current": [
+        "current/32_miner_settings_category_advanced.png"
+      ],
+      "board": "controls",
+      "note": "Routes to endpoint and custom JSON tools.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "json",
+      "title": "Custom JSON",
+      "current": [
+        "current/51_custom_firmware_json.png"
+      ],
+      "board": "tuning",
+      "note": "Unknown keys preserved in local JSON object. Format, paste/import and stage for review.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "catalog",
+      "title": "Endpoint explorer",
+      "current": [
+        "current/35_endpoint_explorer_catalog.png"
+      ],
+      "board": "diagnostics",
+      "note": "Read/write catalog, capability unverified unless actually probed.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "read",
+      "title": "Read endpoint editor",
+      "current": [
+        "current/36_miner_endpoint_read_view.png"
+      ],
+      "board": "diagnostics",
+      "note": "Generic endpoint template. This screenshot shows System info, not every endpoint response.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "patch",
+      "title": "JSON PATCH editor",
+      "current": [
+        "current/32b_miner_settings_json_patch_editor.png"
+      ],
+      "board": "controls",
+      "note": "Exact request review, not immediate send.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "restart",
+      "title": "Restart request editor",
+      "current": [
+        "current/37_miner_endpoint_write_view.png"
+      ],
+      "board": "controls",
+      "note": "Same endpoint template, bodyless hardware command variant.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "confirm",
+      "title": "Write confirmation sheet",
+      "current": [
+        "current/38_write_confirmation_apply_revealed.png",
+        "current/54_custom_json_typed_confirmation.png",
+        "current/55_power_user_review.png"
+      ],
+      "board": "controls",
+      "note": "Loopback fixture screenshots, not a live miner. Includes optional native power-user review.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "firmware",
+      "title": "Upload firmware",
+      "current": [
+        "current/52_firmware_update.png"
+      ],
+      "board": "states",
+      "note": "File selection followed by high-risk typed review, maximum 16 MiB.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "web",
+      "title": "Upload web interface",
+      "current": [
+        "current/53_web_interface_update.png"
+      ],
+      "board": "refinements",
+      "note": "Distinct POST /api/system/OTAWWW upload variant.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "compatibility",
+      "title": "Check compatibility",
+      "current": [
+        "current/33_miner_compatibility_view.png",
+        "current/34_miner_compatibility_view_scrolled.png"
+      ],
+      "board": "refinements",
+      "note": "GET system info and ASIC only. Never claim write support based on a read.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "console",
+      "title": "Live console",
+      "current": [
+        "current/39_miner_live_console.png"
+      ],
+      "board": "diagnostics",
+      "note": "Logs and Telemetry states. Demo does not connect.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "network",
+      "title": "Network insights",
+      "current": [
+        "current/14_network_insights_top.png",
+        "current/15_network_insights_scrolled.png"
+      ],
+      "board": "network",
+      "note": "Public provider data, timestamps and honest estimation.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "ckpool",
+      "title": "CKPool lookup",
+      "current": [
+        "current/16_ckpool_lookup_empty.png",
+        "current/17_ckpool_lookup_address_entered.png"
+      ],
+      "board": "network",
+      "note": "Public account lookup, never wallet access.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "icons",
+      "title": "Pool icon demo",
+      "current": [
+        "current/12_pool_icon_demo_gallery_top.png",
+        "current/13_pool_icon_demo_gallery_scrolled.png"
+      ],
+      "board": "network",
+      "note": "Appearance preview only, no routing changes.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "settings",
+      "title": "Settings tab",
+      "current": [
+        "current/40_settings_main_menu.png",
+        "current/49_light_settings_tab.png"
+      ],
+      "board": "system",
+      "note": "Root monitoring/system navigation.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "preferences",
+      "title": "Fleet preferences",
+      "current": [
+        "current/41_settings_fleet_preferences.png"
+      ],
+      "board": "system",
+      "note": "Appearance, sorting, readings and optional public data.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "widgets",
+      "title": "Widgets",
+      "current": [
+        "current/42_settings_widgets_page.png"
+      ],
+      "board": "refinements",
+      "note": "Explicit sharing opt-in, aggregate saved snapshots only.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "activity",
+      "title": "Live Activity",
+      "current": [
+        "current/43_settings_live_activity_page.png"
+      ],
+      "board": "refinements",
+      "note": "User started, no background miner control.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "siri",
+      "title": "Shortcuts & Controls",
+      "current": [
+        "current/44_settings_shortcuts_and_controls.png"
+      ],
+      "board": "controls",
+      "note": "Saved summary, launcher and confirmed hardware actions.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "fps",
+      "title": "Frame pacing",
+      "current": [
+        "current/45_settings_frame_pacing_diagnostics.png"
+      ],
+      "board": "states",
+      "note": "Local callback timing, not GPU FPS. Disabled by default.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "about",
+      "title": "About",
+      "current": [
+        "current/46_about_page_top.png",
+        "current/47_about_page_bottom.png",
+        "current/50_light_about_tab.png"
+      ],
+      "board": "network",
+      "note": "Privacy, project information and hardware limitations.",
+      "capture_status": "captured"
+    },
+    {
+      "id": "offline",
+      "title": "Offline settings state",
+      "current": [
+        "current/56_offline_settings.png"
+      ],
+      "board": "states",
+      "note": "Read-only cached settings. Same General route, not another page.",
+      "capture_status": "captured"
+    }
+  ]
+}

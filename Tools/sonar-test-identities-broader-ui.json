@@ -1,0 +1,5 @@
+[
+  "CompactDashboardUITests/testAccessibilityTickerExposesStaticUntruncatedMinerSummaries()",
+  "CompactDashboardUITests/testExactNumericBestShareRendersAs392MThroughNativeTransport()",
+  "CompactDashboardUITests/testFleetToolsAndMinerControlsAreExplicitlyDiscoverable()"
+]

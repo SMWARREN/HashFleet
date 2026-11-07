@@ -1,0 +1,18 @@
+[
+  {
+    "file": "light-dashboard.png",
+    "attachment": "White and gold light dashboard_0_789961F8-6586-44A9-B2B3-88200973D1B9.png",
+    "source": "03E6D6EB-8CA7-4568-ADAF-79F96B0B1159.png",
+    "sha256": "409766527665b352793047e27904491921c4905005bb057da0933f4dc27d1beb",
+    "resultBundle": "/Users/USER/.jcode/scratch/HashFleetSystemFinal.xcresult",
+    "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()"
+  },
+  {
+    "file": "dark-dashboard.png",
+    "attachment": "Black graphite and gold dark dashboard_0_E3EA3EBA-9CEA-4C73-BCD7-E1577FCB9898.png",
+    "source": "BA0F2F2E-781E-4B4E-9DD7-8A277F42CA52.png",
+    "sha256": "b78d670444d42c891d98dd3293463e01fc115d277bf9f37b48eee2b34cfc373e",
+    "resultBundle": "/Users/USER/.jcode/scratch/HashFleetSystemFinal.xcresult",
+    "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()"
+  }
+]

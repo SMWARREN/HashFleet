@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24125" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="fleet-launch-controller">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24120"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <scene sceneID="fleet-launch-scene">
+            <objects>
+                <viewController id="fleet-launch-controller" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="fleet-launch-view">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="HashFleetLaunch" translatesAutoresizingMaskIntoConstraints="NO" id="fleet-launch-miner">
+                                <rect key="frame" x="86.5" y="316" width="220" height="220"/>
+                                <accessibility key="accessibilityConfiguration" label="Hash Fleet"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="220" id="fleet-launch-width"/>
+                                    <constraint firstAttribute="height" constant="220" id="fleet-launch-height"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="fleet-launch-safe"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="fleet-launch-miner" firstAttribute="centerX" secondItem="fleet-launch-view" secondAttribute="centerX" id="fleet-launch-center-x"/>
+                            <constraint firstItem="fleet-launch-miner" firstAttribute="centerY" secondItem="fleet-launch-view" secondAttribute="centerY" id="fleet-launch-center-y"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="fleet-launch-responder" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="HashFleetLaunch" width="384" height="384"/>
+    </resources>
+</document>

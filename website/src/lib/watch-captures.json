@@ -1,0 +1,52 @@
+{
+  "capturedAt": "2026-11-04",
+  "sourceRevision": "a10fec115ba3f74ceed100f023eb235d4a009cd1",
+  "provenance": "Unmodified PNG attachments from the native HashFleetWatchUITests demo and independent-setup tests. Fictional readings. No generated app screens.",
+  "captures": [
+    {
+      "id": "watch-fleet",
+      "src": "/images/watch/watch-fleet-20261104.png",
+      "width": 368,
+      "height": 448,
+      "bytes": 27157,
+      "sha256": "bfc714a6691b115e749b11e368ab7571bc3c0d07e2ee7362a8bd03925d6f5007",
+      "sourceSha256": "bfc714a6691b115e749b11e368ab7571bc3c0d07e2ee7362a8bd03925d6f5007"
+    },
+    {
+      "id": "watch-miner",
+      "src": "/images/watch/watch-miner-20261104.png",
+      "width": 368,
+      "height": 448,
+      "bytes": 34864,
+      "sha256": "e72445ea4565e0e510c520ab0da0504287e4be8894379ccd7375ce603cfb2736",
+      "sourceSha256": "e72445ea4565e0e510c520ab0da0504287e4be8894379ccd7375ce603cfb2736"
+    },
+    {
+      "id": "watch-status",
+      "src": "/images/watch/watch-status-20261104.png",
+      "width": 368,
+      "height": 448,
+      "bytes": 35100,
+      "sha256": "e0344a863a028066d8db14e39880c560edf84d9022fe6fa1c9c021bdf250a936",
+      "sourceSha256": "e0344a863a028066d8db14e39880c560edf84d9022fe6fa1c9c021bdf250a936"
+    },
+    {
+      "id": "watch-discovery",
+      "src": "/images/watch/watch-discovery-20261104.png",
+      "width": 368,
+      "height": 448,
+      "bytes": 49369,
+      "sha256": "f82147c9101a18f63d6ffd24e7b40474b1601d5ff83abcd8160cb2f3a6d73ea5",
+      "sourceSha256": "f82147c9101a18f63d6ffd24e7b40474b1601d5ff83abcd8160cb2f3a6d73ea5"
+    },
+    {
+      "id": "watch-add",
+      "src": "/images/watch/watch-add-20261104.png",
+      "width": 368,
+      "height": 448,
+      "bytes": 44801,
+      "sha256": "f178bc76b9031b44ce7fbea01db212bd404a498378bd621cb0e3333ec0777ee5",
+      "sourceSha256": "f178bc76b9031b44ce7fbea01db212bd404a498378bd621cb0e3333ec0777ee5"
+    }
+  ]
+}

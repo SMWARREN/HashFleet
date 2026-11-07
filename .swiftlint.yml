@@ -1,0 +1,78 @@
+# Static analysis for the Swift sources we own.
+#
+# SonarSource's Swift analyzer requires Developer Edition. Our free sonar-apple integration
+# imports SwiftLint plus Xcode coverage, but is not equivalent semantic/security analysis.
+# Generated and vendored trees are excluded because they are not ours to fix.
+included:
+  - App
+  - Shared
+  - Sources
+  - Widgets
+  - MacMenuBar
+  - MacApp
+  - MacAppTests
+  - NotificationService
+  - PushProvider
+  - Tools
+  - Tests
+  - AppTests
+  - UITests
+
+excluded:
+  - .build
+  - build
+  - docs
+  - DerivedData
+
+# These require a separate `swiftlint analyze` with a clean compiler log.
+# A successful `swiftlint lint` does not mean these rules were executed.
+analyzer_rules:
+  - unused_import
+
+# Line length is a warning under normal lint. The strict scan gate intentionally
+# treats warnings as failures, while structural rules retain their defaults.
+line_length:
+  warning: 200
+  error: 240
+  ignores_comments: false
+  ignores_urls: true
+
+identifier_name:
+  min_length:
+    warning: 1
+  excluded:
+    - id
+    - x
+    - y
+    - w
+    - h
+    - a
+    - r
+    - g
+    - b
+
+file_length:
+  warning: 600
+  error: 800
+
+type_body_length:
+  warning: 450
+  error: 600
+
+function_body_length:
+  warning: 100
+  error: 150
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+large_tuple:
+  warning: 6
+  error: 7
+
+nesting:
+  type_level: 2
+
+disabled_rules:
+  - static_over_final_class

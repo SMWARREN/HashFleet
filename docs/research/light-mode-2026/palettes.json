@@ -1,0 +1,402 @@
+[
+  {
+    "name": "Current",
+    "tag": "In the app",
+    "note": "Neutral gray, white cards and a charcoal hashrate card.",
+    "colors": {
+      "canvas": "#F2F2F2",
+      "surface": "#FFFFFF",
+      "marqueeSurface": "#FFFFFF",
+      "ink": "#201F1E",
+      "secondary": "#626262",
+      "accent": "#8A5000",
+      "charcoal": "#292827",
+      "hashrateSurface": "#292827",
+      "hashrateInk": "#FFFFFF",
+      "hashrateSecondary": "#C2C2C2",
+      "comparisonBorder": "#E9921D",
+      "positive": "#386B4A",
+      "warning": "#995C1F",
+      "separator": "#DADADA",
+      "buttonInk": "#FFFFFF"
+    },
+    "contrast": [
+      {
+        "foreground": "ink",
+        "background": "canvas",
+        "ratio": 14.69917705224223
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "ratio": 16.45565143943564
+      },
+      {
+        "foreground": "secondary",
+        "background": "canvas",
+        "ratio": 5.448645332679306
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "ratio": 6.09972980752698
+      },
+      {
+        "foreground": "accent",
+        "background": "canvas",
+        "ratio": 5.810957486763637
+      },
+      {
+        "foreground": "accent",
+        "background": "surface",
+        "ratio": 6.505336359423937
+      },
+      {
+        "foreground": "positive",
+        "background": "canvas",
+        "ratio": 5.566125821590903
+      },
+      {
+        "foreground": "positive",
+        "background": "surface",
+        "ratio": 6.231248597292753
+      },
+      {
+        "foreground": "warning",
+        "background": "canvas",
+        "ratio": 4.8035741738505
+      },
+      {
+        "foreground": "warning",
+        "background": "surface",
+        "ratio": 5.377576036224495
+      },
+      {
+        "foreground": "buttonInk",
+        "background": "accent",
+        "ratio": 6.505336359423937
+      },
+      {
+        "foreground": "hashrateInk",
+        "background": "hashrateSurface",
+        "ratio": 14.715189941264935
+      },
+      {
+        "foreground": "hashrateSecondary",
+        "background": "hashrateSurface",
+        "ratio": 8.26124061646948
+      },
+      {
+        "foreground": "ink",
+        "background": "marqueeSurface",
+        "ratio": 16.45565143943564
+      },
+      {
+        "foreground": "secondary",
+        "background": "marqueeSurface",
+        "ratio": 6.09972980752698
+      }
+    ],
+    "minimumContrast": 4.8035741738505
+  },
+  {
+    "name": "A \u00b7 Warm Graphite",
+    "tag": "Recommended preview",
+    "note": "Warmer background and secondary labels. Keeps the charcoal hero and approved gold.",
+    "colors": {
+      "canvas": "#F4F1EB",
+      "surface": "#FFFFFF",
+      "marqueeSurface": "#FFFFFF",
+      "ink": "#242321",
+      "secondary": "#666058",
+      "accent": "#875000",
+      "charcoal": "#292827",
+      "hashrateSurface": "#292827",
+      "hashrateInk": "#FFFFFF",
+      "hashrateSecondary": "#C9C4BD",
+      "comparisonBorder": "#E9921D",
+      "positive": "#326344",
+      "warning": "#8A5016",
+      "separator": "#D8D1C5",
+      "buttonInk": "#FFFFFF"
+    },
+    "contrast": [
+      {
+        "foreground": "ink",
+        "background": "canvas",
+        "ratio": 13.928925864474127
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "ratio": 15.702256643932445
+      },
+      {
+        "foreground": "secondary",
+        "background": "canvas",
+        "ratio": 5.512949351972271
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "ratio": 6.214818459940009
+      },
+      {
+        "foreground": "accent",
+        "background": "canvas",
+        "ratio": 5.862321857460258
+      },
+      {
+        "foreground": "accent",
+        "background": "surface",
+        "ratio": 6.608670563029884
+      },
+      {
+        "foreground": "positive",
+        "background": "canvas",
+        "ratio": 6.201541251798591
+      },
+      {
+        "foreground": "positive",
+        "background": "surface",
+        "ratio": 6.9910769337957115
+      },
+      {
+        "foreground": "warning",
+        "background": "canvas",
+        "ratio": 5.750021259278668
+      },
+      {
+        "foreground": "warning",
+        "background": "surface",
+        "ratio": 6.482072659424699
+      },
+      {
+        "foreground": "buttonInk",
+        "background": "accent",
+        "ratio": 6.608670563029884
+      },
+      {
+        "foreground": "hashrateInk",
+        "background": "hashrateSurface",
+        "ratio": 14.715189941264935
+      },
+      {
+        "foreground": "hashrateSecondary",
+        "background": "hashrateSurface",
+        "ratio": 8.488770644244841
+      },
+      {
+        "foreground": "ink",
+        "background": "marqueeSurface",
+        "ratio": 15.702256643932445
+      },
+      {
+        "foreground": "secondary",
+        "background": "marqueeSurface",
+        "ratio": 6.214818459940009
+      }
+    ],
+    "minimumContrast": 5.512949351972271
+  },
+  {
+    "name": "B \u00b7 Clean Mineral",
+    "tag": "Cooler alternative",
+    "note": "Cool pale-gray surfaces for a more technical instrument-panel feel.",
+    "colors": {
+      "canvas": "#F1F3F5",
+      "surface": "#FFFFFF",
+      "marqueeSurface": "#FFFFFF",
+      "ink": "#22272E",
+      "secondary": "#5C6671",
+      "accent": "#865000",
+      "charcoal": "#282D33",
+      "hashrateSurface": "#282D33",
+      "hashrateInk": "#FFFFFF",
+      "hashrateSecondary": "#C2C2C2",
+      "comparisonBorder": "#E9921D",
+      "positive": "#326B4D",
+      "warning": "#90551A",
+      "separator": "#D5DCE2",
+      "buttonInk": "#FFFFFF"
+    },
+    "contrast": [
+      {
+        "foreground": "ink",
+        "background": "canvas",
+        "ratio": 13.50736246980452
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "ratio": 15.024949864237955
+      },
+      {
+        "foreground": "secondary",
+        "background": "canvas",
+        "ratio": 5.252805279055854
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "ratio": 5.842971649043254
+      },
+      {
+        "foreground": "accent",
+        "background": "canvas",
+        "ratio": 5.9722001232842175
+      },
+      {
+        "foreground": "accent",
+        "background": "surface",
+        "ratio": 6.643192379869533
+      },
+      {
+        "foreground": "positive",
+        "background": "canvas",
+        "ratio": 5.6424599944302765
+      },
+      {
+        "foreground": "positive",
+        "background": "surface",
+        "ratio": 6.27640508772918
+      },
+      {
+        "foreground": "warning",
+        "background": "canvas",
+        "ratio": 5.393704132192199
+      },
+      {
+        "foreground": "warning",
+        "background": "surface",
+        "ratio": 5.999700855728476
+      },
+      {
+        "foreground": "buttonInk",
+        "background": "accent",
+        "ratio": 6.643192379869533
+      },
+      {
+        "foreground": "hashrateInk",
+        "background": "hashrateSurface",
+        "ratio": 13.876215342832474
+      },
+      {
+        "foreground": "hashrateSecondary",
+        "background": "hashrateSurface",
+        "ratio": 7.790232694966522
+      },
+      {
+        "foreground": "ink",
+        "background": "marqueeSurface",
+        "ratio": 15.024949864237955
+      },
+      {
+        "foreground": "secondary",
+        "background": "marqueeSurface",
+        "ratio": 5.842971649043254
+      }
+    ],
+    "minimumContrast": 5.252805279055854
+  },
+  {
+    "name": "C \u00b7 Soft Gold",
+    "tag": "Bolder alternative",
+    "note": "Cream surfaces with the gold hashrate card in light mode too. Preview only.",
+    "colors": {
+      "canvas": "#F7F3EA",
+      "surface": "#FFFDF8",
+      "marqueeSurface": "#FFFFFF",
+      "ink": "#2C271F",
+      "secondary": "#6B6254",
+      "accent": "#875000",
+      "charcoal": "#292827",
+      "hashrateSurface": "#E9921D",
+      "hashrateInk": "#201F1E",
+      "hashrateSecondary": "#49300A",
+      "comparisonBorder": "#E9921D",
+      "positive": "#3C6545",
+      "warning": "#87521A",
+      "separator": "#DCD1BF",
+      "buttonInk": "#FFFFFF"
+    },
+    "contrast": [
+      {
+        "foreground": "ink",
+        "background": "canvas",
+        "ratio": 13.381788300450092
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "ratio": 14.577482078504982
+      },
+      {
+        "foreground": "secondary",
+        "background": "canvas",
+        "ratio": 5.417659353552124
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "ratio": 5.9017397645720235
+      },
+      {
+        "foreground": "accent",
+        "background": "canvas",
+        "ratio": 5.967683278322777
+      },
+      {
+        "foreground": "accent",
+        "background": "surface",
+        "ratio": 6.500909600925173
+      },
+      {
+        "foreground": "positive",
+        "background": "canvas",
+        "ratio": 6.040114830699396
+      },
+      {
+        "foreground": "positive",
+        "background": "surface",
+        "ratio": 6.579813080264548
+      },
+      {
+        "foreground": "warning",
+        "background": "canvas",
+        "ratio": 5.831210162716845
+      },
+      {
+        "foreground": "warning",
+        "background": "surface",
+        "ratio": 6.352242296355999
+      },
+      {
+        "foreground": "buttonInk",
+        "background": "accent",
+        "ratio": 6.608670563029884
+      },
+      {
+        "foreground": "hashrateInk",
+        "background": "hashrateSurface",
+        "ratio": 6.734297518573625
+      },
+      {
+        "foreground": "hashrateSecondary",
+        "background": "hashrateSurface",
+        "ratio": 5.02440058127121
+      },
+      {
+        "foreground": "ink",
+        "background": "marqueeSurface",
+        "ratio": 14.819122647329431
+      },
+      {
+        "foreground": "secondary",
+        "background": "marqueeSurface",
+        "ratio": 5.999568713774979
+      }
+    ],
+    "minimumContrast": 5.02440058127121
+  }
+]

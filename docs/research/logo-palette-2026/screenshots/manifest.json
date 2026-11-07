@@ -1,0 +1,61 @@
+{
+  "resultBundle": "HashFleetLogoPaletteFinal.xcresult",
+  "screenshots": [
+    {
+      "file": "dark-about.png",
+      "attachment": "5491E5F9-8F57-40AB-B5C8-B9D782BBAB76.png",
+      "title": "Graphite and gold dark about form_0_37C54087-E3D9-4FB2-8C46-5F33137ACD51.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "30bf400fa73171560d69fcb4ffda53f03fe81777b10d9db929cdd4eceee747d2"
+    },
+    {
+      "file": "dark-detail.png",
+      "attachment": "38B33ADE-D594-4AB6-BFA5-FCD3CB4F7F04.png",
+      "title": "Gold miner hashrate without border_0_1F1539CB-5F16-4CDC-93B9-32081B1F87A4.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "18d07c8e83b3f73d879e395fbc98e89f7b282ba3de3bf40e29d6c7f493919408"
+    },
+    {
+      "file": "light-about.png",
+      "attachment": "93F7D56C-5C4D-49D1-80C1-0CD9D13057A4.png",
+      "title": "Ivory and bronze light about form_0_9A46B1C4-A574-476F-90E9-EECEF99E99AA.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "56cf6cf106e7b12cd01ee00d98a2542fd0002a90c6e8bcc763acec6b97305068"
+    },
+    {
+      "file": "light-preferences.png",
+      "attachment": "E211C8B9-307C-44C2-91C2-C26B17891F56.png",
+      "title": "Ivory and bronze light preferences_0_C70F4E21-8289-4576-8595-C9979E78FA1F.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "9d2856aaa58d5b8da739de2a4c904be3d65c9f57b3b9203eb0aab73cfa309c3d"
+    },
+    {
+      "file": "light-detail.png",
+      "attachment": "D61A4DC2-7F64-401E-9BFA-05B5C92EF588.png",
+      "title": "Ivory and bronze light miner details_0_819475E6-4183-4ED7-83F8-9D3B40C3334A.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "46e03e98b9a6a459089b66a4a068d151e68cb26f71c6db39a3771eb9dca0c765"
+    },
+    {
+      "file": "light-add-miner.png",
+      "attachment": "A1800A0A-BF10-4C8E-A16C-2BF0A27C660B.png",
+      "title": "Ivory and bronze add miner sheet_0_1BBE1E8C-D9B4-4FA2-BF9C-31FE948A14B7.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "112451a4e28ddb436c039cdc9a69156526456f1a2290bfae4624386921e003e0"
+    },
+    {
+      "file": "light-dashboard.png",
+      "attachment": "937BE5E4-8AEA-44EA-A8E5-EAC7DA6C0CB7.png",
+      "title": "Logo ivory and bronze light dashboard_0_F597C4CF-D290-4951-BD92-7708E8CFFF20.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "8af65dda50b6fa8f15ba020ed15a81b358249db8052cf02500584971d6b586bb"
+    },
+    {
+      "file": "dark-dashboard.png",
+      "attachment": "9918AA9C-0E56-49D6-99A4-C09932E101B3.png",
+      "title": "Logo graphite and gold dark dashboard_0_79418418-2C02-476E-A7EE-EC59BAD3FC89.png",
+      "test": "HashFleetUITests/testAppearanceSwitchUpdatesDashboardDetailsAndSettings()",
+      "sha256": "c1a26f87d2e1781268558d3dc27ae144087a568a9ccc3ef2ff31e5478c5e291e"
+    }
+  ]
+}

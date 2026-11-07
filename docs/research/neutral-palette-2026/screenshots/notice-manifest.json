@@ -1,0 +1,17 @@
+{
+  "resultBundle": "HashFleetDetailNoticeFinal.xcresult",
+  "screenshots": [
+    {
+      "file": "detail-silenced.png",
+      "attachment": "C072C7E3-D02D-4BA8-82EE-B231EF485E93.png",
+      "test": "HashFleetUITests/testMiningFallbackNoticeCanBeSilencedForFourHours()",
+      "sha256": "427e9802ab2be68d49d12aff2a31c0d079f02e562b70a783f7e5b62b9f4ca9a3"
+    },
+    {
+      "file": "detail-silence-control.png",
+      "attachment": "09238939-5151-4A02-8D62-BC696983FABE.png",
+      "test": "HashFleetUITests/testMiningFallbackNoticeCanBeSilencedForFourHours()",
+      "sha256": "d5cd93745bee13fb49efc65bfc4636c4ab9b5354f35a9f69971c6381bfe7358d"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "capturedAt": "2026-10-25",
+  "mode": "Actual current native apps, isolated --ui-testing --demo sample data",
+  "encoding": "Lossless WebP. Decoded 8-bit RGBA bytes equal the original native PNG capture.",
+  "captures": [
+    {
+      "id": "mac-overview",
+      "src": "/images/native/mac-overview-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "a1e0f1597be1f4cb68a4d2e9c1f672b0c263d2c70b6e6c9aa1c23e84367f30c1",
+      "sha256": "3132bb3b16431b011e005f17245bc2588c3827e682abae08890e089cf91d8a14",
+      "rgbaSha256": "f5d5c333675ae633550210e2583d6c1ce0bdff6065d6497235a8f273e1be5b8f",
+      "bytes": 370262
+    },
+    {
+      "id": "mac-workshop",
+      "src": "/images/native/mac-workshop-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "518e0b64d365884a524f412ea6657d72bb150303a0d1f7f463b7dec8d19405c4",
+      "sha256": "7250be2f7ddbc266a96ca071c971f7802b8a4fd977f58268042245f1bf3aba1a",
+      "rgbaSha256": "f9ab1ea1caff1b923239c82a4672ca99fba6aa4b945563ff92910782f8567b73",
+      "bytes": 389438
+    },
+    {
+      "id": "mac-office",
+      "src": "/images/native/mac-office-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "c252995679fa49fe6e9e737edac42699c882c5d9b9d75f8da95febc2eee66819",
+      "sha256": "010a99cecc087c5d341c834cfd8102cad8c3a388b63aa2fb43c462323762054e",
+      "rgbaSha256": "773ced29577c4e760359f272992c607a916c368e7ef55c4fbd94346f024cc2d9",
+      "bytes": 385682
+    },
+    {
+      "id": "mac-supra",
+      "src": "/images/native/mac-supra-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "03692606bed9b97f65d64cee1a2320c7c4498ab20862fd98f5ee8866dc3976ac",
+      "sha256": "a17b7944d2a235b88b42b82358f28180d7afec7b92f325792f8d2bc8a9598c9e",
+      "rgbaSha256": "e0263a6b283a51c81fc90e2871e349d86583a92f2029c23f8bcd297c5d8c8d6f",
+      "bytes": 389994
+    },
+    {
+      "id": "mac-network",
+      "src": "/images/native/mac-network-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "140df517deaad904b3ce098e5ad32e90f46b562a72c3e0e8f3636b149bb775ee",
+      "sha256": "5cb7c846a201e60caa24bf1243cf13937c1b186635b6df9249185f3fb4160eba",
+      "rgbaSha256": "44e9f0f188b0f4b32419c39bfef3ab1a15351646b78729cacf5a24752b0cffe4",
+      "bytes": 356494
+    },
+    {
+      "id": "mac-energy",
+      "src": "/images/native/mac-energy-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "eccbac06b7bc16acffd38a2ec3201c004f325db567781c087f6daa745128d90a",
+      "sha256": "f33992900db6d3711c30145057671a7669013976565775ed230a4b43ae59d65b",
+      "rgbaSha256": "4120abc7150f98670b4984eed496e9a53167f1a9ea2f58969b435544232263d0",
+      "bytes": 314466
+    },
+    {
+      "id": "mac-achievements",
+      "src": "/images/native/mac-achievements-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "d2dd5e6c010bb07f8226cdcc7eff7a0ea331d839bcc87accd19bd2a288f08495",
+      "sha256": "bfb60d0812c3b3d02d5c24525863e84a698557148fd177aabf93de0edc471a9a",
+      "rgbaSha256": "34550c4554deebe0ff491c4ca7d38957f5fa70c5e4ee64f6b83cc91f67eeafb5",
+      "bytes": 209586
+    },
+    {
+      "id": "mac-reports",
+      "src": "/images/native/mac-reports-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "c9006952864a73b41eb1350eb8ac894f0ea1295502604006c60aa10bf5f08850",
+      "sha256": "1f60b9e8a25f67ad2270b5b2e728893c246c535240bb071a87592c89f4afd5bd",
+      "rgbaSha256": "34af6d9e435e79a4a9a30ad21b5df6884f878d1afbd598eebd9356da0369b019",
+      "bytes": 319852
+    },
+    {
+      "id": "mac-backup",
+      "src": "/images/native/mac-backup-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "9412227c10173a5229c3416592898eb70822c72088875b4ef917d283aac4894c",
+      "sha256": "992ac30db39601333ea7196385cae9a6132a34cb8749a31f38539fd719feecb7",
+      "rgbaSha256": "a9d0edb5a95d0a229b647f4de7139ebb114eb121e7823e0c394759e66ab1ef1a",
+      "bytes": 200338
+    },
+    {
+      "id": "mac-settings",
+      "src": "/images/native/mac-settings-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "fe9adf210aee35345cd7ed0e8eda6c6fcd7c9f747d440b81cdd1eed74410aab7",
+      "sha256": "bf71097869010845ae96ba62121aa28a3e039cfba3b7251bf9e686236af19f3e",
+      "rgbaSha256": "63a16b0fd4f204d6cfc3ddb7957d90fd74c390def7c02774071375f5f066ab5b",
+      "bytes": 294028
+    },
+    {
+      "id": "mac-about",
+      "src": "/images/native/mac-about-20261025.webp",
+      "width": 2880,
+      "height": 2000,
+      "sourceSha256": "c55b90faabdaab2616df6fc028ea40f10b2bf3a5bbfcb1a35ad1b4c3ece08164",
+      "sha256": "95bcb4557e3afe8927906c034a2731a522cd24f0048bd8017d4f81c730af7034",
+      "rgbaSha256": "41b86d14ba15213ac96c6d91f7e377f6d6dea88fe123f2210015a1197a33bac6",
+      "bytes": 457786
+    },
+    {
+      "id": "ios-fleet",
+      "src": "/images/native/ios-fleet-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "004d8dcc5fa036fd3096aa29e3a0454cc20dfa995d45322f3ea397f10b3f408e",
+      "sha256": "26350518565d88bcaea0b29a6f8b16da324e5599818fb922c1cdc56c5a8b5a13",
+      "rgbaSha256": "d9456b9a3fc84477364e22e59123c4b0449b1cc36f54919d1113bf3ecc47ea8a",
+      "bytes": 140270
+    },
+    {
+      "id": "ios-current",
+      "src": "/images/native/ios-current-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "abcdc7615ec0aac6af9072ffb9655f57ecb86af96ed7501a92b002caac0726dc",
+      "sha256": "128c3e02aad14d518d71c60843cb0d2127a1b4af4df825b95ac3b664c302e4d2",
+      "rgbaSha256": "fad65993f4dc77ff8ca4f6397c3520d6c5c9b7c8f1a97af0a0e475e4c0a36d51",
+      "bytes": 165150
+    },
+    {
+      "id": "ios-settings",
+      "src": "/images/native/ios-settings-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "7b35fccd730ea6847d4625eef2bb125d2b872d5c7b7a28779b5b33f244d72bfc",
+      "sha256": "7fbb81cb866006118d9dd78fc9fc739040ca137779f1dd477fe77c418e421f59",
+      "rgbaSha256": "1061cd80926c9f8d665df1f6f21585878357686acd5b923faa7097c19ed9d0c4",
+      "bytes": 75206
+    },
+    {
+      "id": "ios-fleet-settings",
+      "src": "/images/native/ios-fleet-settings-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "4099115872efc68db928bd91aa2a3aff9a3ef225039707a70fd4c99d4b5150cf",
+      "sha256": "b2cebe3f4a1bfde76af8e79db32f98362b13cebec98cd6c57dd33d617363a7f1",
+      "rgbaSha256": "fc7e0efe19dc41c35bdf5c768ec6c1413a858539e68bbaaf79e1c95de639fd53",
+      "bytes": 66694
+    },
+    {
+      "id": "ios-miners",
+      "src": "/images/native/ios-miners-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "5752dbbd4709ea244d4627a0e715d549e3cc4b2a758771c4ca1de5aded3fcade",
+      "sha256": "fd3c2f1165671d927ff01f734253da340441a72e72098179f778b203eddcf786",
+      "rgbaSha256": "afb69e3b6874a92244dbff00be48445be419cb4be6a4d8de31f5fd3925a5b94c",
+      "bytes": 95492
+    },
+    {
+      "id": "ios-office",
+      "src": "/images/native/ios-office-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "abe6eea5eac2683b910bcd775426b7638bd390b6c670eb7dcd8db6aa5c7936bd",
+      "sha256": "9611903851d2f8a1d948ae2209af849c84674f834b8d30726d58e1bcdce174c8",
+      "rgbaSha256": "d2f129ba3f61ab0ae5f0b74f575b074da1c2d22446d215477801f7b1636acea4",
+      "bytes": 136648
+    },
+    {
+      "id": "ios-about",
+      "src": "/images/native/ios-about-20261025.webp",
+      "width": 1206,
+      "height": 2622,
+      "sourceSha256": "bcb1c6b8989b06509c7d22fbef37542470a31988fc364ea464cc0fbd567e37f2",
+      "sha256": "7b77118ac5ed47dc97c3ad72f2a56665a4abc33f129a2e8e8008dab5d544dc28",
+      "rgbaSha256": "5e9b7469b990e87c073699accaa5c15fc13b2ff32e7e25b899e10281a8e084c5",
+      "bytes": 117186
+    }
+  ]
+}

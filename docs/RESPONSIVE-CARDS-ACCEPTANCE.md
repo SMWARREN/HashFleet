@@ -1,0 +1,40 @@
+# Responsive cards acceptance
+
+Scope: owner feedback on 2026-09-07 after the compact-home release. This is a UI refinement, not authorization to change any physical miner settings.
+
+## Requirements and checks
+
+| Requirement | Concrete acceptance path | Current evidence |
+|---|---|---|
+| Normal marquee stays one line and actually scrolls | `CompactDashboardUITests.testStatusTickerCyclesAndPauseReallyStopsSelection` measures row height <=24pt, compares visible text pixels before/after motion, waits for miner rotation, pauses, compares frozen text pixels over five seconds, then resumes | One-line, active scrolling, rotation and paused pixels passed in `responsive-search-volts.xcresult`. Remaining-dwell resume correction and added native resume assertion also passed in `responsive-cards-integrated.xcresult`. |
+| No fallback text in marquee | `FleetStatusTickerTests.fallbackStaysInPoolDetailsNotTheMarquee` | Model check passed in targeted native unit run. Pool fallback still appears in pool details. |
+| Primary/fallback rows align | `NetworkInsightsUITests.testConfiguredPoolStatisticsAndSoloPoolPresetAreNativeAndReadOnly` compares role/host/status x coordinates within 1pt and role height <25pt | Passed in `responsive-targeted.xcresult`. Native screenshot shows aligned Primary/Fallback, Active/Standby and coin columns. |
+| Three quick controls use two beside each other plus full-width third | `CompactDashboardUITests.testInitialViewportShowsMinerBeforeSecondaryInformation` checks Tuning/Cooling y equality, Pools on next row, Pools left/right edges matching both columns, controls hittable | Passed in `responsive-search-volts.xcresult`. Native screenshot shows centered quick labels and full-width Pools. |
+| Watts and input volts visible without digging | `CompactDashboardUITests.testPowerAndSupplyVoltageUseReportedUnitsAndMissingValues` adds an actual loopback miner via native Add Miner, opens detail and checks hittable Power/Input voltage | Passed with raw power 20 => `20 W`, raw voltage 5150mV => `5.2 V`, omitted voltage => `not reported`, not zero. Server observed no writes. This is production transport/UI against loopback, not real-board voltage validation. Core voltage remains separately labelled mV. |
+| Find a miner hidden until pull-down | `CompactDashboardUITests.testSearchRevealsOnPullDownAndFiltersMiners` verifies initial absence from hit testing, swipes down, enters Office, sees one Office Gamma result | Initial reveal/filter passed in `responsive-search-compatible.xcresult`. Follow-up `mainbar-search.xcresult` passed actual navigation-bar bounds, hidden initial field, downward pull reveal, hide when scrolling away, re-reveal, filtering and initial viewport fit. Uses iOS17-compatible content geometry. Standard native drawer was rejected because it remained visible on launch. |
+| Collapsible cards and nearby card settings | New `DashboardCardInteractionUITests` and `MinerCardInteractionUITests` | Native dashboard/detail cases passed for independent collapse/expand, separate hit targets, card-local category navigation, preserving missing telemetry/faults/freshness, and zero writes through draft/review/cancel. Critical watts/volts remain visible. All routes reuse reviewed settings forms. |
+| Restrained meaningful motion, accessible reading | Existing static Dynamic Type ticker and largest Dynamic Type navigation tests, new card interaction tests, source review of Reduce Motion branches | Static accessible ticker and largest-text dashboard navigation passed in integrated run. Largest-text detail-card case initially waited for an offscreen lazy row before scrolling; correcting the test to scroll first passed in `responsive-card-large-recheck.xcresult`. Expansion uses short scoped transitions with Reduce Motion branches. Physical Reduce Motion/VoiceOver interaction was not exercised. No package or perpetual pulse/shimmer added. |
+
+## Evidence interpretation
+
+- A failed screenshot comparison originally included the adjacent play icon's symbol replacement animation because combined accessibility bounds extended beyond the text. The assertion now crops the actual visible text viewport from a full-screen screenshot, excluding the independently animated control. It still requires active pixels to change and paused pixels to remain exactly equal.
+- This implementation swarm used the operator-configured Astra model. During the run the owner requested Luna as coordinator and Astra workers. Only the new-main-session default was changed to Luna medium, preserving Astra medium worker configuration. Existing sessions were not switched. The separate all-account/quota-balancing request is not implemented by this fixed-model configuration.
+- Integrated run: 247 passing test functions (392 expanded cases), one harness failure from awaiting an offscreen lazy row. The corrected targeted largest-text case passed, followed by both main-bar search/viewport cases. This is not presented as one all-green monolithic run.
+- Card source commit `f691c3d` installed/launched at 06:56 UTC. Main-bar source commit `07030e8` built, strict-signature verified, installed and launched at 07:03 UTC. Evidence: `build/responsive-acceptance/mainbar-device-build.log`, `mainbar-install.log`, `mainbar-launch.log`; earlier app/widget entitlements both matched `group.app.hashfleet.shared`.
+- Simulator demo screenshots and loopback fixtures are identified as such. Installation/process checks cannot establish physical visual quality or hardware telemetry correctness. No miner writes are part of this work.
+
+## Discovery acceptance
+
+| Requirement | Concrete acceptance path | Current evidence |
+|---|---|---|
+| Find miners without forcing manual address entry | `CompactDashboardUITests.testAddMinerOffersExplicitWiFiDiscoveryWithoutHidingManualEntry` opens the production Add Miner route, verifies the scan is idle until tapped, starts it, accepts progress or an honest terminal state, and keeps name/address/save controls present | Native UI acceptance passed in the targeted discovery run. The test does not claim that the simulator LAN contains a miner. |
+| Scan is local, bounded and read-only | `MinerDiscoveryTests.scanPlanIsBoundedToPrivateSlashTwentyFourAndSkipsThePhone`, malformed/public-address cases, strict response candidate cases, plus source inspection of the 32-request batches and GET-only probe | Unit cases passed. No Bonjour, writes, credentials or password fields are used. |
+| Reject routers, captive portals and unknown responders | `MinerDiscoveryTests.captivePortalHtmlAndUnknownJsonNeverBecomeMiners` requires HTTP 200, JSON when declared, decodable `MinerInfo`, and `MinerShapeValidator` approval | Unit cases passed. |
+| Preserve an honest manual fallback | The same native Add Miner acceptance keeps `addMiner.address` and `addMiner.save` available after discovery begins or finishes | Native UI acceptance passed. Real LAN discovery on physical hardware remains unexercised. |
+
+## Integration acceptance
+
+| Boundary | Concrete acceptance path | Current evidence |
+|---|---|---|
+| Reported pool URLs open safely in a browser | `NetworkInsightsUITests.testReportedPoolHostOpensAsBrowserLink` expands the real miner detail Pools card, taps the reported `stratum.ckpool.org` control, and waits for Safari to become foreground | Passed in `browser-link-ui-recheck`. The app exposes the SwiftUI `Link` as a native Button in the iOS 26 accessibility tree; `FleetBrowserURL` strips userinfo, query, fragment and mining port before handing the host origin to Safari. |
+| Widget aggregate storage remains isolated and honest | `FleetGlanceTests` covers App Group round trips, stale/future timestamps, invalid aggregate rejection, empty snapshots, unrelated preference preservation and test-mode write protection | 19 tests passed in `glance-final`. Widget refresh remains best effort because iOS schedules `BGAppRefreshTask`; the extension itself performs no network polling and shows stale state when the app cannot publish a newer aggregate. |

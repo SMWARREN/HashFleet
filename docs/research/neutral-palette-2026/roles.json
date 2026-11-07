@@ -1,0 +1,664 @@
+{
+  "roles": {
+    "canvas": {
+      "light": "#FFFFFF",
+      "dark": "#000000",
+      "derivation": "Explicit user preference: start light mode with white and dark mode with black."
+    },
+    "surface": {
+      "light": "#F5F5F5",
+      "dark": "#21201E",
+      "derivation": "Neutral light cards and sampled blade graphite. No cream or brown surface tint."
+    },
+    "raised": {
+      "light": "#E5E5E5",
+      "dark": "#373737",
+      "derivation": "Visible neutral silver and sampled fan-hub gray on individual miner cards, distinct from fleet summary surfaces and white/black canvas."
+    },
+    "ink": {
+      "light": "#21201E",
+      "dark": "#FFFFFF",
+      "derivation": "Sampled graphite on light surfaces, neutral white on dark surfaces."
+    },
+    "secondary": {
+      "light": "#595959",
+      "dark": "#BDBDBD",
+      "derivation": "Neutral secondary gray, replacing the previous warm metallic text blend."
+    },
+    "accent": {
+      "light": "#8A5000",
+      "dark": "#E9931E",
+      "derivation": "Contrast-safe shaded gold for small light-mode actions, sampled casing gold in dark mode."
+    },
+    "charcoal": {
+      "light": "#111111",
+      "dark": "#111111",
+      "derivation": "Graphite insets in both modes, with dedicated high-contrast panel text."
+    },
+    "panelInk": {
+      "light": "#FFFFFF",
+      "dark": "#FFFFFF",
+      "derivation": "White text on graphite insets."
+    },
+    "panelSecondary": {
+      "light": "#BDBDBD",
+      "dark": "#BDBDBD",
+      "derivation": "Neutral silver-gray on graphite insets."
+    },
+    "panelPositive": {
+      "light": "#A5CAA5",
+      "dark": "#A5CAA5",
+      "derivation": "Sage status on black-backed panels in either appearance."
+    },
+    "panelAccent": {
+      "light": "#E9931E",
+      "dark": "#E9931E",
+      "derivation": "Sampled casing gold, readable on both graphite levels."
+    },
+    "hashrateSurface": {
+      "light": "#111111",
+      "dark": "#F5F5F5",
+      "derivation": "Opposite-mode contrasting neutral hashrate panels, replacing broad orange fields."
+    },
+    "hashrateInk": {
+      "light": "#FFFFFF",
+      "dark": "#111111",
+      "derivation": "High-contrast primary reading without contours or shadows."
+    },
+    "hashrateSecondary": {
+      "light": "#BDBDBD",
+      "dark": "#595959",
+      "derivation": "Distinct neutral units and captions with body-text contrast."
+    },
+    "hashrateAccent": {
+      "light": "#E9931E",
+      "dark": "#8A5000",
+      "derivation": "Restrained orange accents with body-text contrast on the corresponding panel."
+    },
+    "hashrateSkeleton": {
+      "light": "#262626",
+      "dark": "#E0E0E0",
+      "derivation": "Static decorative loading placeholder, not text or live telemetry."
+    },
+    "marqueeSurface": {
+      "light": "#FFFFFF",
+      "dark": "#000000",
+      "derivation": "No separate marquee background: it blends into the page canvas in each mode."
+    },
+    "marqueeInk": {
+      "light": "#21201E",
+      "dark": "#FFFFFF",
+      "derivation": "Graphite and white ticker text."
+    },
+    "marqueeSecondary": {
+      "light": "#595959",
+      "dark": "#BDBDBD",
+      "derivation": "Neutral secondary ticker text."
+    },
+    "comparisonBorder": {
+      "light": "#E9931E",
+      "dark": "#FED028",
+      "derivation": "Casing gold and sampled display glow, used only as subtle decorative outlines."
+    },
+    "positive": {
+      "light": "#356447",
+      "dark": "#A5CAA5",
+      "derivation": "Functional sage online/success companion, not a logo sample. Status wording remains."
+    },
+    "warning": {
+      "light": "#864705",
+      "dark": "#FEE48B",
+      "derivation": "Retained contrast-safe warning gold with labels and symbols."
+    },
+    "separator": {
+      "light": "#CCCCCC",
+      "dark": "#606060",
+      "derivation": "Neutral low-emphasis structural separators, not interactive boundaries."
+    },
+    "controlBorder": {
+      "light": "#897869",
+      "dark": "#A19489",
+      "derivation": "Retain sampled metal for visible control boundaries, checked at 3:1."
+    },
+    "chartFourth": {
+      "light": "#897869",
+      "dark": "#BDB2A7",
+      "derivation": "Retain metallic chart series so brand material colors are not discarded."
+    },
+    "buttonInk": {
+      "light": "#FFFFFF",
+      "dark": "#21201E",
+      "derivation": "White on shaded-gold actions and graphite on bright-gold actions."
+    }
+  },
+  "contrastChecks": [
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "canvas",
+      "ratio": 16.278832010345035,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "surface",
+      "ratio": 14.931543963747483,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "ink",
+      "background": "raised",
+      "ratio": 12.922877792884671,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "canvas",
+      "ratio": 7.004729208035935,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "surface",
+      "ratio": 6.424995482321329,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "secondary",
+      "background": "raised",
+      "ratio": 5.560672870766949,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "canvas",
+      "ratio": 6.505336359423937,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "surface",
+      "ratio": 5.96693397830848,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "accent",
+      "background": "raised",
+      "ratio": 5.1642320973040725,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "canvas",
+      "ratio": 6.851031541730839,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "surface",
+      "ratio": 6.284018324985867,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "raised",
+      "ratio": 5.438660667591063,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "canvas",
+      "ratio": 7.198799056401876,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "surface",
+      "ratio": 6.603003491192748,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "raised",
+      "ratio": 5.714734349632444,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "panelInk",
+      "background": "charcoal",
+      "ratio": 18.883060964594996,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "panelSecondary",
+      "background": "charcoal",
+      "ratio": 10.050847670168658,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "panelAccent",
+      "background": "charcoal",
+      "ratio": 7.784283363438245,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "hashrateInk",
+      "background": "hashrateSurface",
+      "ratio": 18.883060964594996,
+      "minimum": 7,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "hashrateSecondary",
+      "background": "hashrateSurface",
+      "ratio": 10.050847670168658,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "marqueeInk",
+      "background": "marqueeSurface",
+      "ratio": 16.278832010345035,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "marqueeSecondary",
+      "background": "marqueeSurface",
+      "ratio": 7.004729208035935,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "positive",
+      "background": "marqueeSurface",
+      "ratio": 6.851031541730839,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "warning",
+      "background": "marqueeSurface",
+      "ratio": 7.198799056401876,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "buttonInk",
+      "background": "accent",
+      "ratio": 6.505336359423937,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "canvas",
+      "ratio": 4.23878869239137,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "surface",
+      "ratio": 3.887973023694589,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "controlBorder",
+      "background": "raised",
+      "ratio": 3.3649433956210517,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "canvas",
+      "ratio": 4.23878869239137,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "surface",
+      "ratio": 3.887973023694589,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "chartFourth",
+      "background": "raised",
+      "ratio": 3.3649433956210517,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "canvas",
+      "ratio": 21.0,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "surface",
+      "ratio": 16.278832010345035,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "ink",
+      "background": "raised",
+      "ratio": 11.90417187956471,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "canvas",
+      "ratio": 11.177626417098676,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "surface",
+      "ratio": 8.664700129444961,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "secondary",
+      "background": "raised",
+      "ratio": 6.336208860700271,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "canvas",
+      "ratio": 8.656962498754993,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "surface",
+      "ratio": 6.710725630337586,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "accent",
+      "background": "raised",
+      "ratio": 4.907331882863116,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "canvas",
+      "ratio": 11.591400953066398,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "surface",
+      "ratio": 8.98545089902482,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "raised",
+      "ratio": 6.570763298583456,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "canvas",
+      "ratio": 16.684343167359213,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "surface",
+      "ratio": 12.93341045830422,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "raised",
+      "ratio": 9.457775655327865,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelInk",
+      "background": "charcoal",
+      "ratio": 18.883060964594996,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelSecondary",
+      "background": "charcoal",
+      "ratio": 10.050847670168658,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelAccent",
+      "background": "charcoal",
+      "ratio": 7.784283363438245,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "hashrateInk",
+      "background": "hashrateSurface",
+      "ratio": 17.320238625461315,
+      "minimum": 7,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "hashrateSecondary",
+      "background": "hashrateSurface",
+      "ratio": 6.424995482321329,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "marqueeInk",
+      "background": "marqueeSurface",
+      "ratio": 21.0,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "marqueeSecondary",
+      "background": "marqueeSurface",
+      "ratio": 11.177626417098676,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "positive",
+      "background": "marqueeSurface",
+      "ratio": 11.591400953066398,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "warning",
+      "background": "marqueeSurface",
+      "ratio": 16.684343167359213,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "buttonInk",
+      "background": "accent",
+      "ratio": 6.710725630337586,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "canvas",
+      "ratio": 7.112603801557789,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "surface",
+      "ratio": 5.513565830557177,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "controlBorder",
+      "background": "raised",
+      "ratio": 4.031888484047109,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "canvas",
+      "ratio": 10.089925365023799,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "surface",
+      "ratio": 7.821533334006748,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "chartFourth",
+      "background": "raised",
+      "ratio": 5.71962884748681,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "hashrateAccent",
+      "background": "hashrateSurface",
+      "minimum": 4.5,
+      "ratio": 7.784283363438245,
+      "passes": true
+    },
+    {
+      "mode": "light",
+      "foreground": "panelPositive",
+      "background": "charcoal",
+      "minimum": 4.5,
+      "ratio": 10.422910993419872,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "hashrateAccent",
+      "background": "hashrateSurface",
+      "minimum": 4.5,
+      "ratio": 5.96693397830848,
+      "passes": true
+    },
+    {
+      "mode": "dark",
+      "foreground": "panelPositive",
+      "background": "charcoal",
+      "minimum": 4.5,
+      "ratio": 10.422910993419872,
+      "passes": true
+    }
+  ]
+}
