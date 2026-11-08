@@ -62,6 +62,7 @@ final class FleetStore {
     var persistenceError: String?
 
     @ObservationIgnored let defaults: UserDefaults
+    @ObservationIgnored var notificationInboxEncoder = FleetNotificationInboxEncoder()
     @ObservationIgnored private let hardwareControlGate: FleetHardwareControlGate?
     @ObservationIgnored let session: URLSession
     @ObservationIgnored let achievementMerger: @MainActor (UUID, UUID) async throws -> Void
@@ -242,19 +243,23 @@ final class FleetStore {
         }
     }
 
-    func updateAutomaticName(for id: UUID, info: MinerInfo) {
-        guard !isDemo, let index = devices.firstIndex(where: { $0.id == id }) else { return }
+    /// Cache restoration batches its synchronous name changes into one final fleet save.
+    /// Live callers retain immediate persistence by default.
+    @discardableResult
+    func updateAutomaticName(for id: UUID, info: MinerInfo, persistImmediately: Bool = true) -> Bool {
+        guard !isDemo, let index = devices.firstIndex(where: { $0.id == id }) else { return false }
         let device = devices[index]
         let host = (try? device.validatedURL())?.host ?? ""
         let legacyDefault =
             device.name.isEmpty || device.name.caseInsensitiveCompare(host) == .orderedSame
             || ["bitaxe", "bitax"].contains(device.name.lowercased())
-        guard device.usesAutomaticName ?? legacyDefault else { return }
+        guard device.usesAutomaticName ?? legacyDefault else { return false }
         let name = MinerDisplayName.automatic(info: info, address: device.address)
-        guard device.name != name || device.usesAutomaticName != true else { return }
+        guard device.name != name || device.usesAutomaticName != true else { return false }
         devices[index].name = name
         devices[index].usesAutomaticName = true
-        persist()
+        if persistImmediately { persist() }
+        return true
     }
 
     func remove(_ device: MinerDevice, deleteAchievementHistory: Bool = true) {

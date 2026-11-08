@@ -46,10 +46,14 @@ extension MinerTelemetryDatabase {
         isFlushingReadings = true
         defer { isFlushingReadings = false }
 
+        await acquireReadingsMutation()
+        defer { releaseReadingsMutation() }
+        // A clear ahead of us may have consumed the entire pending batch.
+        guard !pendingReadings.isEmpty else { return }
         let batch = pendingReadings
 
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             try await queue.write { db in
                 for reading in batch {
                     try reading.insert(db)
@@ -78,7 +82,7 @@ extension MinerTelemetryDatabase {
         until: Date = Date()
     ) async -> [HashrateSample] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 let rows = try Row.fetchAll(
                     db,
@@ -109,7 +113,7 @@ extension MinerTelemetryDatabase {
         until: Date = Date()
     ) async -> [TemperatureSample] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 let rows = try Row.fetchAll(
                     db,

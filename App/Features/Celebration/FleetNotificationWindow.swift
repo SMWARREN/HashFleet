@@ -7,6 +7,14 @@ final class FleetNotificationWindow: UIWindow {
     var interactiveRegions: [CGRect] = []
     var capturesAllTouches = false
 
+    /// SwiftUI measures the named root inside its safe area. UIKit hit-test points use
+    /// window coordinates, so register the actual screen-space rectangles, not the inset ones.
+    func updateInteractiveRegions(_ regions: [CGRect], contentInsets: UIEdgeInsets) {
+        interactiveRegions = regions.map {
+            $0.offsetBy(dx: contentInsets.left, dy: contentInsets.top)
+        }
+    }
+
     func handles(_ point: CGPoint) -> Bool {
         capturesAllTouches || interactiveRegions.contains { $0.contains(point) }
     }

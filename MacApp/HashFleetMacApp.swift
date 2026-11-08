@@ -19,8 +19,15 @@ struct HashFleetApp: App {
         nonmutating set { navigation.fleetPath = newValue }
     }
     @State var showsStartup = false
-    @State var celebrations = FleetCelebrationQueue()
-    var celebration: FleetCelebration? { celebrations.current }
+    @State var celebrations: FleetCelebrationQueueController
+    @State var previewCelebration: FleetCelebration?
+    @State var hiddenCelebrationID: UUID?
+    var celebration: FleetCelebration? {
+        if let previewCelebration { return previewCelebration }
+        guard let current = celebrations.current, current.id != hiddenCelebrationID else { return nil }
+        guard current.kind != .bestShareSession || store.preferences.sessionBestNotificationsEnabled else { return nil }
+        return current
+    }
     var sidebarSelection: FleetSidebarDestination? {
         get { navigation.sidebarSelection }
         nonmutating set { navigation.sidebarSelection = newValue }
@@ -32,6 +39,7 @@ struct HashFleetApp: App {
     init() {
         let runtime = FleetMacRuntime()
         self.isTesting = runtime.isTesting
+        _celebrations = State(initialValue: FleetCelebrationQueueController(isTesting: runtime.isTesting))
         _runtime = State(initialValue: runtime)
         _store = State(initialValue: runtime.store)
         _glanceCoordinator = State(initialValue: runtime.glanceCoordinator)
@@ -63,6 +71,8 @@ struct HashFleetApp: App {
                 insights.setDemo(store.isDemo)
                 appDelegate.configure(runtime: runtime, openDestination: select)
                 runtime.presentInAppNotification = presentInAppNotification
+                runtime.acceptInAppNotification = acceptInAppNotification
+                runtime.commitInAppRecord = commitInAppRecord
                 runtime.start()
                 presentUITestCelebrationIfRequested()
                 presentUITestInAppAlertIfRequested()
@@ -97,7 +107,9 @@ struct HashFleetApp: App {
                 if !isTesting {
                     FleetLocalNotifications.clearBadge()
                     FleetNotificationDelivery.replayUndeliveredSystemNotifications(
-                        from: store, isActive: true, presentInApp: presentInAppNotification)
+                        from: store, isActive: true, presentInApp: presentInAppNotification,
+                        acceptInApp: acceptInAppNotification)
+                    scheduleRecordAcceptance()
                 }
             }
             .alert("Local storage", isPresented: Binding(

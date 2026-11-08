@@ -21,7 +21,7 @@ extension MinerTelemetryDatabase {
                 metadataJSON = nil
             }
 
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             try await queue?.write { db in
                 try db.execute(
                     sql: """
@@ -85,7 +85,7 @@ extension MinerTelemetryDatabase {
     ) async -> Bool {
         guard difficulty.isFinite, difficulty > 0 else { return false }
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.write { db in
                 let tolerance = max(1.0, difficulty * 0.0001)
                 let exists = try Bool.fetchOne(
@@ -130,7 +130,7 @@ extension MinerTelemetryDatabase {
         eventType: String? = nil
     ) async -> [AchievementEvent] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 var sql = "SELECT * FROM achievement_events WHERE miner_id = ?"
                 var arguments: [DatabaseValueConvertible] = [minerId]
@@ -166,7 +166,7 @@ extension MinerTelemetryDatabase {
     /// under the retained identity, rather than deleting the duplicate's unique events.
     public func deleteAchievements(minerId: String) async {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             try await queue?.write { db in
                 try db.execute(
                     sql: "DELETE FROM achievement_events WHERE miner_id = ?",
@@ -202,7 +202,7 @@ extension MinerTelemetryDatabase {
     ) async -> Int {
         guard !entries.isEmpty else { return 0 }
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             let inserted = try await queue?.write { db -> Int in
                 // Remove a rounded polling row for any share now represented by the firmware's
                 // precise scoreboard. Doing this before computing priorMax makes the replacement
@@ -311,7 +311,7 @@ extension MinerTelemetryDatabase {
         limit: Int? = nil
     ) async -> [AchievementEvent] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 var sql = "SELECT * FROM achievement_events"
                 var arguments: [DatabaseValueConvertible] = []

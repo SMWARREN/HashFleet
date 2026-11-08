@@ -14,8 +14,15 @@ struct HashFleetApp: App {
     @State var insights = MiningInsightsStore()
     @State var fleetPath = NavigationPath()
     @State var showsStartup = true
-    @State var celebrations = FleetCelebrationQueue()
-    var celebration: FleetCelebration? { celebrations.current }
+    @State var celebrations: FleetCelebrationQueueController
+    @State var previewCelebration: FleetCelebration?
+    @State var hiddenCelebrationID: UUID?
+    var celebration: FleetCelebration? {
+        if let previewCelebration { return previewCelebration }
+        guard let current = celebrations.current, current.id != hiddenCelebrationID else { return nil }
+        guard current.kind != .bestShareSession || store.preferences.sessionBestNotificationsEnabled else { return nil }
+        return current
+    }
     @State var sidebarSelection: FleetSidebarDestination? = .overview
     @State var presentationResetID = UUID()
     @Environment(\.scenePhase) var scenePhase
@@ -30,6 +37,7 @@ struct HashFleetApp: App {
                 "XCTestConfigurationFilePath"
             ] != nil
         self.isTesting = isTesting
+        _celebrations = State(initialValue: FleetCelebrationQueueController(isTesting: isTesting))
         _showsStartup = State(
             initialValue: !isTesting
                 || ProcessInfo.processInfo.arguments
@@ -139,7 +147,9 @@ struct HashFleetApp: App {
                     if scenePhase == .active { FleetSharedStore.markAppActive(true) }
                     let warnings = FleetNotificationDelivery.consume(
                         from: store, isActive: scenePhase == .active,
-                        presentInApp: presentInAppNotification)
+                        presentInApp: presentInAppNotification,
+                        acceptInApp: acceptInAppNotification)
+                    if scenePhase == .active { scheduleRecordAcceptance() }
                     for warning in warnings {
                         FleetInAppAlertCenter.shared.present(FleetInAppAlert(.temperature(warning)))
                         store.markInAppNotificationDelivered(for: .temperature(warning))
@@ -152,7 +162,9 @@ struct HashFleetApp: App {
                     store.restoreNotificationInbox()
                     FleetNotificationDelivery.replayUndeliveredSystemNotifications(
                         from: store, isActive: true,
-                        presentInApp: presentInAppNotification)
+                        presentInApp: presentInAppNotification,
+                        acceptInApp: acceptInAppNotification)
+                    scheduleRecordAcceptance()
                 }
                 .onOpenURL { url in
                     guard url.scheme == "hashfleet", url.host == "fleet" else { return }

@@ -17,7 +17,7 @@ final class DeveloperSupportAvailability {
         self.currentCountryCode = currentCountryCode
     }
 
-    private var directDistribution: Bool {
+    var directDistribution: Bool {
         #if os(macOS) && HASHFLEET_DIRECT_DISTRIBUTION
         true
         #else
@@ -25,15 +25,25 @@ final class DeveloperSupportAvailability {
         #endif
     }
 
+    /// Whether this build uses native StoreKit 2 tipping.
+    /// Direct-distribution Mac builds do not use native in-app purchases.
+    var usesNativeTipJar: Bool {
+        !directDistribution
+    }
+
     var checkoutURL: URL? {
-        DeveloperSupport.current.checkoutURL(
+        // App Store variants show native StoreKit 2 IAP only (no external PayPal links)
+        guard directDistribution else { return nil }
+        return DeveloperSupport.current.checkoutURL(
             storefrontCountryCode: storefrontCountryCode,
             directDistribution: directDistribution
         )
     }
 
     var cryptoDestinations: [DeveloperSupportCrypto] {
-        DeveloperSupport.current.cryptoDestinations(
+        // App Store variants show native StoreKit 2 IAP only (no crypto address copying)
+        guard directDistribution else { return [] }
+        return DeveloperSupport.current.cryptoDestinations(
             storefrontCountryCode: storefrontCountryCode,
             directDistribution: directDistribution
         )

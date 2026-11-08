@@ -132,6 +132,8 @@ struct FleetCelebrationView: View {
     let onDismiss: () -> Void
     var onDisableSessionBestAlerts: (() -> Void)?
     var onSupport: (() -> Void)?
+    var pendingCount: Int = 0
+    var onReviewLater: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -162,6 +164,7 @@ struct FleetCelebrationView: View {
         .ignoresSafeArea()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("celebration.screen")
+        .accessibilityValue(ProcessInfo.processInfo.arguments.contains("--ui-testing") ? celebration.id.uuidString : "")
         .sensoryFeedback(celebration.isBlock ? .success : .impact(weight: .heavy), trigger: hapticTrigger)
         .onAppear(perform: start)
     }
@@ -336,12 +339,35 @@ struct FleetCelebrationView: View {
                 .clipShape(Capsule())
                 .accessibilityIdentifier("celebration.viewMiner")
             }
-            Button("Keep mining", action: onDismiss)
-                .fleetFont(.subheadline, weight: .semibold)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .foregroundStyle(.white.opacity(0.8))
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("celebration.dismiss")
+            if pendingCount > 0 {
+                Text("\(pendingCount) more waiting")
+                    .fleetFont(.caption, weight: .semibold)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .accessibilityIdentifier("celebration.waitingCount")
+            }
+            if let onReviewLater {
+                Button(action: onReviewLater) {
+                    Text("Review later")
+                        .fleetFont(.subheadline, weight: .semibold)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .accessibilityIdentifier("celebration.reviewLater")
+                .accessibilityHint("Pauses record popups without acknowledging or discarding any records. New records keep queuing.")
+            }
+            Button(action: onDismiss) {
+                Text("Keep mining")
+                    .fleetFont(.subheadline, weight: .semibold)
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white.opacity(0.8))
+            .accessibilityIdentifier("celebration.dismiss")
             if celebration.kind == .bestShareSession, let onDisableSessionBestAlerts {
                 Button(action: onDisableSessionBestAlerts) {
                     Text("Turn off session-best alerts")

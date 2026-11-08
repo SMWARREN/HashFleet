@@ -8,10 +8,12 @@ extension HashFleetApp {
             if let current = celebration {
                 FleetCelebrationView(
                     celebration: current,
-                    onViewMiner: { openMiner(current.deviceID, dismissCelebration: true) },
-                    onDismiss: dismissCelebration,
+                    onViewMiner: { openMiner(current.deviceID, dismissCelebration: true, expectedCelebrationID: current.id) },
+                    onDismiss: { dismissCelebration(expectedID: current.id) },
                     onDisableSessionBestAlerts: sessionBestOptOutAction,
-                    onSupport: celebrationSupportAction
+                    onSupport: celebrationSupportAction,
+                    pendingCount: previewCelebration == nil ? celebrations.pendingCount : 0,
+                    onReviewLater: previewCelebration == nil ? { pauseCelebrations(expectedID: current.id) } : nil
                 )
                 .id(current.id)
                 .transition(.opacity)
@@ -19,8 +21,21 @@ extension HashFleetApp {
                 FleetInAppAlertOverlay(
                     center: FleetInAppAlertCenter.shared,
                     reconnectingDeviceIDs: store.reconnectingDeviceIDs
-                ) { openMiner($0, dismissCelebration: true) }
+                ) { openMiner($0, dismissCelebration: false) }
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .bottom) {
+            celebrationQueueControls
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+        }
+        .onAppear {
+            celebrations.submit(.refresh)
+            reconcileCelebrationSessionPreference()
+        }
+        .onChange(of: store.preferences.sessionBestNotificationsEnabled) { _, _ in
+            reconcileCelebrationSessionPreference()
         }
         .tint(FleetTheme.accent)
         .fleetMacScreenSizing()
@@ -37,15 +52,43 @@ extension HashFleetApp {
     }
 
     func openPendingMinerRoute() {
-        guard let route = FleetNotificationRoute.consume() else { return }
-        openMiner(route.deviceID, dismissCelebration: false)
-        if let routed = route.celebration {
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) { celebrations.present(routed) }
+        guard let route = FleetNotificationRoute.pending() else { return }
+        if let routed = route.celebration,
+           routed.kind != .bestShareSession || store.preferences.sessionBestNotificationsEnabled {
+            celebrations.submit(.present(routed, sessionEnabled: store.preferences.sessionBestNotificationsEnabled)) { result in
+                // A newer tap must not be consumed or redirected by this older write.
+                guard FleetNotificationRoute.pending() == route else { return }
+                if result.accepted { _ = FleetNotificationRoute.consume() }
+                else { hiddenCelebrationID = celebrations.current?.id }
+                openMiner(route.deviceID, dismissCelebration: false)
+            }
+            return
         }
+        // A failed durable handoff leaves the original tap payload available for retry.
+        _ = FleetNotificationRoute.consume()
+        openMiner(route.deviceID, dismissCelebration: false)
     }
 
-    func openMiner(_ deviceID: UUID, dismissCelebration shouldDismiss: Bool) {
-        if shouldDismiss { dismissCelebration() }
+    func openMiner(_ deviceID: UUID, dismissCelebration shouldDismiss: Bool, expectedCelebrationID: UUID? = nil) {
+        if let expectedCelebrationID, celebration?.id != expectedCelebrationID { return }
+        if shouldDismiss, celebration != nil {
+            // Old transitioning views cannot acknowledge a different, unseen queue head.
+            if previewCelebration != nil {
+                previewCelebration = nil
+            } else {
+                guard let id = celebrations.current?.id else { return }
+                celebrations.submit(.acknowledgeAndPause(id)) { result in
+                    guard !result.staleAction else { return }
+                    hiddenCelebrationID = result.accepted ? nil : id
+                    navigateToMiner(deviceID)
+                }
+                return
+            }
+        }
+        navigateToMiner(deviceID)
+    }
+
+    private func navigateToMiner(_ deviceID: UUID) {
         // Clear the owning SwiftUI bindings before changing a navigation stack beneath a sheet.
         // UIKit-only dismissal leaves those bindings true and can bring the sheet back.
         let requestID = UUID()
@@ -63,8 +106,11 @@ extension HashFleetApp {
 
     /// Optional support never discards queued miner records or redirects straight to checkout.
     func openSupportFromCelebration() {
-        guard celebrations.pending.isEmpty else { return }
-        dismissCelebration()
+        guard celebrations.pendingCount == 0 else { return }
+        dismissCelebration { navigateToSupport() }
+    }
+
+    private func navigateToSupport() {
         let requestID = UUID()
         presentationResetID = requestID
         Task { @MainActor in
@@ -84,37 +130,123 @@ extension HashFleetApp {
         }
     }
 
-    /// Delivery has already applied preferences and claimed the journal entry exactly once.
+    /// Legacy void callback for callers without durable handoff acknowledgement.
+    /// App delivery uses acceptInAppNotification so failed storage remains retryable.
     /// Session records use the same persistent artwork as all-time records, never a toast.
     func presentInAppNotification(_ event: FleetNotificationEvent) {
-        if let next = FleetCelebration(event) {
-            // Delivery may have claimed an event just before the popup's opt-out was tapped.
-            guard next.kind != .bestShareSession || store.preferences.sessionBestNotificationsEnabled else { return }
-            celebrations.present(next)
-        } else {
-            FleetInAppAlertCenter.shared.present(FleetInAppAlert(event))
+        _ = acceptInAppNotification(event)
+    }
+
+    /// Record handoffs remain pending in the journal until the asynchronous pump commits them.
+    /// Safety alerts are still immediate and do not wait behind a blocked SQLite transaction.
+    func acceptInAppNotification(_ event: FleetNotificationEvent) -> Bool {
+        if FleetCelebration(event) != nil { return false }
+        FleetInAppAlertCenter.shared.present(FleetInAppAlert(event))
+        return true
+    }
+
+    func commitInAppRecord(_ event: FleetNotificationEvent) async -> Bool {
+        guard let next = FleetCelebration(event) else { return false }
+        let result = await celebrations.submit(.present(next,
+            sessionEnabled: store.preferences.sessionBestNotificationsEnabled)).value
+        return result.accepted
+    }
+
+    func scheduleRecordAcceptance() {
+        FleetNotificationDelivery.schedulePendingRecordAcceptances(from: store, accept: commitInAppRecord)
+    }
+
+    func pauseCelebrations(expectedID: UUID? = nil) {
+        if let expectedID, celebration?.id != expectedID { return }
+        guard let id = celebrations.current?.id else { return }
+        celebrations.submit(.pause(id)) { result in
+            guard !result.staleAction else { return }
+            hiddenCelebrationID = result.accepted ? nil : id
         }
     }
 
-    func dismissCelebration() {
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { celebrations.dismiss() }
+    func resumeCelebrations() {
+        celebrations.submit(.resume(sessionEnabled: store.preferences.sessionBestNotificationsEnabled)) { result in
+            if result.accepted { hiddenCelebrationID = nil }
+        }
+    }
+
+    @ViewBuilder
+    private var celebrationQueueControls: some View {
+        VStack(spacing: 8) {
+            if (celebrations.isPaused || hiddenCelebrationID != nil) && celebrations.unacknowledgedCount > 0 {
+                Button(action: resumeCelebrations) {
+                    Label("Review records (\(celebrations.unacknowledgedCount) waiting)", systemImage: "trophy")
+                        .fleetFont(.subheadline, weight: .semibold)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("celebration.queue.resume")
+                .accessibilityValue("\(celebrations.unacknowledgedCount)")
+                .accessibilityHint("Resumes the oldest unacknowledged record first.")
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: FleetNotificationHitRegions.self,
+                            value: [geometry.frame(in: .named(FleetNotificationHitRegions.coordinateSpace))])
+                    }
+                }
+            }
+            if let error = celebrations.storageError {
+                Text(error)
+                    .fleetFont(.caption)
+                    .foregroundStyle(.red)
+                    .padding(8)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityIdentifier("celebration.queue.storageError")
+            }
+        }
+    }
+
+    func dismissCelebration(expectedID: UUID? = nil, completion: (() -> Void)? = nil) {
+        if let expectedID, celebration?.id != expectedID { return }
+        if previewCelebration != nil {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { previewCelebration = nil }
+            completion?()
+        } else if let id = celebrations.current?.id {
+            celebrations.submit(.dismiss(id)) { result in
+                guard !result.staleAction else { return }
+                hiddenCelebrationID = result.accepted ? nil : id
+                completion?()
+            }
+        }
     }
 
     func disableSessionBestAlerts() {
+        // The preference expresses user intent even while presentation storage is unavailable.
         store.preferences.sessionBestNotificationsEnabled = false
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-            celebrations.removeSessionBests()
+        reconcileCelebrationSessionPreference()
+        if previewCelebration?.kind == .bestShareSession { previewCelebration = nil }
+    }
+
+    func reconcileCelebrationSessionPreference() {
+        guard !store.preferences.sessionBestNotificationsEnabled else { return }
+        celebrations.submit(.removeSessionBests) { result in
+            if !result.accepted { hiddenCelebrationID = celebrations.current?.id }
         }
     }
 
     private var celebrationSupportAction: (() -> Void)? {
-        guard celebrations.pending.isEmpty else { return nil }
-        return { openSupportFromCelebration() }
+        guard celebrations.pendingCount == 0 else { return nil }
+        let shownID = celebration?.id
+        return {
+            guard celebration?.id == shownID else { return }
+            openSupportFromCelebration()
+        }
     }
 
     private var sessionBestOptOutAction: (() -> Void)? {
         guard store.preferences.sessionBestNotificationsEnabled else { return nil }
-        return { disableSessionBestAlerts() }
+        let shownID = celebration?.id
+        return {
+            guard celebration?.id == shownID else { return }
+            disableSessionBestAlerts()
+        }
     }
 
     func restoreSceneStateIfPossible() {
@@ -181,7 +313,7 @@ extension HashFleetApp {
         var mutablePreview = preview
         mutablePreview.viewMinerAvailable = device != nil
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) {
-            celebrations.present(mutablePreview)
+            previewCelebration = mutablePreview
         }
     }
 

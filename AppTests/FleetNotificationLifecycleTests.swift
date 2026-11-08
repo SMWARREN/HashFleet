@@ -168,7 +168,7 @@ struct FleetNotificationLifecycleTests {
         #expect(recoveredSnapshot.updatedAt == recoveryDate)
         #expect(recoveredSnapshot.completeSnapshotAt == (isCompleteSnapshot ? recoveryDate : firstDate))
         var posted: [MinerStateChangeEvent.Kind] = []
-        let present: (FleetNotificationEvent) -> Void = {
+        let present: @MainActor @Sendable (FleetNotificationEvent) -> Void = {
             if case .stateChange(let change) = $0 { posted.append(change.kind) }
         }
         FleetNotificationDelivery.consume(from: appStore, isActive: true, presentInApp: present)

@@ -120,7 +120,70 @@ struct FleetNotificationInboxEntry: Codable, Equatable, Identifiable, Sendable {
     let event: FleetNotificationEvent
     var systemDelivered: Bool
     var inAppDelivered: Bool
+    /// Only new durable handoffs set this marker. Missing keys in older journals decode as nil,
+    /// so deliberately suppressed historical entries are never resurrected during retry.
+    var inAppAcceptancePending: Bool? = nil
 
     var id: UUID { event.id }
     var dedupeKey: String { event.dedupeKey }
+}
+
+/// Reuses JSON for unchanged complete entries, not persistence operations. The caller must
+/// still write every successfully assembled journal, including when all entries were cached.
+/// Default JSONEncoder entry fragments retain the existing Codable schema and array order.
+@MainActor
+struct FleetNotificationInboxEncoder {
+    private struct CachedEntry {
+        let value: FleetNotificationInboxEntry
+        let data: Data
+    }
+
+    private enum EncodingFailure: Error {
+        case journalTooLarge
+    }
+
+    private static let byteLimit = 512 * 1024
+    private static let entryLimit = 100
+    private var cache: [UUID: CachedEntry] = [:]
+
+    var cachedEntryCount: Int { cache.count }
+    var cachedByteCount: Int { cache.values.reduce(0) { $0 + $1.data.count } }
+
+    /// The observer counts cache-miss encoding attempts without controlling their bytes.
+    /// Encoding always uses the same default JSONEncoder strategy, including failure behavior.
+    mutating func encode(
+        _ entries: [FleetNotificationInboxEntry],
+        willEncodeEntry: () -> Void = {}
+    ) throws -> Data {
+        var output = Data([0x5B]) // [
+        var nextCache: [UUID: CachedEntry] = [:]
+        for (index, entry) in entries.enumerated() {
+            let fragment: Data
+            if let cached = cache[entry.id], cached.value == entry {
+                fragment = cached.data
+            } else {
+                willEncodeEntry()
+                fragment = try JSONEncoder().encode(entry)
+            }
+
+            // Include this entry's comma and the final bracket in the whole-journal bound.
+            let separatorBytes = index == 0 ? 0 : 1
+            guard fragment.count <= Self.byteLimit - output.count - separatorBytes - 1 else {
+                throw EncodingFailure.journalTooLarge
+            }
+            if index != 0 { output.append(0x2C) } // ,
+            output.append(fragment)
+
+            // UUID indexes a candidate only. Full-value equality above prevents collisions
+            // from conflating entries, and every occurrence is emitted, even duplicate IDs.
+            if nextCache[entry.id] != nil || nextCache.count < Self.entryLimit {
+                nextCache[entry.id] = CachedEntry(value: entry, data: fragment)
+            }
+        }
+        output.append(0x5D) // ]
+        // Do not retain partial/oversized encodings or failed entries. A later call retries.
+        // Retained fragments total at most byteLimit; temporary assembly uses extra memory.
+        cache = nextCache
+        return output
+    }
 }

@@ -479,6 +479,169 @@ extension FleetMonitoringBoundaryTests {
             }
         )
     }
+
+    // MARK: - Suite 7: Stream Ownership & Obsolete Monitor Return
+
+    @Test("Obsolete monitor return preserves replacement-generation state")
+    func obsoleteMonitorReturnPreservesReplacementState() async throws {
+        let requested = LockedBox(false)
+        try await withAsyncFixture(handler: { _ in
+            requested.set(true)
+            throw URLError(.unsupportedURL)
+        }) { store, device in
+            let replacement = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            let obsolete = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+            let sentinel = populateLiveTasks(
+                store: store, device: device, token: replacement, error: "replacement-only"
+            )
+            defer { sentinel.cancel() }
+
+            await store.monitor(device: device, token: obsolete)
+
+            let connected = store.liveConnectedDeviceIDs
+            let ownsTask = store.liveTasks[device.id] != nil
+            let wasCancelled = sentinel.isCancelled
+            let generation = store.liveGeneration
+            let error = store.liveConnectionErrors[device.id]
+            sentinel.cancel()
+            await sentinel.value
+
+            #expect(generation == replacement)
+            #expect(connected == [device.id])
+            #expect(ownsTask && !wasCancelled)
+            #expect(error == "replacement-only")
+            #expect(!requested.get())
+        }
+    }
+}
+
+extension FleetMonitoringBoundaryTests {
+    private func waitForBoundary(_ condition: () -> Bool) async throws -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while !condition(), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        return condition()
+    }
+
+    @Test("Finishing an obsolete stream preserves the replacement connection")
+    func obsoleteStreamFinishPreservesReplacementConnection() async throws {
+        let requested = LockedBox(false)
+        try await withAsyncFixture(handler: { _ in
+            requested.set(true)
+            throw URLError(.unsupportedURL)
+        }) { store, device in
+            let original = UUID()
+            store.liveGeneration = original
+            let pair = AsyncThrowingStream<MinerWebSocketMessage, Error>.makeStream()
+            let completed = LockedBox(false)
+            let failure = LockedBox<String?>(nil)
+            let consumer = Task { @MainActor in
+                defer { completed.set(true) }
+                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) }
+                catch { failure.set(String(describing: type(of: error))) }
+            }
+            defer { pair.continuation.finish(); consumer.cancel() }
+            let connected = try await waitForBoundary { store.liveConnectedDeviceIDs.contains(device.id) }
+            try #require(connected)
+            let replacement = UUID()
+            let sentinel = populateLiveTasks(store: store, device: device, token: replacement, error: "replacement-only")
+            defer { sentinel.cancel() }
+            pair.continuation.finish()
+            let finished = try await waitForBoundary { completed.get() }
+            try #require(finished)
+            await consumer.value
+            #expect(failure.get() == nil)
+            #expect(store.liveGeneration == replacement)
+            #expect(store.liveConnectedDeviceIDs == [device.id])
+            #expect(store.liveTasks[device.id] != nil && !sentinel.isCancelled)
+            #expect(store.liveConnectionErrors[device.id] == "replacement-only")
+            #expect(!requested.get())
+            sentinel.cancel()
+            await sentinel.value
+        }
+    }
+
+    @Test("A frame suspended in bootstrap cannot overwrite a replacement snapshot")
+    func bootstrapReturnRejectsObsoleteFrame() async throws {
+        let requested = LockedBox(false)
+        let responseReleased = LockedBox(false)
+        let release = DispatchSemaphore(value: 0)
+        try await withAsyncFixture(handler: { request in
+            requested.set(true)
+            guard release.wait(timeout: .now() + 3) == .success else { throw URLError(.timedOut) }
+            responseReleased.set(true)
+            return try BoundaryTestContext.jsonResponse(for: request, json: #"{"hashRate":1111,"power":19,"temp":54,"hostname":"old"}"#)
+        }) { store, device in
+            store.preferences.telemetryStorageEnabled = false
+            let original = UUID()
+            store.liveGeneration = original
+            let pair = AsyncThrowingStream<MinerWebSocketMessage, Error>.makeStream()
+            let completed = LockedBox(false)
+            let failure = LockedBox<String?>(nil)
+            let consumer = Task { @MainActor in
+                defer { completed.set(true) }
+                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) }
+                catch { failure.set(String(describing: type(of: error))) }
+            }
+            defer { release.signal(); pair.continuation.finish(); consumer.cancel() }
+            pair.continuation.yield(.text(#"{"data":{"hashRate":2222}}"#))
+            let bootstrapStarted = try await waitForBoundary { requested.get() }
+            try #require(bootstrapStarted)
+            let replacement = UUID()
+            let sentinel = populateLiveTasks(store: store, device: device, token: replacement, error: "replacement-only")
+            defer { sentinel.cancel() }
+            let replacementDate = Date(timeIntervalSince1970: 12345)
+            store.snapshots[device.id] = MinerSnapshot(
+                info: makeBaseInfo(hashRate: 3333), error: nil, updatedAt: replacementDate,
+                completeSnapshotAt: replacementDate, history: []
+            )
+            release.signal()
+            pair.continuation.finish()
+            let finished = try await waitForBoundary { completed.get() }
+            try #require(finished)
+            await consumer.value
+            #expect(responseReleased.get() && failure.get() == nil)
+            #expect(store.liveGeneration == replacement)
+            #expect(store.snapshots[device.id]?.info?.raw["hashRate"]?.doubleValue == 3333)
+            #expect(store.snapshots[device.id]?.updatedAt == replacementDate)
+            #expect(store.snapshots[device.id]?.history.isEmpty == true)
+            #expect(store.liveConnectedDeviceIDs == [device.id])
+            #expect(store.liveTasks[device.id] != nil && !sentinel.isCancelled)
+            #expect(store.liveConnectionErrors[device.id] == "replacement-only")
+            sentinel.cancel()
+            await sentinel.value
+        }
+    }
+
+    @Test("The current stream owner still applies buffered frames in order and disconnects")
+    func currentStreamOwnerDrainsBufferedFrames() async throws {
+        let requested = LockedBox(false)
+        try await withAsyncFixture(handler: { _ in
+            requested.set(true)
+            throw URLError(.unsupportedURL)
+        }) { store, device in
+            store.preferences.telemetryStorageEnabled = false
+            let token = UUID()
+            store.liveGeneration = token
+            store.snapshots[device.id] = MinerSnapshot(info: makeBaseInfo(), error: nil, updatedAt: Date(), history: [])
+            let pair = AsyncThrowingStream<MinerWebSocketMessage, Error>.makeStream()
+            for rate in [1200, 1300, 1400] {
+                pair.continuation.yield(.text(#"{"data":{"hashRate":\#(rate)}}"#))
+            }
+            pair.continuation.finish()
+            try await store.consumeLiveStream(pair.stream, device: device, token: token)
+            #if os(macOS)
+            #expect(store.snapshots[device.id]?.history.map(\.value) == [1400])
+            #else
+            #expect(store.snapshots[device.id]?.history.map(\.value) == [1200, 1300, 1400])
+            #endif
+            #expect(store.snapshots[device.id]?.info?.raw["hashRate"]?.doubleValue == 1400)
+            #expect(!store.liveConnectedDeviceIDs.contains(device.id))
+            #expect(store.liveGeneration == token)
+            #expect(!requested.get())
+        }
+    }
 }
 
 extension Task where Success == Never, Failure == Never {

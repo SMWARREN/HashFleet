@@ -1,0 +1,24 @@
+{
+  "status": "local_preparation_not_created_in_app_store_connect",
+  "expectedBundleID": "app.hashfleet",
+  "requiredAppIdentityCheck": "Resolve and verify the existing app and provider before any remote mutation.",
+  "inAppPurchaseType": "CONSUMABLE",
+  "locale": "en-US",
+  "baseTerritory": "USA",
+  "products": [
+    {"productId":"app.hashfleet.tip.small","name":"Small Tip","displayName":"Small Tip","description":"Optional support. No features are unlocked.","desiredUSPriceUSD":"1.99"},
+    {"productId":"app.hashfleet.tip.medium","name":"Medium Tip","displayName":"Medium Tip","description":"Optional support. No features are unlocked.","desiredUSPriceUSD":"4.99"},
+    {"productId":"app.hashfleet.tip.large","name":"Generous Tip","displayName":"Generous Tip","description":"Optional support. No features are unlocked.","desiredUSPriceUSD":"9.99"}
+  ],
+  "reviewNoteDraft": "These repeatable consumable purchases provide optional developer support. Hash Fleet remains free and no content, capabilities, or services are unlocked. Open About, then Support Hash Fleet to view the native StoreKit tip options. App Store variants do not display external PayPal checkout or cryptocurrency copy controls.",
+  "remoteSetupChecklist": [
+    "Authenticate and verify the exact app/provider identity.",
+    "Look up each product ID first and reuse matching existing consumables instead of duplicating them.",
+    "Resolve current USA price-point IDs for the requested prices instead of treating dollar strings as API identifiers.",
+    "Create or update authorized product metadata and localizations, then read back saved values.",
+    "Capture and upload an actual configured tip-screen review image, not a mockup.",
+    "Verify required agreements and payment eligibility. Never fabricate legal, tax, or bank information.",
+    "Validate products and simulated purchases in the sandbox before distributing the authorized TestFlight build."
+  ],
+  "hardLimits": ["Do not submit the app or IAPs for App Review.","Do not release a production App Store build.","Do not make real purchases."]
+}

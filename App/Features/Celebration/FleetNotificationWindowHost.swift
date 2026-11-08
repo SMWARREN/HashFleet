@@ -65,7 +65,8 @@ struct FleetNotificationWindowHost<Content: View>: UIViewRepresentable {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .coordinateSpace(name: FleetNotificationHitRegions.coordinateSpace)
                     .onPreferenceChange(FleetNotificationHitRegions.self) { [weak window] regions in
-                        window?.interactiveRegions = regions
+                        guard let window else { return }
+                        window.updateInteractiveRegions(regions, contentInsets: window.safeAreaInsets)
                     }
             )
             if let host = window.rootViewController as? UIHostingController<AnyView> {

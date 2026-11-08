@@ -141,9 +141,9 @@ extension View {
     }
     #else
     func fleetAppNavigation<Decorated: View>(
-        @ViewBuilder _ decorate: (Self) -> Decorated
+        @ViewBuilder _ decorate: (AnyView) -> Decorated
     ) -> some View {
-        decorate(self)
+        decorate(AnyView(self))
     }
     #endif
 

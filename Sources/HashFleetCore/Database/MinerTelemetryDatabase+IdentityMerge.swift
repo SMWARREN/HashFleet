@@ -17,7 +17,7 @@ extension MinerTelemetryDatabase {
               sourceID != targetID else {
             throw MinerAchievementMergeError.invalidIdentity
         }
-        guard let queue = dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+        guard let queue = await preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
         return try await queue.write { db in
             try db.execute(
                 sql: """

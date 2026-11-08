@@ -18,6 +18,16 @@ public struct DeveloperSupport: Sendable {
         "Use only the named network. Check the full address in your wallet before sending. " +
         "Copying an address does not open a wallet or send a payment. Cryptocurrency transfers are generally irreversible."
 
+    /// Approved StoreKit 2 consumable tip product identifiers for App Store builds.
+    public static let appStoreTipProductIDs: Set<String> = [
+        "app.hashfleet.tip.small",
+        "app.hashfleet.tip.medium",
+        "app.hashfleet.tip.large",
+        "app.hashfleet.tip.supporter",
+        "app.hashfleet.tip.champion",
+        "app.hashfleet.tip.patron"
+    ]
+
     public let paypalURL: URL?
 
     public init(paypalPaymentLink: String) {

@@ -11,6 +11,8 @@ final class FleetMacRuntime {
     let isTesting: Bool
     let menuBarPreferences: FleetMenuBarPreferenceStorage
     var presentInAppNotification: (@MainActor (FleetNotificationEvent) -> Void)?
+    var acceptInAppNotification: (@MainActor (FleetNotificationEvent) -> Bool)?
+    var commitInAppRecord: (@MainActor (FleetNotificationEvent) async -> Bool)?
     private(set) var isRunning = false
     @ObservationIgnored private let requestNotificationAuthorization: @MainActor () async -> Bool
     @ObservationIgnored private var lifecycleTask: Task<Void, Never>?
@@ -69,7 +71,11 @@ final class FleetMacRuntime {
                 if !self.isTesting {
                     _ = FleetNotificationDelivery.consume(
                         from: self.store, isActive: visible,
-                        presentInApp: { [weak self] event in self?.presentInAppNotification?(event) })
+                        presentInApp: { [weak self] event in self?.presentInAppNotification?(event) },
+                        acceptInApp: self.acceptInAppNotification)
+                    if visible, let commit = self.commitInAppRecord {
+                        FleetNotificationDelivery.schedulePendingRecordAcceptances(from: self.store, accept: commit)
+                    }
                 }
                 FleetPerformanceMonitor.shared.setActive(visible)
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }

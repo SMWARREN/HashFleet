@@ -12,7 +12,7 @@ extension MinerTelemetryDatabase {
         let cutoffDate = Date().addingTimeInterval(-Double(days * 24 * 60 * 60))
 
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             let deleted = try await queue?.write { db -> Int in
                 var removed = 0
                 try db.execute(
@@ -46,15 +46,18 @@ extension MinerTelemetryDatabase {
         }
     }
 
-    /// Get database file size in bytes
+    /// Approximate on-disk footprint, including WAL and shared-memory sidecars.
+    /// File sizes may change between reads; this is not a transactional snapshot.
     public func getDatabaseSize() async -> Int64 {
-        do {
-            let fileURL = try Self.databaseFileURL()
-            let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
-            return attributes[.size] as? Int64 ?? 0
-        } catch {
-            return 0
-        }
+        guard let writer = await preparedQueue() else { return 0 }
+        let path = writer.path
+        return await Task.detached(priority: .utility) {
+            [path, path + "-wal", path + "-shm"].reduce(Int64(0)) { total, file in
+                guard let attributes = try? FileManager.default.attributesOfItem(atPath: file),
+                      let size = attributes[.size] as? Int64 else { return total }
+                return total + size
+            }
+        }.value
     }
 
     /// Clear all telemetry data
@@ -71,7 +74,9 @@ extension MinerTelemetryDatabase {
     /// falsely claiming that the delete failed or leaving already-deleted readings in memory.
     /// Pending in-memory readings are retained when the delete transaction itself fails.
     public func clearAllDataChecked() async throws {
-        guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+        await acquireReadingsMutation()
+        defer { releaseReadingsMutation() }
+        guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
         try await queue.write { db in
             try db.execute(sql: "DELETE FROM miner_readings")
             try db.execute(sql: "DELETE FROM achievement_events")
@@ -96,7 +101,7 @@ extension MinerTelemetryDatabase {
     @discardableResult
     public func purgePhantomBlockAchievementsChecked() async throws -> Int {
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 try db.execute(
                     sql: """
@@ -124,7 +129,7 @@ extension MinerTelemetryDatabase {
     @discardableResult
     public func deduplicateBestShareAchievementsChecked() async throws -> Int {
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 try db.execute(
                     sql: """
@@ -159,7 +164,7 @@ extension MinerTelemetryDatabase {
     public func purgeOrphanedAchievementsChecked(keepingMinerIds: Set<String>) async throws -> Int {
         guard !keepingMinerIds.isEmpty else { return 0 }
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 let placeholders = Array(repeating: "?", count: keepingMinerIds.count).joined(separator: ", ")
                 try db.execute(
@@ -190,7 +195,7 @@ extension MinerTelemetryDatabase {
     @discardableResult
     public func purgeSessionBestShareAchievementsChecked() async throws -> Int {
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 try db.execute(
                     sql: """
@@ -221,7 +226,7 @@ extension MinerTelemetryDatabase {
     @discardableResult
     public func purgePollingDuplicatesOfScoreboardAchievementsChecked() async throws -> Int {
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 let rows = try Row.fetchAll(
                     db,
@@ -280,7 +285,7 @@ extension MinerTelemetryDatabase {
     @discardableResult
     public func recomputeChronologicalBestShareRecordsChecked() async throws -> Int {
         do {
-            guard let queue = self.dbQueue else { throw MinerTelemetryDatabaseError.unavailable }
+            guard let queue = await self.preparedQueue() else { throw MinerTelemetryDatabaseError.unavailable }
             let deleted = try await queue.write { db -> Int in
                 let minerIds = try String.fetchAll(
                     db,

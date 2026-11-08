@@ -24,9 +24,11 @@ SwiftUI, Apple Charts, Swift concurrency, and Foundation, with Lucide icons and 
 - Match useful AxeOS Swarm edit controls, including on-device statistics logging and automatic-mode minimum fan speed. Firmware logging is separate from the app's optional live connection. See the [source-backed settings comparison](docs/SWARM-SETTINGS-PARITY.md) for intentionally advanced hardware-only fields.
 - Store your fleet locally, with no pool or Wi-Fi credentials saved by the app. Advanced response views and exported logs may contain sensitive device information.
 
-This directory is a **sanitized source snapshot**, not a signed app or a TestFlight delivery package. See [public source preparation](docs/PUBLIC-SOURCE-PREPARATION.md) for the exclusions, documentation placeholders, and validation limits. Historical read-only monitoring observations against two BM1370 miners (602 and 601a) are not a complete firmware/hardware compatibility matrix. Older firmware may return 404 for newer operations.
+This directory began as a **sanitized source snapshot**, not a signed app or a TestFlight delivery package. Subsequent development and diagnostic documentation require a fresh publication audit. It is **not yet certified ready to share**. See [public source preparation](docs/PUBLIC-SOURCE-PREPARATION.md) for the exclusions, documentation placeholders, and validation limits. Historical read-only monitoring observations against two BM1370 miners (602 and 601a) are not a complete firmware/hardware compatibility matrix. Older firmware may return 404 for newer operations.
 
 ## Run on your iPhone
+
+Start with [credential-free local builds and personal configuration](docs/PUBLIC-BUILD.md). The original developer's signing keys, server secrets and App Store accounts are not needed for simulator builds or demo use.
 
 Requirements: a Mac with Xcode and SDKs supporting the deployment targets declared in `project.yml` and `Package.swift` (Swift 6, iOS 17+, macOS 14+, and watchOS 26.5 for the Watch targets). Historical October 24, 2026 checks used Xcode 27.1. Xcode resolves the packages declared in those manifests; this sanitized snapshot has not had a fresh app build or device test.
 
@@ -219,7 +221,7 @@ Pool edits, mining pause/resume, restarts, boot configuration, and other control
 - Wi-Fi discovery is opt-in and currently probes one bounded private/link-local /24 over `GET /api/system/info`; Bonjour discovery is not included until a firmware service type is verified. An empty scan does not prove local-network permission was denied.
 - APIs vary between firmware versions and boards. HTTP errors are presented, not treated as successful operations. New endpoints require catalog updates.
 - No physical miner has been used for write/OTA verification. Never test destructive actions on hardware you cannot recover.
-- There is no published app repository URL or signed distribution configured yet. This folder is ready to publish under the included license.
+- Public source publication is still pending a fresh content/history credential audit, asset privacy review, and clean-export setup validation. Successful signed developer builds or TestFlight delivery do not certify that a source repository is safe to publish.
 
 ## Project layout
 

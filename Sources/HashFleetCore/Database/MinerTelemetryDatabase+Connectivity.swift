@@ -12,7 +12,7 @@ extension MinerTelemetryDatabase {
         errorMessage: String? = nil
     ) async {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             try await queue?.write { db in
                 try db.execute(
                     sql: """
@@ -38,7 +38,7 @@ extension MinerTelemetryDatabase {
         isFallback: Bool?
     ) async {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             try await queue?.write { db in
                 try db.execute(
                     sql: """
@@ -60,7 +60,7 @@ extension MinerTelemetryDatabase {
         since: Date? = nil
     ) async -> [ConnectivityEvent] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 var sql = "SELECT * FROM connectivity_events WHERE miner_id = ?"
                 var arguments: [DatabaseValueConvertible] = [minerId]
@@ -92,7 +92,7 @@ extension MinerTelemetryDatabase {
         since: Date? = nil
     ) async -> [PoolSwitchEvent] {
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             return try await queue?.read { db in
                 var sql = "SELECT * FROM pool_switches WHERE miner_id = ?"
                 var arguments: [DatabaseValueConvertible] = [minerId]

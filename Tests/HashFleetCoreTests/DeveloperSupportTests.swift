@@ -87,4 +87,17 @@ struct DeveloperSupportTests {
         #expect(support.checkoutURL(storefrontCountryCode: "USA", directDistribution: false) == nil)
         #expect(support.checkoutURL(storefrontCountryCode: nil, directDistribution: true) == nil)
     }
+
+    @Test func approvedTipProductIDsAreExactAndSensible() {
+        let expected: Set<String> = [
+            "app.hashfleet.tip.small",
+            "app.hashfleet.tip.medium",
+            "app.hashfleet.tip.large",
+            "app.hashfleet.tip.supporter",
+            "app.hashfleet.tip.champion",
+            "app.hashfleet.tip.patron"
+        ]
+        #expect(DeveloperSupport.appStoreTipProductIDs == expected)
+        #expect(DeveloperSupport.appStoreTipProductIDs.count == 6)
+    }
 }

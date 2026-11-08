@@ -104,14 +104,11 @@ extension DashboardView {
     }
 
     private func minerCardNavigationLabel(_ device: MinerDevice, expanded: Bool) -> some View {
-        MinerOverviewCard(
+        FleetObservedMinerOverviewCard(
+            store: store,
+            insights: insights,
             device: device,
-            snapshot: store.snapshots[device.id],
-            isDemo: store.isDemo,
-            compact: !expanded,
-            isLive: store.liveConnectedDeviceIDs.contains(device.id),
-            liveConnectionError: store.liveConnectionErrors[device.id],
-            marketData: insights.coinMarkets
+            compact: !expanded
         )
         .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
         .contentShape(Rectangle())
@@ -195,5 +192,32 @@ extension DashboardView {
             minerSettingsRoute = DashboardMinerSettingsRoute(device: device, category: category)
         }
         .accessibilityIdentifier("dashboard.card.settingsRoute.\(category.rawValue)")
+    }
+}
+
+/// Keep the shared store as the authority, but read a miner's observation cell inside a
+/// real child body. Reading the dictionary while constructing the dashboard makes every
+/// card depend on every snapshot. Stable device identity and model references also let
+/// SwiftUI retain this subtree when fleet-wide totals rebuild their parent.
+///
+/// Fleet summaries and charts still legitimately observe the fleet. Connection-state and
+/// market changes can also update this card. This boundary does not promise that exactly
+/// one view or one layout pass runs for an incoming network frame.
+struct FleetObservedMinerOverviewCard: View {
+    let store: FleetStore
+    let insights: MiningInsightsStore
+    let device: MinerDevice
+    let compact: Bool
+
+    var body: some View {
+        MinerOverviewCard(
+            device: device,
+            snapshot: store.snapshot(for: device.id),
+            isDemo: store.isDemo,
+            compact: compact,
+            isLive: store.liveConnectedDeviceIDs.contains(device.id),
+            liveConnectionError: store.liveConnectionErrors[device.id],
+            marketData: insights.coinMarkets
+        )
     }
 }

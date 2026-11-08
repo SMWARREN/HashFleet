@@ -7,12 +7,18 @@ enum FleetSupportRoute: Hashable {
 /// A discoverable internal page, not an automatic payment redirect.
 struct DeveloperSupportView: View {
     @State private var availability: DeveloperSupportAvailability
+    @State private var tipJarService: DeveloperTipJarService?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @Environment(\.fleetStandalonePage) private var standalonePage
 
     init(availability: DeveloperSupportAvailability = .init()) {
         _availability = State(initialValue: availability)
+        if availability.usesNativeTipJar {
+            _tipJarService = State(initialValue: DeveloperTipJarService.shared)
+        } else {
+            _tipJarService = State(initialValue: nil)
+        }
     }
 
     var body: some View {
@@ -27,7 +33,10 @@ struct DeveloperSupportView: View {
                     .foregroundStyle(FleetTheme.accent)
                     .accessibilityHidden(true)
             }
-            DeveloperSupportSection(showsUnavailableMessage: true, availability: availability)
+            if let tipJarService {
+                DeveloperTipJarSection(service: tipJarService)
+            }
+            DeveloperSupportSection(showsUnavailableMessage: availability.directDistribution, availability: availability)
         }
         .fleetFont(.body)
         .scrollContentBackground(.hidden)

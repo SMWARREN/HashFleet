@@ -38,6 +38,38 @@ struct FleetNotificationWindowTests {
         #expect(!window.handles(CGPoint(x: 200, y: 150)), "Dismissed banners release their hit regions")
     }
 
+    @Test func namedBannerHitRegionTranslatesOnceAndReleasesTheSpaceBelowIt() {
+        let window = FleetNotificationWindow(frame: CGRect(x: 0, y: 0, width: 440, height: 956))
+        let namedFrame = CGRect(x: 16, y: 52, width: 408, height: 90)
+        window.updateInteractiveRegions([namedFrame], contentInsets: UIEdgeInsets(top: 62, left: 0, bottom: 34, right: 0))
+        #expect(window.interactiveRegions == [CGRect(x: 16, y: 114, width: 408, height: 90)])
+        #expect(window.handles(CGPoint(x: 200, y: 130)), "The upper banner body must receive taps")
+        #expect(!window.handles(CGPoint(x: 200, y: 80)), "The toolbar above the banner must remain usable")
+        #expect(!window.handles(CGPoint(x: 200, y: 220)), "The area below the banner must not become a ghost hit region")
+    }
+
+    @Test func portraitResumeHitRegionIncludesTheHostingSafeAreaOrigin() {
+        let window = FleetNotificationWindow(frame: CGRect(x: 0, y: 0, width: 440, height: 956))
+        let measured = CGRect(x: 67, y: 786, width: 306, height: 58)
+        window.updateInteractiveRegions([measured], contentInsets: UIEdgeInsets(top: 62, left: 0, bottom: 34, right: 0))
+        #expect(window.interactiveRegions == [CGRect(x: 67, y: 848, width: 306, height: 58)])
+        #expect(window.handles(CGPoint(x: 220, y: 877)), "The real resumed-button center must receive its tap")
+        #expect(!window.handles(CGPoint(x: 220, y: 800)), "The old unshifted region must not steal underlying content touches")
+        #expect(!window.handles(CGPoint(x: 30, y: 877)), "Content beside the control must still pass through")
+        window.updateInteractiveRegions([], contentInsets: UIEdgeInsets(top: 62, left: 0, bottom: 34, right: 0))
+        #expect(!window.handles(CGPoint(x: 220, y: 877)))
+    }
+
+    @Test func landscapeHitRegionsIncludeHorizontalSafeAreaWithoutCapturingEmptySpace() {
+        let window = FleetNotificationWindow(frame: CGRect(x: 0, y: 0, width: 956, height: 440))
+        let measured = CGRect(x: 100, y: 300, width: 280, height: 58)
+        window.updateInteractiveRegions([measured], contentInsets: UIEdgeInsets(top: 0, left: 62, bottom: 21, right: 62))
+        #expect(window.interactiveRegions == [CGRect(x: 162, y: 300, width: 280, height: 58)])
+        #expect(window.handles(CGPoint(x: 430, y: 329)))
+        #expect(!window.handles(CGPoint(x: 120, y: 329)))
+        #expect(!window.handles(CGPoint(x: 500, y: 329)))
+    }
+
     @Test func celebrationOwnsTouchesOnlyWhileVisible() {
         let window = FleetNotificationWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
         window.capturesAllTouches = true

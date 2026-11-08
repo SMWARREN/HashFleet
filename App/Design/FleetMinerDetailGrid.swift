@@ -69,12 +69,43 @@ enum FleetMinerDetailGeometry {
 }
 
 struct FleetMinerDetailGrid: Layout {
+    struct Cache {
+        struct Key: Equatable {
+            let width: CGFloat
+            let maximumColumns: Int
+            let minimumColumnWidth: CGFloat
+            let spacing: CGFloat
+            let balancesFourItems: Bool
+            let itemCount: Int
+        }
+
+        var key: Key?
+        var frames: [CGRect] = []
+        var size: CGSize = .zero
+
+        mutating func clear() {
+            key = nil
+            frames = []
+            size = .zero
+        }
+    }
+
     var maximumColumns = 2
     var minimumColumnWidth: CGFloat = 140
     var spacing: CGFloat = 10
     var balancesFourItems = true
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    func makeCache(subviews: Subviews) -> Cache {
+        Cache()
+    }
+
+    func updateCache(_ cache: inout Cache, subviews: Subviews) {
+        // Invalidate cached frames whenever subviews or intrinsic content identities change,
+        // preventing stale row heights under dynamic text, error updates, or hierarchy changes.
+        cache.clear()
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         let width: CGFloat
         if let proposed = proposal.width, proposed.isFinite {
             width = max(0, proposed)
@@ -85,29 +116,62 @@ struct FleetMinerDetailGrid: Layout {
             width = max(minimumColumnWidth, idealCell) * CGFloat(idealColumns)
                 + max(0, spacing) * CGFloat(idealColumns - 1)
         }
-        let frames = frames(width: width, subviews: subviews)
-        return CGSize(width: width, height: frames.map(\.maxY).max() ?? 0)
+        let (_, size) = resolvedLayout(width: width, itemCount: subviews.count, cache: &cache) { index, cellWidth in
+            subviews[index].sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height
+        }
+        return size
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        for (index, frame) in frames(width: bounds.width, subviews: subviews).enumerated() {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
+        let (placedFrames, _) = resolvedLayout(width: bounds.width, itemCount: subviews.count, cache: &cache) { index, cellWidth in
+            subviews[index].sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height
+        }
+        for (index, frame) in placedFrames.enumerated() where index < subviews.count {
             subviews[index].place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
                                  anchor: .topLeading,
                                  proposal: ProposedViewSize(width: frame.width, height: frame.height))
         }
     }
 
-    private func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
+    /// Production layout resolver used by both sizeThatFits and placeSubviews.
+    /// Reuses measured frames when width, itemCount, and geometry configuration match cache.
+    internal func resolvedLayout(
+        width: CGFloat,
+        itemCount: Int,
+        cache: inout Cache,
+        height: (Int, CGFloat) -> CGFloat
+    ) -> (frames: [CGRect], size: CGSize) {
+        let normalizedWidth = width.isFinite ? max(0, width) : 0
+        let key = Cache.Key(
+            width: normalizedWidth,
+            maximumColumns: maximumColumns,
+            minimumColumnWidth: minimumColumnWidth,
+            spacing: spacing,
+            balancesFourItems: balancesFourItems,
+            itemCount: itemCount
+        )
+
+        // Reuse cached frames and size when dimensions, count, and layout geometry match exactly
+        if let cachedKey = cache.key, cachedKey == key, cache.frames.count == itemCount {
+            return (cache.frames, cache.size)
+        }
+
+        // Measure layout frames using production geometry
         let config = FleetMinerDetailGeometry.FramesConfiguration(
-            itemCount: subviews.count,
-            width: width,
+            itemCount: itemCount,
+            width: normalizedWidth,
             maximumColumns: maximumColumns,
             minimumColumnWidth: minimumColumnWidth,
             spacing: spacing,
             balancesFourItems: balancesFourItems
         )
-        return FleetMinerDetailGeometry.frames(configuration: config) { index, width in
-            subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil)).height
-        }
+        let calculatedFrames = FleetMinerDetailGeometry.frames(configuration: config, height: height)
+        let calculatedHeight = calculatedFrames.map(\.maxY).max() ?? 0
+        let calculatedSize = CGSize(width: normalizedWidth, height: calculatedHeight)
+
+        cache.key = key
+        cache.frames = calculatedFrames
+        cache.size = calculatedSize
+        return (calculatedFrames, calculatedSize)
     }
 }

@@ -124,12 +124,22 @@ extension FleetStore {
             }
         }
 
+        guard token == liveGeneration else { return }
         liveConnectedDeviceIDs.remove(device.id)
-        if token == liveGeneration { liveTasks[device.id] = nil }
+        liveTasks[device.id] = nil
     }
 
     private func monitorLiveStreamIteration(device: MinerDevice, token: UUID) async throws {
         let stream = try MinerAPIClient(device: device, session: session).liveStream()
+        try await consumeLiveStream(stream, device: device, token: token)
+    }
+
+    /// Shared by the real WebSocket path and deterministic stream lifecycle tests.
+    func consumeLiveStream(
+        _ stream: AsyncThrowingStream<MinerWebSocketMessage, Error>,
+        device: MinerDevice,
+        token: UUID
+    ) async throws {
         liveConnectionErrors.removeValue(forKey: device.id)
         liveConnectedDeviceIDs.insert(device.id)
         var appliedFrame = false
@@ -168,6 +178,9 @@ extension FleetStore {
                 await fallbackPoll(device, token: token)
                 nextBootstrapAttempt = Date().addingTimeInterval(15)
             }
+            // The bootstrap await may outlive this generation. Its buffered frame must
+            // not be applied to a replacement owner's snapshot or pending update batch.
+            guard !Task.isCancelled, token == liveGeneration else { return }
             #if os(macOS)
             // ESP-Miner sends several partial frames per second. Publishing each one re-renders
             // every observing screen and starved the Mac main thread (scroll, sidebar, menus).
@@ -181,6 +194,8 @@ extension FleetStore {
             appliedFrame = applyLiveMessage(message, for: device.id) || appliedFrame
             #endif
         }
+        // next() can finish after a replacement starts without yielding another frame.
+        guard !Task.isCancelled, token == liveGeneration else { return }
         #if os(macOS)
         if token == liveGeneration {
             flushLiveUpdate(for: device.id)

@@ -82,18 +82,24 @@ extension FleetStore {
             let decoded = try? JSONDecoder().decode([String: MinerSnapshotCacheEntry].self, from: data)
         else { return }
         let now = Date()
+        var namesChanged = false
         for device in devices.prefix(128) {
             guard let entry = decoded[device.id.uuidString], entry.observedAt <= now.addingTimeInterval(60),
                 entry.observedAt.timeIntervalSince1970.isFinite, !entry.fields.isEmpty
             else { continue }
+            let restored = entry.restored
+            guard let info = restored.info else { continue }
             cachedReadings[device.id.uuidString] = MinerSnapshotCacheEntry(
-                info: entry.restored.info!,
+                info: info,
                 observedAt: entry.observedAt
             )
-            snapshots[device.id] = entry.restored
+            snapshots[device.id] = restored
             snapshots[device.id]?.isReconnecting = true
-            if let info = entry.restored.info { updateAutomaticName(for: device.id, info: info) }
+            if updateAutomaticName(for: device.id, info: info, persistImmediately: false) {
+                namesChanged = true
+            }
         }
+        if namesChanged { persist() }
     }
 
     func cacheSuccessfulInfo(_ info: MinerInfo, for id: UUID, at date: Date, force: Bool = false) {
@@ -301,7 +307,17 @@ extension FleetStore {
     /// HashWatcher-style behavior possible: one event can be in Notification Center and on the
     /// dashboard without being treated as two detections.
     func markInAppNotificationDelivered(for event: FleetNotificationEvent) {
-        updateNotificationEntry(for: event) { $0.inAppDelivered = true }
+        updateNotificationEntry(for: event) {
+            $0.inAppDelivered = true
+            $0.inAppAcceptancePending = nil
+        }
+    }
+
+    /// Written before handing an event to durable presentation storage. A failed handoff remains
+    /// retryable even after system delivery is suppressed for the foreground scene.
+    func markInAppNotificationAcceptancePending(for event: FleetNotificationEvent) {
+        _ = ensureNotificationEntry(for: event)
+        updateNotificationEntry(for: event) { $0.inAppAcceptancePending = true }
     }
 
     /// True when this event (or an earlier detection of the same observation) has already been
@@ -355,7 +371,7 @@ extension FleetStore {
     }
 
     func persistNotificationInbox() {
-        guard let encoded = try? JSONEncoder().encode(notificationInbox), encoded.count <= 512 * 1024 else {
+        guard let encoded = try? notificationInboxEncoder.encode(notificationInbox), encoded.count <= 512 * 1024 else {
             return
         }
         defaults.set(encoded, forKey: Self.notificationInboxStorageKey)

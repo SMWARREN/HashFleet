@@ -1,6 +1,24 @@
 # Public source preparation
 
-Prepared November 7, 2026 as an independent source workspace. Nothing has been uploaded.
+## Publication audit reopened, November 8, 2026
+
+The operator requested a clean, usable source repository without credentials. The November 7 preparation below is historical evidence, not clearance for every later commit. Do not publish the working repository or its history until the new audit is complete.
+
+Read-only checks against development revision `9555ceb` found 1,295 tracked files, 102 commits, and no configured Git remote. `Signing.xcconfig` leaves the development team blank and includes an optional ignored local override. Git ignore checks passed for local signing configuration, environment files, private key/signing exports, and the production server configuration. The server and website example configurations remain tracked. These checks do not prove that no sensitive content was previously committed.
+
+The publication work must cover:
+
+- Current tracked text, configuration, generated project settings and binaries/assets, plus reachable Git history, with findings reported without secret values.
+- Private workstation paths, fleet inventories, device identifiers and operational receipts added during diagnostics, separately from actual authentication credentials.
+- Placeholder configuration and reproducible setup that does not require the original developer's signing, App Store Connect, APNs or server credentials.
+- A build/test check of the exact sanitized export, not merely the already working private development checkout.
+- Independent review of the final file set and any remaining history or asset-review gaps.
+
+No upload, public repository creation, history rewrite or credential rotation is authorized by this audit. The original development records and private evidence must be preserved. A source-only export can avoid carrying Git history, but its current contents still need inspection. Intentionally public support destinations and application identifiers are not automatically authentication secrets and must not be removed indiscriminately.
+
+## November 7 preparation record
+
+Prepared November 7, 2026 as an independent source workspace. Nothing had been uploaded at that checkpoint.
 
 ## Source and preservation
 

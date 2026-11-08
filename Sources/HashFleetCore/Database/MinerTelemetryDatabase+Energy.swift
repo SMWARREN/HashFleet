@@ -27,7 +27,7 @@ extension MinerTelemetryDatabase {
     ) async -> [MinerPowerMinute] {
         guard !minerIds.isEmpty else { return [] }
         do {
-            let queue = self.dbQueue
+            let queue = await self.preparedQueue()
             let placeholders = Array(repeating: "?", count: minerIds.count).joined(separator: ",")
             let sqlArguments: StatementArguments = [
                 Int(since.timeIntervalSince1970), Int(until.timeIntervalSince1970)

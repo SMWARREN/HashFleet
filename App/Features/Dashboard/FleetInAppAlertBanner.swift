@@ -186,7 +186,7 @@ struct FleetInAppAlertOverlay: View {
                     GeometryReader { geometry in
                         Color.clear.preference(
                             key: FleetNotificationHitRegions.self,
-                            value: [geometry.frame(in: .global)]
+                            value: [geometry.frame(in: .named(FleetNotificationHitRegions.coordinateSpace))]
                         )
                     }
                 }

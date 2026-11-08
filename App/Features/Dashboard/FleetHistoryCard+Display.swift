@@ -1,6 +1,14 @@
 import SwiftUI
 import HashFleetCore
 
+/// Display inputs consumed by series labels and chart-kind membership.
+struct FleetHistoryDeviceMetadata: Equatable, Sendable {
+    let id: UUID
+    let name: String
+    let address: String
+    let kind: MinerDevice.Kind
+}
+
 struct FleetHistoryPageIdentity: Equatable {
     let window: HistoryWindow
     let recentRange: FleetRecentRange
@@ -9,6 +17,7 @@ struct FleetHistoryPageIdentity: Equatable {
     let currentSignatures: [MinerHistorySignature]
     let storedSignatures: [MinerHistorySignature]
     let storedRevision: Int
+    let deviceMetadata: [FleetHistoryDeviceMetadata]
 }
 
 final class FleetHistoryPageCache {
@@ -65,7 +74,12 @@ extension FleetHistoryCard {
     typealias PageData = (histories: [MinerHistorySeries], segments: [FleetHistorySegment]?)
 
     func pageData(for window: HistoryWindow) -> PageData {
-        pageDataCache.resolve(pageDataIdentity(for: window)) {
+        pageData(for: window, cache: pageDataCache)
+    }
+
+    /// Keeps cache resolution testable across view value copies without changing installed state.
+    func pageData(for window: HistoryWindow, cache: FleetHistoryPageCache) -> PageData {
+        cache.resolve(pageDataIdentity(for: window)) {
             buildPageData(for: window)
         }
     }
@@ -80,7 +94,10 @@ extension FleetHistoryCard {
             storedSignatures: devices.map {
                 MinerHistorySignature(id: $0.id, history: databaseSeries[$0.id] ?? [])
             },
-            storedRevision: databaseSeriesRevision
+            storedRevision: databaseSeriesRevision,
+            deviceMetadata: devices.map {
+                FleetHistoryDeviceMetadata(id: $0.id, name: $0.name, address: $0.address, kind: $0.kind)
+            }
         )
     }
 

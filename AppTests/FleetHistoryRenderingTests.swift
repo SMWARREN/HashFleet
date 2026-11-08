@@ -173,7 +173,7 @@ struct FleetHistoryRenderingTests {
         var calls = 0
         for revision in [1, 1, 2, 2] {
             let input = FleetHistoryPageIdentity(window: .daily, recentRange: .hour, displayMode: .fleet,
-                kind: .sha256, currentSignatures: [], storedSignatures: [signature], storedRevision: revision)
+                kind: .sha256, currentSignatures: [], storedSignatures: [signature], storedRevision: revision, deviceMetadata: [])
             let result = cache.resolve(input) {
                 calls += 1
                 return ([MinerHistorySeries(id: id, name: "Fixture", points: [HashratePoint(date: now, value: Double(revision))])], nil)

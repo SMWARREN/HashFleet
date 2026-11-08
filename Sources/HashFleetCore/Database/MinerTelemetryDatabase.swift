@@ -14,44 +14,107 @@ public enum MinerTelemetryDatabaseError: Error, LocalizedError, Sendable {
 /// Persistent storage for all miner telemetry readings, achievements, and events
 @MainActor
 public final class MinerTelemetryDatabase {
-    public static let shared = MinerTelemetryDatabase()
+    public static let shared = MinerTelemetryDatabase(opening: {
+        try makePersistentPool(at: databaseFileURL())
+    })
 
-    let dbQueue: DatabaseQueue?
+    private let databaseWriter: (any DatabaseWriter)?
+    private var openingTask: Task<(any DatabaseWriter)?, Never>?
     let batchSize = 10
     var pendingReadings: [MinerReading] = []
     var isFlushingReadings = false
+    private var readingsMutationLocked = false
+    private var readingsMutationWaiters: [CheckedContinuation<Void, Never>] = []
 
     public init(inMemory: Bool = false) {
         do {
             if inMemory {
                 let queue = try DatabaseQueue()
                 try Self.createSchema(in: queue)
-                self.dbQueue = queue
+                self.databaseWriter = queue
             } else {
-                let fileURL = try Self.databaseFileURL()
-                let queue = try DatabaseQueue(path: fileURL.path)
-                try Self.createSchema(in: queue)
-                self.dbQueue = queue
+                let pool = try Self.makePersistentPool(at: Self.databaseFileURL())
+                try Self.createSchema(in: pool)
+                self.databaseWriter = pool
             }
         } catch {
             print("❌ Failed to initialize telemetry database: \(error)")
-            self.dbQueue = nil
+            self.databaseWriter = nil
         }
     }
 
     public init(databaseQueue: DatabaseQueue) {
         do {
             try Self.createSchema(in: databaseQueue)
-            self.dbQueue = databaseQueue
+            self.databaseWriter = databaseQueue
         } catch {
             print("❌ Failed to initialize telemetry database: \(error)")
-            self.dbQueue = nil
+            self.databaseWriter = nil
         }
+    }
+
+    /// Production opening has one retained task. Callers can buffer readings immediately,
+    /// but every database operation awaits the same completed schema before issuing SQL.
+    /// Existing synchronous constructors remain available for explicitly synchronous clients.
+    init(opening makeWriter: @escaping @Sendable () throws -> any DatabaseWriter) {
+        self.databaseWriter = nil
+        self.openingTask = Task.detached(priority: .utility) {
+            do {
+                let writer = try makeWriter()
+                try Self.createSchema(in: writer)
+                return writer
+            } catch {
+                print("❌ Failed to initialize telemetry database: \(error)")
+                return nil
+            }
+        }
+    }
+
+    /// Common access boundary for file-backed pools and injected/in-memory queues.
+    func preparedQueue() async -> (any DatabaseWriter)? {
+        if let openingTask { return await openingTask.value }
+        return databaseWriter
+    }
+
+    /// Database writes are serialized by GRDB, but MainActor can reenter while a write
+    /// suspends. Keep each buffered flush or clear's SQL and in-memory changes together.
+    /// Cancelled waiters still acquire and release normally; no waiter can orphan the gate.
+    func acquireReadingsMutation() async {
+        if !readingsMutationLocked {
+            readingsMutationLocked = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            readingsMutationWaiters.append(continuation)
+        }
+    }
+
+    func releaseReadingsMutation() {
+        precondition(readingsMutationLocked)
+        if readingsMutationWaiters.isEmpty {
+            readingsMutationLocked = false
+        } else {
+            readingsMutationWaiters.removeFirst().resume()
+        }
+    }
+
+    /// At most two reader connections plus one serialized writer. Opening is called
+    /// by the singleton's detached task, never by its MainActor accessors.
+    nonisolated static func makePersistentPool(at url: URL) throws -> DatabasePool {
+        var configuration = Configuration()
+        configuration.maximumReaderCount = 2
+        let pool = try DatabasePool(path: url.path, configuration: configuration)
+        // GRDB enables WAL with NORMAL synchronization. Keep durable commits at
+        // FULL, matching the previous default queue, without changing the schema.
+        try pool.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA synchronous = FULL")
+        }
+        return pool
     }
 
     // MARK: - Database Setup
 
-    public static func databaseFileURL() throws -> URL {
+    nonisolated public static func databaseFileURL() throws -> URL {
         let fileManager = FileManager.default
         let appSupport = try fileManager.url(
             for: .applicationSupportDirectory,
@@ -62,13 +125,13 @@ public final class MinerTelemetryDatabase {
         return appSupport.appendingPathComponent("miner_telemetry.db")
     }
 
-    private static func createSchema(in dbQueue: DatabaseQueue) throws {
-        try dbQueue.write { db in
+    nonisolated private static func createSchema(in writer: any DatabaseWriter) throws {
+        try writer.write { db in
             try createSchema(db)
         }
     }
 
-    private static func createSchema(_ db: Database) throws {
+    nonisolated private static func createSchema(_ db: Database) throws {
         // Main telemetry readings table
         try db.create(table: "miner_readings", ifNotExists: true) { table in
             table.autoIncrementedPrimaryKey("id")

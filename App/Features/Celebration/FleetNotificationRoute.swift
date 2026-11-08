@@ -28,12 +28,17 @@ struct FleetNotificationRoute: Equatable, Sendable {
         return true
     }
 
-    static func consume(defaults: UserDefaults = .standard) -> FleetNotificationRoute? {
+    static func pending(defaults: UserDefaults = .standard) -> FleetNotificationRoute? {
         guard let raw = defaults.string(forKey: deviceKey), let deviceID = UUID(uuidString: raw) else { return nil }
         let payload = defaults.dictionary(forKey: celebrationKey)
+        return FleetNotificationRoute(deviceID: deviceID, celebration: payload.flatMap(FleetCelebration.init(userInfo:)))
+    }
+
+    static func consume(defaults: UserDefaults = .standard) -> FleetNotificationRoute? {
+        guard let route = pending(defaults: defaults) else { return nil }
         defaults.removeObject(forKey: deviceKey)
         defaults.removeObject(forKey: celebrationKey)
-        return FleetNotificationRoute(deviceID: deviceID, celebration: payload.flatMap(FleetCelebration.init(userInfo:)))
+        return route
     }
 }
 

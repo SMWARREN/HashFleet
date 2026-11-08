@@ -6,6 +6,42 @@ import HashFleetCore
 /// same event without treating it as a second detection.
 @MainActor
 enum FleetNotificationDelivery {
+    // A synchronous acceptance callback may re-enter delivery. Do not drain or replay this
+    // owner again until the first handoff has returned and its journal flag is committed.
+    private static var acceptingStores: Set<ObjectIdentifier> = []
+    private static var recordAcceptanceTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+
+    /// The synchronous router first journals record acceptance as pending, while delivering
+    /// safety alerts immediately. One pump then commits records in journal order. Concurrent
+    /// routing can append pending records during a write without starting a second handoff.
+    /// A failed write stops this pass; a later delivery/lifecycle trigger retries the same head.
+    @discardableResult
+    static func schedulePendingRecordAcceptances(
+        from store: FleetStore,
+        accept: @escaping @MainActor (FleetNotificationEvent) async -> Bool
+    ) -> Task<Void, Never> {
+        let owner = ObjectIdentifier(store)
+        if let existing = recordAcceptanceTasks[owner] { return existing }
+        let task = Task { @MainActor in
+            defer { recordAcceptanceTasks.removeValue(forKey: owner) }
+            guard !store.isDemo else { return }
+            while !Task.isCancelled, let entry = store.notificationInbox.first(where: {
+                $0.inAppAcceptancePending == true && !$0.inAppDelivered && isRecord($0.event)
+            }) {
+                guard store.visibleDevices.contains(where: { $0.id == entry.event.deviceID }),
+                      isEnabled(entry.event, in: store) else {
+                    store.markInAppNotificationDelivered(for: entry.event)
+                    continue
+                }
+                // This await returns only after the queue transaction commits or fails.
+                guard await accept(entry.event) else { return }
+                store.markInAppNotificationDelivered(for: entry.event)
+            }
+        }
+        recordAcceptanceTasks[owner] = task
+        return task
+    }
+
     private struct PostHandlers {
         let block: (MinerBlockFoundEvent) -> Void
         let bestShare: (MinerBestShareEvent) -> Void
@@ -30,12 +66,18 @@ enum FleetNotificationDelivery {
         postStateChange: @escaping (MinerStateChangeEvent) -> Void = { FleetLocalNotifications.post($0) },
         postMetricAlert: @escaping (MinerMetricAlertEvent) -> Void = { FleetLocalNotifications.post($0) },
         postPower: @escaping (MinerPowerAlertEvent) -> Void = { FleetLocalNotifications.post($0) },
-        presentInApp: (FleetNotificationEvent) -> Void = { _ in }
+        presentInApp: @MainActor (FleetNotificationEvent) -> Void = { _ in },
+        acceptInApp: (@MainActor (FleetNotificationEvent) -> Bool)? = nil
     ) -> [MinerTemperatureAlertEvent] {
+        guard !acceptingStores.contains(ObjectIdentifier(store)) else { return [] }
         let pending = store.drainPendingNotificationEvents()
         guard !store.isDemo else { return [] }
         let deviceIDs = Set(store.visibleDevices.map(\.id))
         var inAppTemperatures: [MinerTemperatureAlertEvent] = []
+        var acceptanceBlocked = false
+        if isActive, let acceptInApp {
+            acceptanceBlocked = retryPendingAcceptances(from: store, acceptInApp: acceptInApp)
+        }
         let postHandlers = PostHandlers(
             block: postBlock, bestShare: postBestShare, temperature: postTemperature,
             stateChange: postStateChange, metricAlert: postMetricAlert, power: postPower
@@ -44,6 +86,9 @@ enum FleetNotificationDelivery {
         func route(_ event: FleetNotificationEvent) {
             guard deviceIDs.contains(event.deviceID), isEnabled(event, in: store) else {
                 store.markSystemNotificationDelivered(for: event)
+                if store.notificationInbox.contains(where: {
+                    ($0.id == event.id || $0.dedupeKey == event.dedupeKey) && $0.inAppAcceptancePending == true
+                }) { store.markInAppNotificationDelivered(for: event) }
                 return
             }
             guard isActive else {
@@ -53,11 +98,14 @@ enum FleetNotificationDelivery {
                 return
             }
             // The app is open: show it in the app only, never also as a push.
-            store.markSystemNotificationDelivered(for: event)
             if case .temperature(let temperature) = event {
+                store.markSystemNotificationDelivered(for: event)
                 inAppTemperatures.append(temperature)
-            } else {
-                showInApp(event, from: store, presentInApp: presentInApp)
+                if acceptInApp != nil { store.markInAppNotificationDelivered(for: event) }
+            } else if !showInApp(event, from: store, presentInApp: presentInApp,
+                                 acceptInApp: acceptInApp, deferAcceptance: acceptanceBlocked && isRecord(event)),
+                      isRecord(event) {
+                acceptanceBlocked = true
             }
         }
 
@@ -78,25 +126,38 @@ enum FleetNotificationDelivery {
     static func replayUndeliveredSystemNotifications(
         from store: FleetStore,
         isActive: Bool = false,
-        presentInApp: (FleetNotificationEvent) -> Void = { _ in }
+        presentInApp: @MainActor (FleetNotificationEvent) -> Void = { _ in },
+        acceptInApp: (@MainActor (FleetNotificationEvent) -> Bool)? = nil
     ) {
-        guard !store.isDemo else { return }
+        guard !store.isDemo, !acceptingStores.contains(ObjectIdentifier(store)) else { return }
         let deviceIDs = Set(store.visibleDevices.map(\.id))
         let superseded = supersededStatusEntryIDs(in: store.notificationInbox)
-        for entry in store.undeliveredSystemNotificationEntries {
+        var acceptanceBlocked = false
+        let entries = store.notificationInbox.filter {
+            !$0.systemDelivered || (isActive && acceptInApp != nil
+                && $0.inAppAcceptancePending == true && !$0.inAppDelivered)
+        }
+        for entry in entries {
             // Status alerts share one notification slot per miner. Replaying an older one after a
             // newer one would overwrite the current status with a stale message.
             guard deviceIDs.contains(entry.event.deviceID), !superseded.contains(entry.id) else {
                 store.markSystemNotificationDelivered(for: entry.event)
+                if entry.inAppAcceptancePending == true { store.markInAppNotificationDelivered(for: entry.event) }
                 continue
             }
             guard isEnabled(entry.event, in: store) else {
                 store.markSystemNotificationDelivered(for: entry.event)
+                if entry.inAppAcceptancePending == true { store.markInAppNotificationDelivered(for: entry.event) }
                 continue
             }
             if isActive {
-                store.markSystemNotificationDelivered(for: entry.event)
-                if !entry.inAppDelivered { showInApp(entry.event, from: store, presentInApp: presentInApp) }
+                if !entry.inAppDelivered,
+                   !showInApp(entry.event, from: store, presentInApp: presentInApp,
+                              acceptInApp: acceptInApp, deferAcceptance: acceptanceBlocked && isRecord(entry.event)) {
+                    if isRecord(entry.event) { acceptanceBlocked = true }
+                } else {
+                    store.markSystemNotificationDelivered(for: entry.event)
+                }
                 continue
             }
             deliver(entry.event, from: store) { postSystemNotification(entry.event) }
@@ -167,14 +228,66 @@ enum FleetNotificationDelivery {
 
     /// One app-wide owner receives every event, including session, all-time and block records.
     /// It chooses the illustrated record popup rather than treating a session as a small banner.
+    @discardableResult
     private static func showInApp(
         _ event: FleetNotificationEvent,
         from store: FleetStore,
-        presentInApp: (FleetNotificationEvent) -> Void
-    ) {
-        guard !store.isInAppNotificationDelivered(event) else { return }
-        store.markInAppNotificationDelivered(for: event)
-        presentInApp(event)
+        presentInApp: @MainActor (FleetNotificationEvent) -> Void,
+        acceptInApp: (@MainActor (FleetNotificationEvent) -> Bool)? = nil,
+        deferAcceptance: Bool = false
+    ) -> Bool {
+        guard !store.isInAppNotificationDelivered(event) else {
+            store.markSystemNotificationDelivered(for: event)
+            return true
+        }
+        guard let acceptInApp else {
+            // Preserve the legacy callback contract, including reentrant once-only delivery.
+            store.markSystemNotificationDelivered(for: event)
+            store.markInAppNotificationDelivered(for: event)
+            presentInApp(event)
+            return true
+        }
+        let canonical = store.ensureNotificationEntry(for: event).event
+        store.markInAppNotificationAcceptancePending(for: canonical)
+        store.markSystemNotificationDelivered(for: canonical)
+        guard !deferAcceptance else { return false }
+        let owner = ObjectIdentifier(store)
+        guard acceptingStores.insert(owner).inserted else { return false }
+        defer { acceptingStores.remove(owner) }
+        guard acceptInApp(canonical) else { return false }
+        store.markInAppNotificationDelivered(for: canonical)
+        return true
+    }
+
+    /// Returns true when an older declined handoff must keep newer records behind it. Only the
+    /// explicit marker is retried, not ambiguous legacy system-only delivery flags.
+    private static func retryPendingAcceptances(
+        from store: FleetStore,
+        acceptInApp: @escaping @MainActor (FleetNotificationEvent) -> Bool
+    ) -> Bool {
+        let deviceIDs = Set(store.visibleDevices.map(\.id))
+        let superseded = supersededStatusEntryIDs(in: store.notificationInbox)
+        var recordsBlocked = false
+        for entry in store.notificationInbox where entry.inAppAcceptancePending == true && !entry.inAppDelivered {
+            guard deviceIDs.contains(entry.event.deviceID), !superseded.contains(entry.id),
+                  isEnabled(entry.event, in: store) else {
+                store.markSystemNotificationDelivered(for: entry.event)
+                store.markInAppNotificationDelivered(for: entry.event)
+                continue
+            }
+            if !showInApp(entry.event, from: store, presentInApp: { _ in }, acceptInApp: acceptInApp,
+                          deferAcceptance: recordsBlocked && isRecord(entry.event)), isRecord(entry.event) {
+                recordsBlocked = true
+            }
+        }
+        return recordsBlocked
+    }
+
+    private static func isRecord(_ event: FleetNotificationEvent) -> Bool {
+        switch event {
+        case .bestShare, .blockFound: true
+        case .temperature, .power, .stateChange, .metricAlert: false
+        }
     }
 
     private static func deliver(
