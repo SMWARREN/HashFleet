@@ -65,12 +65,15 @@ evaluate fixed repository fixtures only, but that boundary still needs explicit
 security review. Accessibility and contrast findings also need contextual
 evidence. Do not blanket-suppress these rules, invent coverage, or lower the gate
 to obtain a passing result. Publishing the reusable scanner toolkit and adding
-its hosted gate remain separate integration work. The current reusable wrapper's
-verified report path supports Swift/Python, not this complete multi-language
-coverage import. Hosted integration must add and verify that support, pin the
-published toolkit, bind reports and gate results to the analyzed commit, and make
-missing reports or a failed gate fail `CI required`. Do not label the hosted gate
-complete merely because the local analysis passed.
+its hosted gate remain separate integration work. The local reusable wrapper
+0.5.0 now validates JavaScript/TypeScript LCOV and PHP source inventory alongside
+its existing report formats. Its 468-test suite passed with three existing skips;
+actual LCOV and PHP reports validated unchanged, and the installed package passed
+its example workflow. This is local validation, not a published toolkit release
+or an end-to-end hosted scan. Hosted integration still needs an approved
+reachable Sonar server, a pinned published toolkit, and commit-bound report and
+gate checks. Missing reports or a failed gate must fail `CI required`. Do not
+label the hosted gate complete merely because the local analysis passed.
 
 
 ## Release (`.github/workflows/release.yml`, workflow `HashFleet Release`)
