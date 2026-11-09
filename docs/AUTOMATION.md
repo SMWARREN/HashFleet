@@ -10,6 +10,17 @@ Runs on pull requests and on pushes to `main`, with a read-only token and no sec
 
 It runs repository syntax and contract checks, website tests and build, Swift package tests, the CLI build, and unsigned macOS and iOS simulator builds on the standard arm64 `xcode-27` preview runner with Xcode 27.2. This matches the project SDK, including SwiftUI toolbar APIs. Preview runner availability is not guaranteed. Heavy simulator UI tests are manual: run the workflow with mode `simulator-ui-tests`. `runner-check` only confirms runner access.
 
+### SwiftLint
+
+SwiftLint 0.65.1 is a separate required CI job using the existing `.swiftlint.yml`.
+The upstream portable archive is SHA-256 pinned and version-checked before use.
+It runs `swiftlint lint --strict --no-cache`, without automatic corrections or a
+suppression baseline. Reproduce locally with that same version and command.
+Strict mode fails on warnings as well as errors. The configured `unused_import`
+analyzer rule requires a compiler log and is **not** executed by this lint job.
+Adding CI does not imply existing lint violations have been repaired.
+
+
 ## Release (`.github/workflows/release.yml`, workflow `HashFleet Release`)
 
 Starts only after a successful `HashFleet CI` run. It is never triggered by a pull request.
@@ -41,6 +52,54 @@ An authorized maintainer must add these secrets to the `release` environment:
 | `APPLE_API_KEY_P8` | App Store Connect notarization API private key text |
 | `APPLE_API_KEY_ID` | Notarization key ID |
 | `APPLE_API_ISSUER_ID` | Notarization issuer ID |
+
+### Add the credentials, step by step
+
+These credentials sign the separate **Developer ID Mac app and CLI downloads**,
+not an iOS App Store submission. Keep private material outside the repository.
+
+1. Open **HashFleet → Settings → Environments → release** on GitHub. Under
+   **Environment secrets**, use **Add environment secret** for each name above.
+   Keep the deployment branch rule restricted to `main`.
+2. On your Mac, open **Keychain Access → My Certificates**. Find the valid
+   **Developer ID Application** identity used for your existing downloads and
+   expand it to confirm its private key is present. Export the certificate and
+   private-key pair as a password-protected **.p12**, outside this checkout.
+   A .cer alone is insufficient. Do not select Apple Development or Apple
+   Distribution. If the private key is missing, use its original Mac/keychain
+   rather than creating a replacement blindly.
+3. Convert that P12 to Base64 locally and paste into **MACOS_CERTIFICATE_P12**:
+
+   ```sh
+   base64 -i "$HOME/private-signing/HashFleet-DeveloperID.p12" | pbcopy
+   ```
+
+   Adjust the private path. Set **MACOS_CERTIFICATE_PASSWORD** to the export
+   password. Base64 is not encryption. Clear your clipboard after pasting and
+   keep the P12 protected. Never paste these values into chat, issues, or source.
+4. Set **APPLE_SIGNING_IDENTITY** to the matching full certificate identity name
+   (for example, `Developer ID Application: Your Name (TEAMID)`) or certificate
+   SHA-1. Set **APPLE_TEAM_ID** to its Apple Developer Team ID.
+   `security find-identity -v -p codesigning` lists names and fingerprints without
+   exporting private keys. Do not post its output publicly unnecessarily.
+5. In **App Store Connect → Users and Access → Integrations → App Store Connect API**,
+   use an authorized **team API key** supporting notarization. This workflow
+   expects a team key and issuer ID, not an individual key. Reuse a suitable key
+   whose private file is securely retained. A new key requires appropriate account
+   permissions and secure retention of its private-key download.
+6. Add the complete **.p8 text**, including BEGIN/END lines and newlines, as
+   **APPLE_API_KEY_P8** (raw text, not Base64). Add its key ID as
+   **APPLE_API_KEY_ID** and issuer UUID as **APPLE_API_ISSUER_ID**.
+7. Confirm all **seven names** are listed in the release environment. GitHub does
+   not reveal stored values later. You do not need to share them with an agent.
+   Merge the reviewed automation PR when its checks pass. A later reviewed
+   `version.txt` bump triggers the first real signing/notarization run. That run,
+   not merely adding secrets, verifies the pipeline. Never overwrite old releases.
+
+Primary references: GitHub's **Installing an Apple certificate on macOS runners for
+Xcode development**, Apple's **Creating API Keys for App Store Connect API**, and
+**TN3147: Migrating to the latest notarization tool**. This guide does not export
+or upload credentials.
 
 No credentials are shipped with the repository. Do not export or upload an owner's
 keys without their approval. The new signed pipeline is not end-to-end verified until
