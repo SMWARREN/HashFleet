@@ -285,34 +285,43 @@ final class FleetPreferenceWriter {
             $current[$miner['id']] = $miner;
         }
         [$miners, $seen] = $this->validatedMiners($body['miners'], $current);
-        $this->store->transaction(function () use ($id, $installation, $body, $current, $miners, $seen) {
-            $this->store->query('UPDATE installations SET enabled=?,updated=? WHERE id=?',
-                [$body['enabled'] ? 1 : 0, $this->store->now(), $id]);
-            if (!$body['enabled']) {
-                ($this->cancelJobs)($id);
-            }
-            foreach ($miners as $miner) {
-                $old = $current[$miner['id']];
-                $reschedule = (!$installation['enabled'] && $body['enabled'])
-                    || $old['enabled'] !== $miner['enabled'] || $old['interval_minutes'] !== $miner['interval_minutes'];
-                if ($reschedule) {
-                    ($this->cancelJobs)($id, $miner['id']);
-                }
-                $enabled = $miner['enabled'] ? 1 : 0;
-                $params = $reschedule
-                    ? [$enabled, $miner['interval_minutes'], $this->store->now() + $miner['interval_minutes'] * 60, $id, $miner['id']]
-                    : [$enabled, $miner['interval_minutes'], $id, $miner['id']];
-                $this->store->query('UPDATE miners SET name=\'\',enabled=?,interval_minutes=?' . ($reschedule ? ',next_due=?' : '')
-                    . ' WHERE installation=? AND id=?', $params);
-            }
-            foreach (array_keys($current) as $minerID) {
-                if (!isset($seen[$minerID])) {
-                    ($this->cancelJobs)($id, $minerID);
-                    $this->store->query('DELETE FROM miners WHERE installation=? AND id=?', [$id, $minerID]);
-                }
-            }
-        });
+        $this->store->transaction(fn() => $this->persist($id, $installation, $body['enabled'], $current, $miners, $seen));
         return ($this->wrapper)($id);
+    }
+
+    private function persist(string $id, array $installation, bool $enabled, array $current, array $miners, array $seen): void {
+        $this->store->query('UPDATE installations SET enabled=?,updated=? WHERE id=?',
+            [$enabled ? 1 : 0, $this->store->now(), $id]);
+        if (!$enabled) {
+            ($this->cancelJobs)($id);
+        }
+        foreach ($miners as $miner) {
+            $this->updateMiner($id, (bool)$installation['enabled'], $miner, $current[$miner['id']]);
+        }
+        foreach (array_keys($current) as $minerID) {
+            if (!isset($seen[$minerID])) {
+                $this->removeMiner($id, $minerID);
+            }
+        }
+    }
+
+    private function updateMiner(string $id, bool $wasEnabled, array $miner, array $old): void {
+        $reschedule = (!$wasEnabled && $miner['enabled'])
+            || $old['enabled'] !== $miner['enabled'] || $old['interval_minutes'] !== $miner['interval_minutes'];
+        if ($reschedule) {
+            ($this->cancelJobs)($id, $miner['id']);
+        }
+        $enabled = $miner['enabled'] ? 1 : 0;
+        $params = $reschedule
+            ? [$enabled, $miner['interval_minutes'], $this->store->now() + $miner['interval_minutes'] * 60, $id, $miner['id']]
+            : [$enabled, $miner['interval_minutes'], $id, $miner['id']];
+        $this->store->query('UPDATE miners SET name=\'\',enabled=?,interval_minutes=?' . ($reschedule ? ',next_due=?' : '')
+            . ' WHERE installation=? AND id=?', $params);
+    }
+
+    private function removeMiner(string $id, string $minerID): void {
+        ($this->cancelJobs)($id, $minerID);
+        $this->store->query('DELETE FROM miners WHERE installation=? AND id=?', [$id, $minerID]);
     }
 
     private function validatedMiners(mixed $value, array $current): array {
@@ -591,6 +600,17 @@ final class FleetService {
         // Never trust forwarded headers. Persist only a salted hash of the peer address.
         $ipScope = hash('sha256', ($this->config['privacy_salt'] ?? '') . $clientIP);
         $this->limit('ip:' . $ipScope, 60, 180);
+        $this->validateRoute($method, $action);
+        if ($action === 'health') {
+            $response = ['ok' => true, 'service' => 'hashfleet-notifications',
+                'mode' => FleetServiceProtocol::MODE, 'provider_ready' => $this->providerReady()];
+        } else {
+            $response = $this->handleInstallationAction($method, $action, $headers, $body, $ipScope);
+        }
+        return $response;
+    }
+
+    private function validateRoute(string $method, string $action): void {
         if (!in_array($action, ['health', 'register', 'preferences', 'status'], true)) {
             FleetServiceInput::fail(404, 'Not found.');
         }
@@ -599,32 +619,29 @@ final class FleetService {
         if (!in_array($method, $allowedMethods[$action], true)) {
             FleetServiceInput::fail(405, 'Method not allowed.');
         }
-        if ($action === 'health') {
-            $response = ['ok' => true, 'service' => 'hashfleet-notifications',
-                'mode' => FleetServiceProtocol::MODE, 'provider_ready' => $this->providerReady()];
+    }
+
+    private function handleInstallationAction(string $method, string $action, array $headers,
+        ?array $body, string $ipScope): array {
+        $id = FleetServiceInput::uuid($headers['x-hashfleet-installation'] ?? null);
+        if ($action === 'register' && $method === 'POST') {
+            return $this->registrationWriter->register($id, $headers,
+                FleetServiceInput::keys($body, ['mode', 'device_token', 'environment', 'miners']), $ipScope);
+        }
+        $installation = $this->authenticate($id, $headers);
+        $this->limit('installation:' . $id, 60, 120);
+        if ($action === 'register' && $method === 'DELETE') {
+            $this->store->query('DELETE FROM installations WHERE id=?', [$id]);
+            return ['ok' => true];
+        }
+        $this->requireDeviceMode($installation);
+        if ($action === 'preferences' && $method === 'GET') {
+            $response = $this->wrapper($id);
+        } elseif ($action === 'status') {
+            $response = $this->status($id);
         } else {
-            $id = FleetServiceInput::uuid($headers['x-hashfleet-installation'] ?? null);
-            if ($action === 'register' && $method === 'POST') {
-                $response = $this->registrationWriter->register($id, $headers,
-                    FleetServiceInput::keys($body, ['mode', 'device_token', 'environment', 'miners']), $ipScope);
-            } else {
-                $installation = $this->authenticate($id, $headers);
-                $this->limit('installation:' . $id, 60, 120);
-                if ($action === 'register' && $method === 'DELETE') {
-                    $this->store->query('DELETE FROM installations WHERE id=?', [$id]);
-                    $response = ['ok' => true];
-                } else {
-                    $this->requireDeviceMode($installation);
-                    if ($action === 'preferences' && $method === 'GET') {
-                        $response = $this->wrapper($id);
-                    } elseif ($action === 'status') {
-                        $response = $this->status($id);
-                    } else {
-                        $response = $this->preferenceWriter->save($installation,
-                            FleetServiceInput::keys($body, ['enabled', 'miners']));
-                    }
-                }
-            }
+            $response = $this->preferenceWriter->save($installation,
+                FleetServiceInput::keys($body, ['enabled', 'miners']));
         }
         return $response;
     }

@@ -46,13 +46,19 @@ export default function DashboardPreview({ settings = false, onExit }: Readonly<
     else { setScreen('details'); setSection(value) }
   }
   function cycleSort() { setSort(SORTS[(SORTS.indexOf(sort) + 1) % SORTS.length]) }
+  function activateDetails() {
+    if (screen === 'settings') setAnnouncement('Native demo mode is preview only. Use the installed CLI to edit and review changes.')
+    else setScreen(screen === 'details' ? 'fleet' : 'details')
+  }
+  function moveVertically(direction: number) {
+    if (screen === 'fleet') move(direction)
+    else viewport.current?.scrollBy({ top: direction * 40 })
+  }
   function handleScreenKey(key: string): boolean {
     if (key === 'escape' || key === 'b') setScreen('fleet')
     else if (key === 'l') setScreen(screen === 'logo' ? 'fleet' : 'logo')
-    else if (key === 'd' || key === 'enter') {
-      if (screen === 'settings') setAnnouncement('Native demo mode is preview only. Use the installed CLI to edit and review changes.')
-      else setScreen(screen === 'details' ? 'fleet' : 'details')
-    } else if (key === 'e') setScreen('settings')
+    else if (key === 'd' || key === 'enter') activateDetails()
+    else if (key === 'e') setScreen('settings')
     else if (/^[1-5]$/.test(key) && Number(key) <= (screen === 'settings' ? 5 : 4)) changeTab(Number(key))
     else return false
     return true
@@ -65,8 +71,7 @@ export default function DashboardPreview({ settings = false, onExit }: Readonly<
     } else if (key === '[' || key === ']') move(key === '[' ? -1 : 1)
     else if (['j', 'k', 'arrowup', 'arrowdown'].includes(key)) {
       const direction = key === 'j' || key === 'arrowdown' ? 1 : -1
-      if (screen === 'fleet') move(direction)
-      else viewport.current?.scrollBy({ top: direction * 40 })
+      moveVertically(direction)
     } else return false
     return true
   }

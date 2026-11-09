@@ -120,7 +120,9 @@ try {
     directory($private, 0700); chmod($private, 0700); directory($private . '/backups', 0700);
     $backup = $private . '/backups/' . gmdate('Ymd-His') . '-' . bin2hex(random_bytes(4));
     directory($backup, 0700);
-    foreach (['web', 'private'] as $part) directory($backup . '/' . $part, 0700);
+    foreach (['web', 'private'] as $part) {
+        directory($backup . '/' . $part, 0700);
+    }
     directory($web . '/api', 0755); directory($web . '/companion', 0755);
     foreach ($keys as $relative) {
         $isWeb = str_starts_with($relative, 'web/');

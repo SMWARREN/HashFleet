@@ -56,6 +56,15 @@ def safe_copy(source: Path, target: Path) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def validate_website_asset(relative: str, source: Path) -> None:
+    if not allowed_asset(relative):
+        raise ValueError(f"Unapproved website asset path: {relative}")
+    if relative.startswith(ASSET_PREFIX) and source.suffix in (".js", ".css") and not hashed_asset(source.name):
+        raise ValueError(f"Unhashed production script/style is not permitted: {relative}")
+    if relative.startswith(ASSET_PREFIX) and (".." in Path(relative).parts or relative.startswith("assets//")):
+        raise ValueError(f"Unsafe website asset path: {relative}")
+
+
 def copy_website_assets(dist: Path, bundle: Path, manifest: dict[str, str]) -> None:
     for source in sorted(dist.rglob("*")):
         if source.is_symlink():
@@ -65,12 +74,7 @@ def copy_website_assets(dist: Path, bundle: Path, manifest: dict[str, str]) -> N
         relative = source.relative_to(dist).as_posix()
         if relative in (INDEX_FILE, ".htaccess"):
             continue
-        if not allowed_asset(relative):
-            raise ValueError(f"Unapproved website asset path: {relative}")
-        if relative.startswith(ASSET_PREFIX) and source.suffix in (".js", ".css") and not hashed_asset(source.name):
-            raise ValueError(f"Unhashed production script/style is not permitted: {relative}")
-        if relative.startswith(ASSET_PREFIX) and (".." in Path(relative).parts or relative.startswith("assets//")):
-            raise ValueError(f"Unsafe website asset path: {relative}")
+        validate_website_asset(relative, source)
         manifest["web/" + relative] = safe_copy(source, bundle / "web" / relative)
 
 
