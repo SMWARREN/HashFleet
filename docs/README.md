@@ -24,6 +24,7 @@
 - [iOS build configurations](IOS-BUILD-CONFIGURATIONS.md)
 - [Local Mac packaging](MAC-DISTRIBUTION.md) and [installation](MAC-NATIVE-INSTALL.md)
 - [Release preparation](RELEASING.md)
+- [Pull-request checks and signed release automation](AUTOMATION.md)
 - [Optional push integration](APNS-REPLACEMENT-CONTRACT.md)
 - [Website entry points](WEBSITE-REACT-ENTRY.md) and [hosting](WEBSITE-HOST-HEADERS.md)
 
