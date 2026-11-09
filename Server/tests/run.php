@@ -326,4 +326,13 @@ try {
     foreach (glob($directory . '/*') as $file) unlink($file);
     rmdir($directory);
 }
+
+// Focused collaborator boundary: schedule validation completes before any write transaction or mutation.
+$boundary = new Fixture();
+$boundary->register();
+$invalidSchedule = $boundary->schedule(true, 61);
+rejects(400, fn() => $boundary->call('PUT', 'preferences', $invalidSchedule),
+    'preference writer rejects intervals outside the supported schedule set');
+check(!$boundary->db->inTransaction() && (int)$boundary->scalar('SELECT interval_minutes FROM miners') === 60,
+    'invalid preference schedule leaves storage unchanged and transaction closed');
 fwrite(STDOUT, "PASS: {$checks} backend checks. No APNs requests or miner access.\n");
