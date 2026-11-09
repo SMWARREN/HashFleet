@@ -20,6 +20,31 @@ Strict mode fails on warnings as well as errors. The configured `unused_import`
 analyzer rule requires a compiler log and is **not** executed by this lint job.
 Adding CI does not imply existing lint violations have been repaired.
 
+### Offline contracts and Sonar review
+
+`Scripts/ci/repo-checks.sh` also runs PHP backend, APNs response parsing, bundle
+allowlist, and browser-tool interface contracts. PHP 8.3+ with `pdo_sqlite` is
+required. The Node contracts use `*.node-test.mjs` and `node --test`, separately
+from the website's Vitest suites. They verify payload framing and bounded helper
+bindings, not a real browser journey. No miner, APNs delivery, or production
+deployment is exercised by these checks.
+
+A source-only Sonar scan does not collect coverage or execute app tests. A
+successful scanner upload or passing SwiftLint job is not proof that the Sonar
+quality gate passed. Inspect the server's actual gate conditions and unresolved
+issues. The current source-only review has not established a passing gate, and
+Sonar is not yet a hosted required check in this workflow.
+
+Some findings need contextual review rather than automatic rewrites: Playwright
+payloads must remain single function expressions, their helpers must stay inside
+that expression, cURL callback parameters are positional, and configuration
+`require` calls must retain their array return values. The offline VM tests
+evaluate fixed repository fixtures only, but that boundary still needs explicit
+security review. Accessibility and contrast findings also need contextual
+evidence. Do not blanket-suppress these rules, invent coverage, or lower the gate
+to obtain a passing result. Publishing the reusable scanner toolkit and adding
+its hosted gate remain separate integration work.
+
 
 ## Release (`.github/workflows/release.yml`, workflow `HashFleet Release`)
 

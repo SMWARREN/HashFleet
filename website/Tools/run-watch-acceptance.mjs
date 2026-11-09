@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parsePlaywrightResult } from './playwright-result.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const origin = process.argv[2] ?? 'http://127.0.0.1:4174'
@@ -32,9 +33,8 @@ code = code.replace('__WATCH_MANIFEST__', fs.readFileSync(path.join(root, 'src/l
 code = code.replaceAll('output/playwright/watch-', `${relative}/watch-`)
 cli('acceptance', ['run-code', code])
 const output = cli('result', ['eval', 'window.__hashfleetWatchAcceptance'])
-const match = output.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/)
-assert(match, `Missing actual browser result. See ${relative}/result.log`)
-const result = JSON.parse(match[1].trim())
+const result = parsePlaywrightResult(output)
+assert(result !== undefined, `Missing actual browser result. See ${relative}/result.log`)
 fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(result, null, 2) + '\n')
 assert(result?.status === 'passed' && result.origin === origin && result.nativeCaptures === 5 && result.imageFailureRecovery === true && result.browserErrors.length === 0 && result.failedRequests.length === 0, `Watch acceptance failed. See ${relative}/result.json`)
 console.log(JSON.stringify({ status: result.status, origin, checks: result.checks, nativeCaptures: result.nativeCaptures, browserErrors: result.browserErrors, failedRequests: result.failedRequests, normalOperationResponseInterception: result.normalOperationResponseInterception, isolatedFailureFixture: result.isolatedFailureFixture, artifacts: relative }, null, 2))

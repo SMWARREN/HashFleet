@@ -1,43 +1,7 @@
 // Run with the installed Playwright CLI after injecting the two checked-in JSON fixtures.
 // This supersedes lookalike-specific assertions in browser-acceptance.js, not its safety requirements.
 async (page) => {
-  const manifest = __NATIVE_MANIFEST__
-  const cli = __CLI_CAPTURES__
-  const plainAnsi = value => value.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
-  const nativeStatus = key => plainAnsi([cli.tty[key].header,
-    ...JSON.parse(cli.commands.json).miners.map(miner => cli.tty[key].miners[miner.device.address]),
-    cli.tty[key].footer].join('\n')).trimEnd()
-  const origin = new URL(page.url()).origin
-  const publicHost = origin === 'https://hashfleet.app'
-  if (!['http://127.0.0.1:4174', 'http://127.0.0.1:4175', 'https://hashfleet.app'].includes(origin)) throw new Error(`Unsupported acceptance origin: ${origin}`)
-  const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
-  const checks = []
-  const errors = []
-  const failedRequests = []
-  const requests = []
-  const check = (value, label) => { if (!value) throw new Error(`Acceptance failed: ${label}`); checks.push(label) }
-  const focused = locator => locator.evaluate(element => element === document.activeElement)
-  const captureId = panel => panel.locator('[data-native-capture]').getAttribute('data-native-capture')
-  // Wait for the selected image without moving its saved inspection scroll or focus.
-  const settleCapture = panel => panel.locator('[data-native-capture]').evaluate(async image => { await image.decode() })
-  const decode = async panel => {
-    const image = panel.locator('[data-native-capture]')
-    await image.scrollIntoViewIfNeeded()
-    await page.waitForFunction(id => {
-      const image = document.querySelector(`#${id} [data-native-capture]`)
-      return image?.complete && image.naturalWidth > 0
-    }, await panel.getAttribute('id'))
-    return image.evaluate(async image => { await image.decode(); return [image.naturalWidth, image.naturalHeight] })
-  }
-  page.on('pageerror', error => errors.push(error.message))
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
-  page.on('requestfailed', request => failedRequests.push(`${request.url()}: ${request.failure()?.errorText} (after: ${checks.at(-1) ?? 'initial navigation'})`))
-  page.on('request', request => requests.push({ url: request.url(), method: request.method() }))
-  if (!publicHost) await page.route(`${origin}/`, async route => {
-    const response = await route.fetch()
-    await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': csp } })
-  })
-  try {
+async function verifyNativeLanding(page, origin, publicHost, csp, manifest, check) {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1440, height: 1000 })
   const response = await page.goto(origin)
@@ -61,7 +25,9 @@ async (page) => {
     return images.every(image => image.complete && image.naturalWidth > 0)
   }), 'Both native hero captures decode before visual review')
   await page.screenshot({ path: 'output/playwright/product-parity-landing.png' })
+}
 
+async function verifyNativeDownloadDialog(page, focused, check) {
   const download = page.locator('.header-actions').getByRole('button', { name: 'Get Hash Fleet' })
   await download.click()
   const dialog = page.getByRole('dialog')
@@ -83,11 +49,9 @@ async (page) => {
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByRole('dialog').waitFor({ state: 'detached' })
   check(await focused(download), 'Close button restores the original download trigger')
+}
 
-  const macTab = page.getByRole('tab', { name: 'Mac app', exact: true })
-  const phoneTab = page.getByRole('tab', { name: 'iPhone app', exact: true })
-  const watchTab = page.getByRole('tab', { name: 'Apple Watch', exact: true })
-  const terminalTab = page.getByRole('tab', { name: 'Terminal', exact: true })
+async function verifyNativePlatformTabs(page, check, focused, macTab, phoneTab, watchTab, terminalTab) {
   await page.getByRole('button', { name: 'Explore the captured iPhone screens', exact: true }).click()
   check(await phoneTab.getAttribute('aria-selected') === 'true' && await focused(phoneTab), 'Real-capture hero phone opens and focuses the iPhone tour')
   await page.getByRole('button', { name: 'Open the browser CLI demo', exact: true }).click()
@@ -109,8 +73,9 @@ async (page) => {
   check(await terminalTab.getAttribute('aria-selected') === 'true' && await focused(terminalTab), 'ArrowLeft wraps from the first to the last platform')
   await terminalTab.press('ArrowRight')
   check(await macTab.getAttribute('aria-selected') === 'true' && await focused(macTab), 'ArrowRight wraps from the last to the first platform')
+}
 
-  // The byte hashes tie served assets to the pixel-identity manifest verified against native PNGs.
+async function verifyNativeAssetBytes(page, manifest, check) {
   const assets = await page.evaluate(async captures => Promise.all(captures.map(async capture => {
     const response = await fetch(capture.src, { cache: 'no-store' })
     const bytes = await response.arrayBuffer()
@@ -121,9 +86,10 @@ async (page) => {
     const expected = manifest.captures.find(item => item.id === asset.id)
     check(asset.status === 200 && asset.mime?.startsWith('image/webp') && asset.bytes === expected.bytes && asset.hash === expected.sha256, `${asset.id}: served lossless native bytes and WebP MIME match the verified manifest`)
   }
+  return assets
+}
 
-  const mac = page.locator('#panel-mac')
-  const phone = page.locator('#panel-iphone')
+async function verifyNativeTourPickers({ macTab, mac, phoneTab, phone }) {
   for (const [tab, panel, platform] of [[macTab, mac, 'Mac'], [phoneTab, phone, 'iPhone']]) {
     await tab.click()
     check((await panel.innerText()).includes('not a recreated dashboard or a live app stream'), `${platform}: captured-screen disclosure is visible`)
@@ -147,8 +113,9 @@ async (page) => {
     await toggle.click()
     check(await toggle.getAttribute('aria-pressed') === 'true', `${platform}: hotspot outlines can be restored`)
   }
+}
 
-  await macTab.click()
+async function verifyMacWalkthrough(mac, settleCapture, captureId, focused, check) {
   await mac.getByRole('button', { name: 'Enlarge screen', exact: true }).click()
   const macViewport = mac.locator('.native-viewport')
   await macViewport.evaluate(element => { element.scrollTop = 80 })
@@ -173,8 +140,9 @@ async (page) => {
   await settleCapture(mac)
   await mac.locator('.native-viewport').scrollIntoViewIfNeeded()
   await mac.locator('.native-walkthrough').screenshot({ path: 'output/playwright/product-parity-mac.png' })
+}
 
-  await phoneTab.click()
+async function verifyPhoneWalkthrough(phone, macTab, phoneTab, settleCapture, captureId, focused, check) {
   const phoneHeading = phone.locator('.native-screen-status h3')
   const gear = phone.getByRole('button', { name: 'iPhone walkthrough: Open the captured gear menu', exact: true })
   await gear.focus()
@@ -209,8 +177,9 @@ async (page) => {
   check((await phone.locator('.native-transcript').innerText()).includes('SAMPLE FLEET HASHRATE'), 'Native screen has an accessible readable transcript')
   await phone.locator('.native-transcript summary').click()
   await phone.locator('.native-walkthrough').screenshot({ path: 'output/playwright/product-parity-iphone.png' })
+}
 
-  await terminalTab.click()
+async function verifyNativeTerminal(page, cli, nativeStatus, check) {
   const terminal = page.locator('#panel-terminal')
   const input = terminal.getByRole('textbox', { name: 'Terminal command' })
   const last = () => terminal.locator('.terminal-demo__result').last()
@@ -232,7 +201,10 @@ async (page) => {
   await terminal.getByRole('button', { name: 'hashfleet status', exact: true }).click()
   check((await last().innerText()).trimEnd() === nativeStatus('table'), 'CLI demo remains usable after clear')
   await terminal.locator('.terminal-demo').screenshot({ path: 'output/playwright/product-parity-cli.png' })
+  return { terminal, input, last }
+}
 
+async function verifyNativeDashboard(terminal, input, focused, check) {
   await input.fill('hashfleet watch --demo')
   await input.press('Enter')
   const dashboard = terminal.locator('.cli-dashboard')
@@ -277,7 +249,53 @@ async (page) => {
   check(await input.inputValue() === 'draft after dashboard', 'Command draft survives dashboard history navigation')
   await input.fill('hashfleet status')
   await input.press('Enter')
+  return { dashboard, screen }
+}
 
+async function verifyNativeTerminalResponsive(width, { input, screen, dashboard, terminal }) {
+  await input.fill('hashfleet watch --demo')
+  await input.press('Enter')
+  await screen.waitFor()
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Interactive CLI at ${width}px: output pans inside the terminal`)
+  const controls = await dashboard.locator('.cli-dashboard__controls').evaluateAll(groups => groups.flatMap(group => [...group.querySelectorAll('button,select')].map(control => {
+    const rect = control.getBoundingClientRect(); return { left: rect.left, right: rect.right, height: rect.height }
+  })))
+  check(controls.every(control => control.left >= 0 && control.right <= width && control.height >= 44), `Interactive CLI at ${width}px: controls fit with 44px touch targets`)
+  await dashboard.getByRole('combobox', { name: 'Selected demo miner' }).selectOption('2')
+  await dashboard.getByRole('button', { name: 'Settings e', exact: true }).click()
+  await dashboard.getByRole('button', { name: '5 Pools', exact: true }).click()
+  check((await screen.innerText()).includes('Naja Duo / rack') && (await screen.innerText()).includes('Primary pool host'), `Interactive CLI at ${width}px: miner and pool navigation work`)
+  if (width === 375) await terminal.locator('.terminal-demo').screenshot({ path: 'output/playwright/product-parity-mobile-cli.png' })
+  await dashboard.getByRole('button', { name: 'Quit q', exact: true }).click()
+}
+
+async function verifyNativeTourResponsive(panel, name, width) {
+  const controls = await panel.locator('.native-tour-toolbar').evaluate(element => [...element.querySelectorAll('select,button')].map(control => { const rect = control.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width, height: rect.height } }))
+  check(controls.every(control => control.left >= 0 && control.right <= width && control.width > 0 && control.height >= 40), `${name} at ${width}px: tour controls remain within the page with usable height`)
+  await panel.getByRole('button', { name: 'Enlarge screen', exact: true }).click()
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} at ${width}px: enlargement pans inside the viewport, not the page`)
+  await panel.getByRole('button', { name: 'Fit screen', exact: true }).click()
+}
+
+async function verifyNativeResponsiveLayouts(context) {
+  const { macTab, mac, phoneTab, phone, terminalTab, terminal } = context
+  for (const width of [1440, 1024, 768, 375, 320]) {
+    await page.setViewportSize({ width, height: width < 640 ? 812 : 1000 })
+    for (const [tab, panel, name] of [[macTab, mac, 'Mac'], [phoneTab, phone, 'iPhone'], [terminalTab, terminal, 'Terminal']]) {
+      await tab.click()
+      check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} at ${width}px: no page-wide overflow`)
+      if (name === 'Terminal' && width < 640) {
+        await verifyNativeTerminalResponsive(width, context)
+      }
+      if (name !== 'Terminal') {
+        await verifyNativeTourResponsive(panel, name, width)
+      }
+    }
+    if (width === 375) { await phoneTab.click(); await phone.locator('.native-walkthrough').screenshot({ path: 'output/playwright/product-parity-mobile-iphone.png' }) }
+  }
+}
+
+async function verifyNativePrivacyAndTheme(page, phoneTab, phone, captureId, focused, check) {
   for (const disclosure of await page.locator('.faq-list details').all()) {
     await disclosure.locator('summary').click()
     check(await disclosure.getAttribute('open') !== null, 'FAQ opens via native disclosure')
@@ -296,38 +314,9 @@ async (page) => {
   check(await captureId(phone) === 'ios-fleet', 'Site light theme does not repaint a dark native capture')
   await page.getByRole('button', { name: 'Switch to dark theme' }).click()
   check(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark', 'Original dark theme is restorable')
+}
 
-  for (const width of [1440, 1024, 768, 375, 320]) {
-    await page.setViewportSize({ width, height: width < 640 ? 812 : 1000 })
-    for (const [tab, panel, name] of [[macTab, mac, 'Mac'], [phoneTab, phone, 'iPhone'], [terminalTab, terminal, 'Terminal']]) {
-      await tab.click()
-      check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} at ${width}px: no page-wide overflow`)
-      if (name === 'Terminal' && width < 640) {
-        await input.fill('hashfleet watch --demo')
-        await input.press('Enter')
-        await screen.waitFor()
-        check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Interactive CLI at ${width}px: output pans inside the terminal`)
-        const controls = await dashboard.locator('.cli-dashboard__controls').evaluateAll(groups => groups.flatMap(group => [...group.querySelectorAll('button,select')].map(control => {
-          const rect = control.getBoundingClientRect(); return { left: rect.left, right: rect.right, height: rect.height }
-        })))
-        check(controls.every(control => control.left >= 0 && control.right <= width && control.height >= 44), `Interactive CLI at ${width}px: controls fit with 44px touch targets`)
-        await dashboard.getByRole('combobox', { name: 'Selected demo miner' }).selectOption('2')
-        await dashboard.getByRole('button', { name: 'Settings e', exact: true }).click()
-        await dashboard.getByRole('button', { name: '5 Pools', exact: true }).click()
-        check((await screen.innerText()).includes('Naja Duo / rack') && (await screen.innerText()).includes('Primary pool host'), `Interactive CLI at ${width}px: miner and pool navigation work`)
-        if (width === 375) await terminal.locator('.terminal-demo').screenshot({ path: 'output/playwright/product-parity-mobile-cli.png' })
-        await dashboard.getByRole('button', { name: 'Quit q', exact: true }).click()
-      }
-      if (name !== 'Terminal') {
-        const controls = await panel.locator('.native-tour-toolbar').evaluate(element => [...element.querySelectorAll('select,button')].map(control => { const rect = control.getBoundingClientRect(); return { left: rect.left, right: rect.right, width: rect.width, height: rect.height } }))
-        check(controls.every(control => control.left >= 0 && control.right <= width && control.width > 0 && control.height >= 40), `${name} at ${width}px: tour controls remain within the page with usable height`)
-        await panel.getByRole('button', { name: 'Enlarge screen', exact: true }).click()
-        check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} at ${width}px: enlargement pans inside the viewport, not the page`)
-        await panel.getByRole('button', { name: 'Fit screen', exact: true }).click()
-      }
-    }
-    if (width === 375) { await phoneTab.click(); await phone.locator('.native-walkthrough').screenshot({ path: 'output/playwright/product-parity-mobile-iphone.png' }) }
-  }
+async function verifyNativeCompletion({ macTab, assets }) {
   await page.getByRole('button', { name: 'Open navigation' }).click()
   check(await page.getByRole('button', { name: 'Close navigation' }).getAttribute('aria-expanded') === 'true', 'Original mobile navigation opens')
   await page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: 'Features' }).click()
@@ -360,6 +349,80 @@ async (page) => {
   const result = { status: 'passed', origin, cspSource: publicHost ? 'server-response' : 'injected-preview-test', checks: checks.length, cases: checks, nativeCaptures: assets.length, intentionalFailureRecovery: 'separate page', browserErrors: errors, failedRequests, requests: [...new Set(requests.map(request => `${request.method} ${request.url}`))] }
   await page.evaluate(result => { window.__hashfleetNativeParity = result }, result)
   return result
+}
+
+  const manifest = __NATIVE_MANIFEST__
+  const cli = __CLI_CAPTURES__
+  const plainAnsi = value => value.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+  const nativeStatus = key => plainAnsi([cli.tty[key].header,
+    ...JSON.parse(cli.commands.json).miners.map(miner => cli.tty[key].miners[miner.device.address]),
+    cli.tty[key].footer].join('\n')).trimEnd()
+  const origin = new URL(page.url()).origin
+  const publicHost = origin === 'https://hashfleet.app'
+  if (!['http://127.0.0.1:4174', 'http://127.0.0.1:4175', 'https://hashfleet.app'].includes(origin)) throw new Error(`Unsupported acceptance origin: ${origin}`)
+  const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+  const checks = []
+  const errors = []
+  const failedRequests = []
+  const requests = []
+  const check = (value, label) => {
+    if (!value) {
+      throw new Error(`Acceptance failed: ${label}`)
+    }
+    checks.push(label)
+  }
+  const focused = locator => locator.evaluate(element => element === document.activeElement)
+  const captureId = panel => panel.locator('[data-native-capture]').evaluate(image => image.dataset.nativeCapture ?? null)
+  // Wait for the selected image without moving its saved inspection scroll or focus.
+  const settleCapture = panel => panel.locator('[data-native-capture]').evaluate(async image => { await image.decode() })
+  const decode = async panel => {
+    const image = panel.locator('[data-native-capture]')
+    await image.scrollIntoViewIfNeeded()
+    await page.waitForFunction(id => {
+      const image = document.querySelector(`#${id} [data-native-capture]`)
+      return image?.complete && image.naturalWidth > 0
+    }, await panel.getAttribute('id'))
+    return image.evaluate(async image => { await image.decode(); return [image.naturalWidth, image.naturalHeight] })
+  }
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  page.on('requestfailed', request => failedRequests.push(`${request.url()}: ${request.failure()?.errorText} (after: ${checks.at(-1) ?? 'initial navigation'})`))
+  page.on('request', request => requests.push({ url: request.url(), method: request.method() }))
+  if (!publicHost) await page.route(`${origin}/`, async route => {
+    const response = await route.fetch()
+    await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': csp } })
+  })
+  try {
+  await verifyNativeLanding(page, origin, publicHost, csp, manifest, check)
+  await verifyNativeDownloadDialog(page, focused, check)
+
+  const macTab = page.getByRole('tab', { name: 'Mac app', exact: true })
+  const phoneTab = page.getByRole('tab', { name: 'iPhone app', exact: true })
+  const watchTab = page.getByRole('tab', { name: 'Apple Watch', exact: true })
+  const terminalTab = page.getByRole('tab', { name: 'Terminal', exact: true })
+  await verifyNativePlatformTabs(page, check, focused, macTab, phoneTab, watchTab, terminalTab)
+
+  // The byte hashes tie served assets to the pixel-identity manifest verified against native PNGs.
+  const assets = await verifyNativeAssetBytes(page, manifest, check)
+
+  const mac = page.locator('#panel-mac')
+  const phone = page.locator('#panel-iphone')
+  await verifyNativeTourPickers({ macTab, mac, phoneTab, phone })
+
+  await macTab.click()
+  await verifyMacWalkthrough(mac, settleCapture, captureId, focused, check)
+
+  await phoneTab.click()
+  await verifyPhoneWalkthrough(phone, macTab, phoneTab, settleCapture, captureId, focused, check)
+
+  await terminalTab.click()
+  const { terminal, input } = await verifyNativeTerminal(page, cli, nativeStatus, check)
+  const { dashboard, screen } = await verifyNativeDashboard(terminal, input, focused, check)
+
+  await verifyNativePrivacyAndTheme(page, phoneTab, phone, captureId, focused, check)
+
+  await verifyNativeResponsiveLayouts({ macTab, mac, phoneTab, phone, terminalTab, terminal, input, dashboard, screen })
+  return await verifyNativeCompletion({ macTab, assets })
   } catch (error) {
     await page.evaluate(result => { window.__hashfleetNativeParity = result }, { status: 'failed', checks: checks.length, lastCheck: checks.at(-1), browserErrors: errors, failedRequests, message: String(error) })
     await page.screenshot({ path: 'output/playwright/product-parity-failure.png' })

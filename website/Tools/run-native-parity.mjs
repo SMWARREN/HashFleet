@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parsePlaywrightResult } from './playwright-result.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const origin = process.argv[2] ?? 'http://127.0.0.1:4174'
@@ -45,10 +46,9 @@ for (const [placeholder, fixture] of [['__NATIVE_MANIFEST__', 'native-captures.j
 code = code.replaceAll('output/playwright/product-parity-', `${relative}/product-parity-`)
 cli('acceptance', ['run-code', code])
 const evaluated = cli('result', ['eval', 'window.__hashfleetNativeParity'])
-const match = evaluated.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/)
-assert(match, `Missing browser result. See ${relative}/result.log`)
 let result
-try { result = JSON.parse(match[1].trim()) } catch { throw new Error(`Invalid browser result. See ${relative}/result.log`) }
+try { result = parsePlaywrightResult(evaluated) } catch { throw new Error(`Invalid browser result. See ${relative}/result.log`) }
+assert(result !== undefined, `Missing browser result. See ${relative}/result.log`)
 fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(result, null, 2) + '\n')
 assert(result?.status === 'passed' && result.origin === origin, `Browser acceptance failed. See ${relative}/result.json`)
 console.log(JSON.stringify({ status: result.status, origin, checks: result.checks, nativeCaptures: result.nativeCaptures, browserErrors: result.browserErrors, failedRequests: result.failedRequests, artifacts: relative }, null, 2))

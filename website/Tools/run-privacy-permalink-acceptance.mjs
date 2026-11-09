@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parsePlaywrightResult } from './playwright-result.mjs'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const origin = process.argv[2] ?? 'http://127.0.0.1:4174'
 assert(['http://127.0.0.1:4174', 'https://hashfleet.app'].includes(origin))
@@ -25,9 +26,8 @@ cli('snapshot', ['snapshot'])
 const code = fs.readFileSync(path.join(root, 'Tools/privacy-permalink-acceptance.js'), 'utf8').replaceAll('output/playwright/privacy-', relative + '/privacy-')
 cli('acceptance', ['run-code', code])
 const output = cli('result', ['eval', 'window.__hashfleetPrivacyAcceptance'])
-const match = output.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/)
-assert(match, 'Missing actual browser result: ' + relative)
-const result = JSON.parse(match[1].trim())
+const result = parsePlaywrightResult(output)
+assert(result !== undefined, 'Missing actual browser result: ' + relative)
 fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(result, null, 2) + '\n')
 assert(result?.status === 'passed' && result.origin === origin && result.checks === 49 && result.responseInterception === false && result.publicContactPublished === true && result.publicContactPublicationAuthorized === true, 'Privacy permalink acceptance failed: ' + relative)
 console.log(JSON.stringify({ ...result, artifacts: relative }, null, 2))
