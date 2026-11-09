@@ -33,6 +33,10 @@ Prefer a direct download? Get the Mac ZIP or CLI archive from [GitHub Releases](
 
 No HashFleet account is required. Fleet configuration stays on your device. Optional public chain and pool services can be disabled in settings. See the [privacy policy](PRIVACY.md).
 
+### Away from home
+
+HashFleet connects directly to your miners, with no cloud relay. To reach them remotely, use a private VPN such as Tailscale and never port-forward a miner. See [Remote access with Tailscale](docs/REMOTE-ACCESS-TAILSCALE.md), including the validated [ESP32-S3 Tailscale subnet router](https://github.com/SMWARREN/esp32-tailscale-subnet-router) that needs no always-on computer.
+
 ### Try the CLI demo
 
 ```sh

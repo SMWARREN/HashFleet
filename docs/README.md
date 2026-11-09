@@ -8,6 +8,7 @@
 - [Apple Watch](WATCHOS.md)
 - [Widgets and Live Activities](WIDGETS.md)
 - [Release status](STATUS.md)
+- [Remote access with Tailscale](REMOTE-ACCESS-TAILSCALE.md)
 
 ## Miner and data reference
 
