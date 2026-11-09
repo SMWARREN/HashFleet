@@ -93,8 +93,11 @@ actor FleetCelebrationQueueWorker {
             case let .application(testing, arguments):
                 queue = FleetCelebrationQueueFactory.make(isTesting: testing, arguments: arguments)
             case .file(let url):
-                do { queue = try FleetCelebrationQueue(storageURL: url) }
-                catch { queue = FleetCelebrationQueue(unavailableMessage: "Record queue storage is unavailable: \(error.localizedDescription)") }
+                do {
+                    queue = try FleetCelebrationQueue(storageURL: url)
+                } catch {
+                    queue = FleetCelebrationQueue(unavailableMessage: "Record queue storage is unavailable: \(error.localizedDescription)")
+                }
             }
         }
         var accepted = false

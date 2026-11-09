@@ -122,7 +122,7 @@ struct FleetNotificationInboxEntry: Codable, Equatable, Identifiable, Sendable {
     var inAppDelivered: Bool
     /// Only new durable handoffs set this marker. Missing keys in older journals decode as nil,
     /// so deliberately suppressed historical entries are never resurrected during retry.
-    var inAppAcceptancePending: Bool? = nil
+    var inAppAcceptancePending: Bool?
 
     var id: UUID { event.id }
     var dedupeKey: String { event.dedupeKey }

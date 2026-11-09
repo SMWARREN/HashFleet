@@ -261,7 +261,7 @@ struct FleetHistoryMountedChurnTests {
         var digestChangeCount = 0
         var unitStateChanges = 0
         var previousDigest: UInt64 = 0
-        var previousUnit: HashrateUnit? = nil
+        var previousUnit: HashrateUnit?
         var totalPointsGenerated = 0
         var inputChecksum: UInt64 = 20261107
 

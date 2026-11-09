@@ -538,8 +538,7 @@ extension FleetMonitoringBoundaryTests {
             let failure = LockedBox<String?>(nil)
             let consumer = Task { @MainActor in
                 defer { completed.set(true) }
-                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) }
-                catch { failure.set(String(describing: type(of: error))) }
+                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) } catch { failure.set(String(describing: type(of: error))) }
             }
             defer { pair.continuation.finish(); consumer.cancel() }
             let connected = try await waitForBoundary { store.liveConnectedDeviceIDs.contains(device.id) }
@@ -581,8 +580,7 @@ extension FleetMonitoringBoundaryTests {
             let failure = LockedBox<String?>(nil)
             let consumer = Task { @MainActor in
                 defer { completed.set(true) }
-                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) }
-                catch { failure.set(String(describing: type(of: error))) }
+                do { try await store.consumeLiveStream(pair.stream, device: device, token: original) } catch { failure.set(String(describing: type(of: error))) }
             }
             defer { release.signal(); pair.continuation.finish(); consumer.cancel() }
             pair.continuation.yield(.text(#"{"data":{"hashRate":2222}}"#))

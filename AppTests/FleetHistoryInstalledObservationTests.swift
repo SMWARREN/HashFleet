@@ -163,17 +163,17 @@ struct FleetHistoryInstalledObservationTests {
 
         let baseRates: [(isHigh: Bool, baseRate: Double)] = [
             (false, 20.0), // 20 * 20 = 400 GH/s -> GH/s
-            (true,  60.0), // 20 * 60 = 1,200 GH/s -> TH/s
+            (true, 60.0), // 20 * 60 = 1,200 GH/s -> TH/s
             (false, 18.0), // 20 * 18 = 360 GH/s -> GH/s
-            (true,  55.0), // 20 * 55 = 1,100 GH/s -> TH/s
+            (true, 55.0), // 20 * 55 = 1,100 GH/s -> TH/s
             (false, 24.0), // 20 * 24 = 480 GH/s -> GH/s
-            (true,  68.0), // 20 * 68 = 1,360 GH/s -> TH/s
+            (true, 68.0), // 20 * 68 = 1,360 GH/s -> TH/s
             (false, 15.0), // 20 * 15 = 300 GH/s -> GH/s
-            (true,  62.0), // 20 * 62 = 1,240 GH/s -> TH/s
+            (true, 62.0), // 20 * 62 = 1,240 GH/s -> TH/s
             (false, 22.0), // 20 * 22 = 440 GH/s -> GH/s
-            (true,  58.0), // 20 * 58 = 1,160 GH/s -> TH/s
+            (true, 58.0), // 20 * 58 = 1,160 GH/s -> TH/s
             (false, 19.0), // 20 * 19 = 380 GH/s -> GH/s
-            (true,  64.0)  // 20 * 64 = 1,280 GH/s -> TH/s
+            (true, 64.0)  // 20 * 64 = 1,280 GH/s -> TH/s
         ]
 
         for step in 0..<12 {

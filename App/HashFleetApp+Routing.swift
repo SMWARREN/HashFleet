@@ -58,8 +58,7 @@ extension HashFleetApp {
             celebrations.submit(.present(routed, sessionEnabled: store.preferences.sessionBestNotificationsEnabled)) { result in
                 // A newer tap must not be consumed or redirected by this older write.
                 guard FleetNotificationRoute.pending() == route else { return }
-                if result.accepted { _ = FleetNotificationRoute.consume() }
-                else { hiddenCelebrationID = celebrations.current?.id }
+                if result.accepted { _ = FleetNotificationRoute.consume() } else { hiddenCelebrationID = celebrations.current?.id }
                 openMiner(route.deviceID, dismissCelebration: false)
             }
             return
