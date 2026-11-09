@@ -1,0 +1,22 @@
+{
+  "images": [
+    {
+      "filename": "LaunchMinerTransparentLight.png",
+      "idiom": "universal"
+    },
+    {
+      "filename": "LaunchMinerTransparentDark.png",
+      "idiom": "universal",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

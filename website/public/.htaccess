@@ -1,0 +1,30 @@
+Options -Indexes
+DirectoryIndex index.html
+# BEGIN HASHFLEET REACT ENTRY
+ErrorDocument 403 /index.html
+ErrorDocument 404 /index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Catch inherited host error documents without turning errors into 200s.
+  RewriteCond %{ENV:REDIRECT_STATUS} ^(?:403|404)$
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ /index.html [END]
+  # Only real public page routes are successful SPA entries.
+  RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^demo(?:/(?:mac|iphone|terminal))?/?$ /index.html [END]
+</IfModule>
+<If "%{REQUEST_URI} =~ m#^/(?:api|companion|assets|images|src|hashfleet-private|\.well-known)(?:/|$)#">
+  ErrorDocument 403 default
+  ErrorDocument 404 default
+</If>
+# END HASHFLEET REACT ENTRY
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "DENY"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+</IfModule>

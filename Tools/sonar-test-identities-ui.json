@@ -1,0 +1,9 @@
+[
+  "DashboardCardInteractionUITests/testEasyFrequencyConfirmsOneFrequencyOnlyLoopbackWrite()",
+  "DashboardCardInteractionUITests/testEasyFrequencySafetyAndApplyAreVisibleWithoutScrolling()",
+  "DashboardCardInteractionUITests/testEasyLargeTextKeepsSafetyAndApplyAdjacentBeforeTechnicalDetails()",
+  "DashboardCardInteractionUITests/testEasyPairConfirmsOneCombinedLoopbackWriteAndRejectsInvalidInput()",
+  "PhoneTuningAndTelemetryUITests/testEasyDirectFrequencyAndAdvancedUseTheSameGuardedDraft()",
+  "PhoneTuningAndTelemetryUITests/testEasyDirectVoltageAndAdvancedKeepAVoltageOnlyDraft()",
+  "PhoneTuningAndTelemetryUITests/testEasyPairCommitsOnFocusChangeAndResetClearsInvalidText()"
+]

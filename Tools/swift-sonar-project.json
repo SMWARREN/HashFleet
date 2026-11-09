@@ -1,0 +1,85 @@
+{
+  "lint": {
+    "argv": [
+      "swiftlint",
+      "lint",
+      "--quiet",
+      "--strict",
+      "--reporter",
+      "json"
+    ],
+    "import": "native"
+  },
+  "properties": "sonar-project.properties",
+  "scannerProperties": {
+    "sonar.apple.resultBundlePath": "build/swift-sonar-project/merged.xcresult",
+    "sonar.coverageReportPaths": "build/swift-sonar-project/swift-package-coverage.xml",
+    "sonar.python.coverage.reportPaths": "build/swift-sonar-project/python-coverage.xml"
+  },
+  "schema": 1,
+  "test": {
+    "argv": [
+      "/bin/bash",
+      "Tools/sonar-project-test.sh"
+    ],
+    "artifacts": [
+      {
+        "expectedTests": "Tools/sonar-test-identities-unit-1.json",
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/unit-1.xcresult"
+      },
+      {
+        "expectedTests": "Tools/sonar-test-identities-unit-2.json",
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/unit-2.xcresult"
+      },
+      {
+        "expectedTests": "Tools/sonar-test-identities-unit-3.json",
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/unit-3.xcresult"
+      },
+      {
+        "expectedTests": "Tools/sonar-test-identities-mac.json",
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/mac.xcresult"
+      },
+      {
+        "expectedTests": "Tools/sonar-test-identities-ui.json",
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/ui.xcresult"
+      },
+      {
+        "kind": "generic-coverage",
+        "path": "build/swift-sonar-project/swift-package-coverage.xml"
+      },
+      {
+        "kind": "python-coverage",
+        "path": "build/swift-sonar-project/python-coverage.xml"
+      },
+      {
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/broader-ui.xcresult",
+        "expectedTests": "Tools/sonar-test-identities-broader-ui.json"
+      },
+      {
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/support.xcresult",
+        "expectedTests": "Tools/sonar-test-identities-support.json"
+      },
+      {
+        "kind": "xcresult",
+        "path": "build/swift-sonar-project/merged.xcresult",
+        "expectedTests": "Tools/sonar-test-identities-merged.json"
+      },
+      {
+        "kind": "file",
+        "path": "build/swift-sonar-project/phase-exits.tsv"
+      }
+    ]
+  },
+  "tools": {
+    "sonarApple": "0.5.1",
+    "sonarScanner": "8.3.1",
+    "swiftlint": "0.65.1"
+  }
+}

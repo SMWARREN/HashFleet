@@ -1,0 +1,26 @@
+name: Swift validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version && xcodebuild -version
+      - name: Test API core
+        run: swift test
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build iOS simulator app
+        run: xcodebuild -project HashFleet.xcodeproj -scheme HashFleet -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Native state, safety, and UI tests
+        shell: bash
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep 'iPhone' | head -n 1 | sed -E 's/.*\(([A-F0-9-]{36})\).*/\1/')
+          test -n "$DEVICE_ID"
+          xcodebuild -project HashFleet.xcodeproj -scheme HashFleet -destination "platform=iOS Simulator,id=$DEVICE_ID" -derivedDataPath build -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test

@@ -1,0 +1,4 @@
+// Public source builds have no assigned development team.
+// Optional local overrides survive XcodeGen regeneration and are ignored by Git.
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"
