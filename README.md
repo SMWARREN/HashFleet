@@ -4,7 +4,7 @@
 
 Native apps and a terminal dashboard for monitoring your mining fleet. Built for macOS, iPhone, iPad, and Apple Watch, with support for miners running ESP-Miner / AxeOS.
 
-[Website](https://hashfleet.app) · [Downloads](https://github.com/SMWARREN/hashfleet/releases/latest) · [Documentation](docs/README.md) · [Build from source](docs/PUBLIC-BUILD.md)
+[Website](https://hashfleet.app) · [Downloads](https://github.com/SMWARREN/HashFleet/releases/latest) · [Documentation](docs/README.md) · [Build from source](docs/PUBLIC-BUILD.md)
 
 ## Install
 
@@ -21,7 +21,7 @@ brew install --cask hashfleet
 brew install hashfleet-cli
 ```
 
-Prefer a direct download? Get the Mac ZIP or CLI archive from [GitHub Releases](https://github.com/SMWARREN/hashfleet/releases/latest). Installing one does not install the other.
+Prefer a direct download? Get the Mac ZIP or CLI archive from [GitHub Releases](https://github.com/SMWARREN/HashFleet/releases/latest). Installing one does not install the other.
 
 ## Your fleet, at a glance
 
@@ -62,6 +62,8 @@ Read the [API reference](docs/API-COVERAGE.md) and [model compatibility guide](d
 | `Shared/`, `Widgets/` | Shared models, widgets, and Live Activities |
 | `AppTests/`, `MacAppTests/`, `Tests/`, `UITests/` | Automated test sources |
 | `website/` | Product website |
+| `Formula/`, `Casks/` | Homebrew CLI and Mac app packages |
+| `.github/workflows/` | GitHub Actions workflows |
 | `Server/` | Optional server integration |
 | `Scripts/`, `Tools/` | Development and packaging tools |
 | `docs/` | Setup, usage, and technical reference |

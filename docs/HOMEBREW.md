@@ -7,7 +7,7 @@ Intel binaries are not provided in this release.
 ## Add the project tap
 
 ```sh
-brew tap smwarren/hashfleet
+brew tap smwarren/hashfleet https://github.com/SMWARREN/HashFleet.git
 ```
 
 Homebrew requires explicit trust for third-party packages by default starting
@@ -19,6 +19,24 @@ project-maintained, so it needs explicit trust even though the release binaries
 are Apple-notarized. Signing and tap trust are separate checks. A fully qualified
 install also grants trust to that item, but uses the owner/tap prefix. See
 [Homebrew's tap trust documentation](https://docs.brew.sh/Tap-Trust).
+
+## Existing users of the former separate tap
+
+If you already added `smwarren/hashfleet` before consolidation, change its remote
+to the main repository and refresh only that tap checkout:
+
+```sh
+brew tap --custom-remote smwarren/hashfleet https://github.com/SMWARREN/HashFleet.git
+brew update-reset "$(brew --repo smwarren/hashfleet)"
+```
+
+`update-reset` replaces local changes inside that Homebrew tap checkout. Preserve
+any custom edits there first. It does not reinstall the app or CLI, or erase app
+data. Reapply the package-specific trust command below for whichever package
+you use, because the source repository has changed.
+
+The former `homebrew-hashfleet` repository is retained only for compatibility.
+All new package changes belong in `HashFleet/Formula/` and `HashFleet/Casks/`.
 
 ## Native Mac app only
 
@@ -52,8 +70,8 @@ installed by either Homebrew package.
 
 ## Downloads and updates
 
-- Source and release downloads: https://github.com/SMWARREN/hashfleet
-- Project-maintained Homebrew tap: https://github.com/SMWARREN/homebrew-hashfleet
+- Source and release downloads: https://github.com/SMWARREN/HashFleet
+- Homebrew packages: `Formula/` and `Casks/` in the same HashFleet repository
 - Website: https://hashfleet.app
 
 ```sh
