@@ -39,6 +39,13 @@ final class LocalNetworkAuthorization {
     func request() {
         guard status != .requesting else { return }
         cancel()
+        #if os(macOS)
+        // The Mac app is sandboxed without the network.server entitlement, so it cannot
+        // publish the temporary Bonjour probe. macOS prompts on the first local connection
+        // itself, and a denial surfaces as a connection failure handled by markDenied().
+        status = .granted
+        return
+        #endif
         let id = UUID()
         attempt = id
         status = .requesting

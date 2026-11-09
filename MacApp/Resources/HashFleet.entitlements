@@ -4,8 +4,6 @@
 <dict>
     <key>com.apple.security.app-sandbox</key><true/>
     <key>com.apple.security.network.client</key><true/>
-    <!-- Temporary Bonjour permission round trip. Incoming connections are immediately cancelled. -->
-    <key>com.apple.security.network.server</key><true/>
     <key>com.apple.security.files.user-selected.read-write</key><true/>
 </dict>
 </plist>
