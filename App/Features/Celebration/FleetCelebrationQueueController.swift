@@ -88,18 +88,7 @@ actor FleetCelebrationQueueWorker {
             queue = nil
             return .init(accepted: true, staleAction: false, snapshot: .init())
         }
-        if queue == nil {
-            switch configuration {
-            case let .application(testing, arguments):
-                queue = FleetCelebrationQueueFactory.make(isTesting: testing, arguments: arguments)
-            case .file(let url):
-                do {
-                    queue = try FleetCelebrationQueue(storageURL: url)
-                } catch {
-                    queue = FleetCelebrationQueue(unavailableMessage: "Record queue storage is unavailable: \(error.localizedDescription)")
-                }
-            }
-        }
+        openQueueIfNeeded()
         var accepted = false
         var stale = false
         switch command {
@@ -137,5 +126,20 @@ actor FleetCelebrationQueueWorker {
             current: current, pending: pending, unacknowledgedCount: queue!.unacknowledgedCount,
             isPaused: queue!.isPaused, storageError: error)
         return .init(accepted: accepted, staleAction: stale, snapshot: snapshot)
+    }
+
+    private func openQueueIfNeeded() {
+        if queue == nil {
+            switch configuration {
+            case let .application(testing, arguments):
+                queue = FleetCelebrationQueueFactory.make(isTesting: testing, arguments: arguments)
+            case .file(let url):
+                do {
+                    queue = try FleetCelebrationQueue(storageURL: url)
+                } catch {
+                    queue = FleetCelebrationQueue(unavailableMessage: "Record queue storage is unavailable: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }
