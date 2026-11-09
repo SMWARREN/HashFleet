@@ -23,17 +23,39 @@ Adding CI does not imply existing lint violations have been repaired.
 ### Offline contracts and Sonar review
 
 `Scripts/ci/repo-checks.sh` also runs PHP backend, APNs response parsing, bundle
-allowlist, and browser-tool interface contracts. PHP 8.3+ with `pdo_sqlite` is
+allowlist, browser-tool interface, pure capture-helper, and Sonar source/test
+classification contracts. PHP 8.3+ with `pdo_sqlite` is
 required. The Node contracts use `*.node-test.mjs` and `node --test`, separately
 from the website's Vitest suites. They verify payload framing and bounded helper
 bindings, not a real browser journey. No miner, APNs delivery, or production
-deployment is exercised by these checks.
+deployment is exercised by these checks. The required website job runs the same
+Vitest suite with V8 coverage, builds the website, then runs the real CLI installer
+contracts against newly created temporary homes only. Coverage reports stay in
+the runner's temporary directory. A failed PHP, website, or installer command
+fails its job and therefore `CI required`; these commands are not advisory.
+
+For a local website coverage run, use `npm run test:coverage` from `website`,
+passing `-- --coverage.reportsDirectory=<private-output-directory>` to keep
+generated reports outside the checkout. Build with `npm run build` before running
+`Server/tests/deployment_test.py` from the repository root. Set
+`HASHFLEET_TEST_PHP` to your PHP executable and `JCODE_SCRATCH_DIR` to an owned
+scratch directory. The installer tests never target an existing hosting home.
 
 A source-only Sonar scan does not collect coverage or execute app tests. A
 successful scanner upload or passing SwiftLint job is not proof that the Sonar
 quality gate passed. Inspect the server's actual gate conditions and unresolved
-issues. The current source-only review has not established a passing gate, and
-Sonar is not yet a hosted required check in this workflow.
+issues. Sonar is not yet a hosted required check in this workflow, so a green
+GitHub run does not currently certify its quality gate.
+
+On November 9, 2026, the local coverage-backed analysis passed the unchanged
+quality gate with 80.3% new-code coverage, zero unresolved issues, and zero
+hotspots. Actual V8, Node, Python, and PHPDBG reports were imported. The final
+checks included 239 website tests, 145 backend checks, and 10 isolated installer
+tests. Twelve findings were individually reviewed as false positives with
+source-bound explanations, not blanket-suppressed. Those local dispositions
+do not automatically transfer to a new Sonar server. Offline handler tests do
+not certify browser accessibility or React scheduling; PHPDBG coverage does
+not establish coverage of uncalled closures or the CLI-only installer body.
 
 Some findings need contextual review rather than automatic rewrites: Playwright
 payloads must remain single function expressions, their helpers must stay inside
@@ -43,7 +65,12 @@ evaluate fixed repository fixtures only, but that boundary still needs explicit
 security review. Accessibility and contrast findings also need contextual
 evidence. Do not blanket-suppress these rules, invent coverage, or lower the gate
 to obtain a passing result. Publishing the reusable scanner toolkit and adding
-its hosted gate remain separate integration work.
+its hosted gate remain separate integration work. The current reusable wrapper's
+verified report path supports Swift/Python, not this complete multi-language
+coverage import. Hosted integration must add and verify that support, pin the
+published toolkit, bind reports and gate results to the analyzed commit, and make
+missing reports or a failed gate fail `CI required`. Do not label the hosted gate
+complete merely because the local analysis passed.
 
 
 ## Release (`.github/workflows/release.yml`, workflow `HashFleet Release`)

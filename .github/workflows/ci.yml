@@ -66,8 +66,18 @@ jobs:
           # vitest 5 requires Node ^22.12, ^24 or >=26.
           node-version: 24
       - run: npm ci
-      - run: npm test
+      - name: Website tests with genuine V8 coverage
+        run: npm run test:coverage -- --coverage.reportsDirectory="$RUNNER_TEMP/hashfleet-website-coverage"
       - run: npm run build
+      - name: Isolated hosting installer contracts
+        working-directory: .
+        env:
+          JCODE_SCRATCH_DIR: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          export HASHFLEET_TEST_PHP="$(command -v php)"
+          test -n "$HASHFLEET_TEST_PHP"
+          python3 -B Server/tests/deployment_test.py
 
   swiftlint:
     name: SwiftLint
@@ -177,7 +187,10 @@ jobs:
           RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
           echo "Prerequisite results: $RESULTS"
-          for result in $RESULTS; do
+          read -r -a prerequisites <<< "$RESULTS"
+          # Keep this count aligned with the six explicit jobs in needs above.
+          [ "${#prerequisites[@]}" -eq 6 ] || { echo "Missing prerequisite results." >&2; exit 1; }
+          for result in "${prerequisites[@]}"; do
             [ "$result" = success ] || { echo "A prerequisite did not succeed." >&2; exit 1; }
           done
 

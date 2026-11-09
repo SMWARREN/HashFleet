@@ -38,6 +38,10 @@ python3 -B Server/tests/build_bundle_test.py
 
 echo "== Offline browser-tool interfaces"
 node --test website/Tools/playwright-result.node-test.mjs website/Tools/acceptance-expression.node-test.mjs
+python3 -B website/Tools/test_capture_dashboard.py
+
+echo "== Sonar source/test classification contracts"
+python3 -B -m unittest Tools.test_sonar_scope -v
 
 echo "== Source contract checks"
 python3 -B Scripts/check-native-navigation.py

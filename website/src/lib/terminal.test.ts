@@ -87,7 +87,7 @@ describe('documented CLI sample commands', () => {
     expect(runCommand('hashfleet status --details').output).toBe(captures.commands.details)
     expect(runCommand('hashfleet --help').output).toBe(captures.commands.help)
     expect(runCommand('hashfleet status --json').output).toBe(captures.commands.json)
-    expect(captures.requestAudit.length).toBe(15)
+    expect(captures.requestAudit).toHaveLength(15)
     expect(captures.requestAudit.every(([method, path]) => method === 'GET' && path === '/api/system/info')).toBe(true)
   })
 
