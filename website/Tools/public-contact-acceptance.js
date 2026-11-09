@@ -5,7 +5,12 @@ async (page) => {
   const failedRequests = []
   const externalRequests = []
   const serviceRequests = []
-  const check = (value, label) => { if (!value) throw new Error(label); checks.push(label) }
+  const check = (value, label) => {
+    if (!value) {
+      throw new Error(label)
+    }
+    checks.push(label)
+  }
   page.on('pageerror', error => errors.push(error.message))
   page.on('requestfailed', request => failedRequests.push({ url: request.url(), error: request.failure()?.errorText }))
   page.on('request', request => {

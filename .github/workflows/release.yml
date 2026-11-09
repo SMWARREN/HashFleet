@@ -1,0 +1,137 @@
+name: HashFleet Release
+
+# Automated release after a reviewed merge. This workflow never runs for pull requests and has
+# no pull_request or pull_request_target trigger. It starts only from a completed "HashFleet CI"
+# run, and only a successful push-to-main run of this repository is trusted. Release secrets
+# exist only in the "release" environment, in missing-secret preflight and signing steps.
+# See docs/AUTOMATION.md.
+on:
+  workflow_run:
+    workflows: ["HashFleet CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run ID of a successful HashFleet CI push run on main to release from"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# One release at a time. Never cancel a release that is in progress.
+concurrency:
+  group: release-global
+  cancel-in-progress: false
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+
+jobs:
+  plan:
+    name: Plan release
+    # Both triggers must run from the default branch. A workflow_run event also has to be a
+    # successful push to main of this same repository, produced by the CI workflow file.
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        (github.event_name == 'workflow_run'
+          && github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.event == 'push'
+          && github.event.workflow_run.head_branch == 'main'
+          && github.event.workflow_run.head_repository.full_name == github.repository
+          && github.event.workflow_run.path == '.github/workflows/ci.yml')
+        || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      needed: ${{ steps.plan.outputs.needed }}
+      version: ${{ steps.plan.outputs.version }}
+      sha: ${{ steps.plan.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether a release is needed
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "run id must be numeric" >&2; exit 1; }
+          python3 Scripts/release/release.py plan --run-id "$RUN_ID"
+
+  release:
+    name: Build, sign, notarize and publish
+    needs: plan
+    if: ${{ needs.plan.outputs.needed == 'true' }}
+    runs-on: xcode-27
+    timeout-minutes: 90
+    environment: release
+    # contents and pull-requests write are used only by the publish step. The default token is
+    # not placed in the environment of the build step, and checkout does not persist it.
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      RELEASE_SHA: ${{ needs.plan.outputs.sha }}
+    steps:
+      - name: Validate plan outputs
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version" >&2; exit 1; }
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid sha" >&2; exit 1; }
+      - name: Require all release secrets
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          missing=0
+          for name in MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                      APPLE_TEAM_ID APPLE_API_KEY_P8 APPLE_API_KEY_ID APPLE_API_ISSUER_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing required release secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Confirm the exact planned commit is on main
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$RELEASE_SHA" ]] || { echo "checked out commit differs from plan" >&2; exit 1; }
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main || { echo "planned commit is not reachable from main" >&2; exit 1; }
+      - name: Compile separate unsigned packages without signing secrets
+        run: bash Scripts/release/prepare.sh
+      - name: Sign and notarize separate packages
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: bash Scripts/release/build.sh
+      - name: Publish verified packages and open the Homebrew pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 Scripts/release/release.py publish
+          --version "$RELEASE_VERSION"
+          --sha "$RELEASE_SHA"
+          --directory "$RUNNER_TEMP/hashfleet-release"

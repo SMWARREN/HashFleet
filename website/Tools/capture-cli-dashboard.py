@@ -67,6 +67,59 @@ class Capture:
         os.close(self.slave)
 
 
+def validate_frame(key, frame):
+    plain = ANSI.sub('', frame)
+    if len(plain.splitlines()) != ROWS:
+        raise RuntimeError(f'Incomplete {key}')
+    if key.startswith('settings:') and 'HASH FLEET / SETTINGS' not in plain:
+        raise RuntimeError(f'Missing settings page: {key}')
+    if key.startswith('details:') and 'DETAILS /' not in plain:
+        raise RuntimeError(f'Missing details page: {key}')
+    if key.startswith(('details:', 'settings:')) and NAMES[int(key.split(':')[1])] not in plain:
+        raise RuntimeError(f'Wrong selected miner: {key}')
+    if re.search(r'192\.168\.|127\.0\.0\.1|10\.\d+\.\d+\.', plain):
+        raise RuntimeError(f'Unexpected non-demo address in {key}')
+
+
+def intern_frames(frames):
+    lines, line_ids, indexed = [], {}, {}
+    for key, frame in frames.items():
+        indexed[key] = []
+        for line in frame.split('\n'):
+            if line not in line_ids:
+                line_ids[line] = len(lines)
+                lines.append(line)
+            indexed[key].append(line_ids[line])
+    return lines, indexed
+
+
+def capture_fleet_frames(capture, frames):
+    for sort, order in [('name', [0, 1, 2, 3]), ('hashrate', [2, 0, 1, 3]), ('temperature', [0, 1, 2, 3])]:
+        for paused in (False, True):
+            capture.send(b'[[[[')
+            for position, miner in enumerate(order):
+                if position:
+                    capture.send(b']')
+                frames[f'fleet:{sort}:{int(paused)}:{miner}'] = capture.frame()
+            capture.send(b' ')
+        capture.send(b's')
+
+
+def capture_miner_frames(capture, frames):
+    capture.send(b'[[[[')
+    for miner in range(4):
+        for section in range(1, 5):
+            capture.send(str(section).encode())
+            frames[f'details:{miner}:{section}'] = capture.frame()
+        capture.send(b'b')
+        capture.send(b'e')
+        for category in range(1, 6):
+            capture.send(str(category).encode())
+            frames[f'settings:{miner}:{category}'] = capture.frame()
+        capture.send(b'b')
+        capture.send(b']')
+
+
 def main():
     capture = Capture()
     frames = {}
@@ -77,51 +130,14 @@ def main():
                 break
         else:
             raise RuntimeError('Demo did not load')
-        for sort, order in [('name', [0, 1, 2, 3]), ('hashrate', [2, 0, 1, 3]), ('temperature', [0, 1, 2, 3])]:
-            for paused in (False, True):
-                capture.send(b'[[[[')
-                for position, miner in enumerate(order):
-                    if position:
-                        capture.send(b']')
-                    frames[f'fleet:{sort}:{int(paused)}:{miner}'] = capture.frame()
-                capture.send(b' ')
-            capture.send(b's')
-        capture.send(b'[[[[')
-        for miner in range(4):
-            for section in range(1, 5):
-                capture.send(str(section).encode())
-                frames[f'details:{miner}:{section}'] = capture.frame()
-            capture.send(b'b')
-            capture.send(b'e')
-            for category in range(1, 6):
-                capture.send(str(category).encode())
-                frames[f'settings:{miner}:{category}'] = capture.frame()
-            capture.send(b'b')
-            capture.send(b']')
+        capture_fleet_frames(capture, frames)
+        capture_miner_frames(capture, frames)
         capture.send(b'l')
         frames['logo'] = capture.frame()
         for key, frame in frames.items():
-            plain = ANSI.sub('', frame)
-            if len(plain.splitlines()) != ROWS:
-                raise RuntimeError(f'Incomplete {key}')
-            if key.startswith('settings:') and 'HASH FLEET / SETTINGS' not in plain:
-                raise RuntimeError(f'Missing settings page: {key}')
-            if key.startswith('details:') and 'DETAILS /' not in plain:
-                raise RuntimeError(f'Missing details page: {key}')
-            if key.startswith(('details:', 'settings:')) and NAMES[int(key.split(':')[1])] not in plain:
-                raise RuntimeError(f'Wrong selected miner: {key}')
-            if re.search(r'192\.168\.|127\.0\.0\.1|10\.\d+\.\d+\.', plain):
-                raise RuntimeError(f'Unexpected non-demo address in {key}')
+            validate_frame(key, frame)
         # Intern repeated lines without altering a single character or ANSI style.
-        lines, line_ids = [], {}
-        indexed = {}
-        for key, frame in frames.items():
-            indexed[key] = []
-            for line in frame.split('\n'):
-                if line not in line_ids:
-                    line_ids[line] = len(lines)
-                    lines.append(line)
-                indexed[key].append(line_ids[line])
+        lines, indexed = intern_frames(frames)
         OUT.write_text(json.dumps({
             'source': 'Actual hashfleet watch --demo --interval 3600 output; no network or configured fleet access.',
             'binarySHA256': hashlib.sha256(BINARY.read_bytes()).hexdigest(),

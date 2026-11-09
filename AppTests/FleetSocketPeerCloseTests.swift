@@ -21,6 +21,11 @@ private actor PeerCloseLedger {
 /// Ephemeral controls own their session. The shared-session case never invalidates it.
 @Suite("Twenty endpoint remote-close lifecycle", .serialized)
 struct FleetSocketPeerCloseTests {
+    private static func encodedJSON<T: Encodable>(_ value: T) throws -> String {
+        let data = try JSONEncoder().encode(value)
+        return try #require(String(bytes: data, encoding: .utf8))
+    }
+
     private static func ports() throws -> [Int] {
         let raw = try #require(ProcessInfo.processInfo.environment["HASHFLEET_FIXTURE_PORTS"])
         let values = try raw.split(separator: ",", omittingEmptySubsequences: false).map { token in
@@ -71,42 +76,7 @@ struct FleetSocketPeerCloseTests {
             let started = Date()
             print("FLEET_PEER_CLOSE mode=\(mode) epoch=\(epoch) begin=\(started.timeIntervalSince1970)")
             let consumers = ports.map { port in
-                Task {
-                    var frames = 0
-                    var terminalError: String?
-                    if useClient {
-                        do {
-                            let client = MinerAPIClient(
-                                device: MinerDevice(name: "Owned peer-close \(port)", address: "127.0.0.1:\(port)"),
-                                session: session
-                            )
-                            for try await _ in try client.liveStream() {
-                                frames += 1
-                            }
-                        } catch {
-                            terminalError = String(describing: error)
-                        }
-                    } else {
-                        let url = URL(string: "ws://127.0.0.1:\(port)/api/ws/live")!
-                        let socket = session.webSocketTask(with: url)
-                        socket.resume()
-                        defer { socket.cancel(with: .goingAway, reason: nil) }
-                        do {
-                            while !Task.isCancelled {
-                                _ = try await socket.receive()
-                                frames += 1
-                            }
-                        } catch {
-                            if socket.closeCode != .normalClosure {
-                                terminalError = String(describing: error)
-                            }
-                        }
-                    }
-                    await ledger.record(PeerCloseObservation(
-                        port: port, frames: frames,
-                        elapsed: Date().timeIntervalSince(started), terminalError: terminalError
-                    ))
-                }
+                Task { await observe(port: port, useClient: useClient, session: session, ledger: ledger, started: started) }
             }
 
             let deadline = Date().addingTimeInterval(6)
@@ -135,9 +105,9 @@ struct FleetSocketPeerCloseTests {
                 "naturallyCompleted": String(natural.count),
                 "activeAtDeadline": String(activeAtDeadline),
                 "remainingTasksAfterCleanup": String(remainingTasks),
-                "observations": String(decoding: try JSONEncoder().encode(natural), as: UTF8.self)
+                "observations": try Self.encodedJSON(natural)
             ]
-            let encoded = String(decoding: try JSONEncoder().encode(report), as: UTF8.self)
+            let encoded = try Self.encodedJSON(report)
             print("FLEET_PEER_CLOSE \(encoded)")
             Attachment.record(encoded, named: "peer-close-\(mode)-epoch-\(epoch).json")
             #expect(natural.count == ports.count, "All twenty streams must finish from peer close, not forced cancellation")
@@ -153,4 +123,48 @@ struct FleetSocketPeerCloseTests {
             try await Task.sleep(for: .milliseconds(700))
         }
     }
+
+    private func observe(
+        port: Int,
+        useClient: Bool,
+        session: URLSession,
+        ledger: PeerCloseLedger,
+        started: Date
+    ) async {
+        var frames = 0
+        var terminalError: String?
+        if useClient {
+            do {
+                let client = MinerAPIClient(
+                    device: MinerDevice(name: "Owned peer-close \(port)", address: "127.0.0.1:\(port)"),
+                    session: session
+                )
+                for try await _ in try client.liveStream() { frames += 1 }
+            } catch {
+                terminalError = String(describing: error)
+            }
+        } else {
+            let url = URL(string: "ws://127.0.0.1:\(port)/api/ws/live")!
+            let socket = session.webSocketTask(with: url)
+            socket.resume()
+            defer { socket.cancel(with: .goingAway, reason: nil) }
+            do {
+                while !Task.isCancelled {
+                    _ = try await socket.receive()
+                    frames += 1
+                }
+            } catch {
+                if socket.closeCode != .normalClosure {
+                    terminalError = String(describing: error)
+                }
+            }
+        }
+        await ledger.record(PeerCloseObservation(
+            port: port,
+            frames: frames,
+            elapsed: Date().timeIntervalSince(started),
+            terminalError: terminalError
+        ))
+    }
+
 }

@@ -5,12 +5,13 @@ import App from '../App'
 import { IPhoneDemo, MacDemo, NativePreview } from '../components/AppDemos'
 import captures from './native-captures.json'
 import { captureFor, nativeScreens, screensFor } from './nativeScreens'
+import { compareText } from './order'
 
 describe('actual native capture contract', () => {
   it('maps every screen to exactly one distinct reviewed capture', () => {
     const ids = nativeScreens.map(screen => screen.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(captures.captures.map(capture => capture.id).sort()).toEqual([...ids].sort())
+    expect(captures.captures.map(capture => capture.id).sort(compareText)).toEqual([...ids].sort(compareText))
     expect(new Set(captures.captures.map(capture => capture.sha256)).size).toBe(ids.length)
     expect(screensFor('mac')).toHaveLength(11)
     expect(screensFor('iphone')).toHaveLength(7)

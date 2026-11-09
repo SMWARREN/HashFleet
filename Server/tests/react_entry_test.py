@@ -21,6 +21,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 HTTPD = os.environ.get('HASHFLEET_TEST_HTTPD', '/usr/sbin/httpd')
@@ -70,6 +71,8 @@ class Fixture:
             (site / '.env.local').write_text('synthetic-private-marker')
             (site / '.git').mkdir()
             (site / '.git/config').write_text('synthetic-private-marker')
+            (site / 'companion').mkdir(exist_ok=True)
+            shutil.copyfile(ROOT / 'Server/public/companion/index.html', site / 'companion/index.html')
         self.index = (self.root / 'site/index.html').read_bytes()
         modules = ('mpm_prefork', 'unixd', 'authz_core', 'headers', 'dir', 'mime', 'alias', 'autoindex', 'rewrite')
         for module in modules:
@@ -195,6 +198,24 @@ class ReactEntryTests(unittest.TestCase):
                     self.assertEqual(headers.get_all(name), [expected], name)
                 self.assertNotIn(b'synthetic-private-marker', body)
 
+    def test_retired_companion_redirects_without_refreshing_root(self):
+        for route in ('/companion', '/companion/', '/companion/index.html'):
+            for method in ('GET', 'HEAD'):
+                with self.subTest(route=route, method=method):
+                    status, headers, body = self.fixture.request(route, method)
+                    self.assertEqual(status, 302)
+                    location = urlsplit(headers['Location'])
+                    self.assertEqual(location.path, '/')
+                    self.assertIn(location.netloc, ('', f'127.0.0.1:{self.fixture.port}'))
+                    if method == 'HEAD':
+                        self.assertEqual(body, b'')
+        status, headers, body = self.fixture.request('/')
+        self.assertEqual(status, 200)
+        self.assertNotIn('Location', headers)
+        self.assertEqual(body, self.fixture.index)
+        for relative in ('Server/public/index.html', 'Server/public/companion/index.html'):
+            self.assertNotIn('http-equiv="refresh"', (ROOT / relative).read_text())
+
     def test_unknown_page_keeps_404_and_uses_react(self):
         for route in ('/missing-native-parity-page', '/demo/unknown', '/demo/mac/extra'):
             with self.subTest(route=route):
@@ -204,7 +225,7 @@ class ReactEntryTests(unittest.TestCase):
 
     def test_missing_assets_apis_and_private_paths_do_not_become_spa_pages(self):
         for route in ('/assets/missing.js', '/images/missing.webp', '/api/no-such-route',
-                      '/hashfleet-private/config.php', '/src/App.tsx'):
+                      '/hashfleet-private/config.php', '/src/App.tsx', '/companion/missing'):
             with self.subTest(route=route):
                 status, _, body = self.fixture.request(route)
                 self.assertEqual(status, 404)

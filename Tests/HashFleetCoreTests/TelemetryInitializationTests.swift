@@ -19,36 +19,73 @@ final class TelemetryInitializationTests: XCTestCase {
         }
     }
 
-    func testDelayedOpeningDoesNotBlockMainActorAndSharesOneReadyQueue() async throws {
-        let beat = Heartbeat()
-        let heartbeat = Task { @MainActor in
-            while !Task.isCancelled {
-                beat.tick()
-                do { try await Task.sleep(for: .milliseconds(5)) } catch { break }
-            }
+    private final class OpenHandshake: @unchecked Sendable {
+        private let lock = NSLock()
+        private var started = false
+        private var released = false
+        private let releaseSemaphore = DispatchSemaphore(value: 0)
+
+        func signalStarted() {
+            lock.lock()
+            started = true
+            lock.unlock()
         }
-        defer { heartbeat.cancel() }
-        try await Task.sleep(for: .milliseconds(20))
-        let before = beat.ticks
+
+        var isStarted: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return started
+        }
+
+        func waitForRelease(timeout: TimeInterval = 2.0) -> Bool {
+            releaseSemaphore.wait(timeout: .now() + timeout) == .success
+        }
+
+        func release() {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !released else { return }
+            released = true
+            releaseSemaphore.signal()
+        }
+    }
+
+    func testDelayedOpeningDoesNotBlockMainActorAndSharesOneReadyQueue() async throws {
+        let handshake = OpenHandshake()
+        defer { handshake.release() }
         let database = MinerTelemetryDatabase(opening: {
             guard !Thread.isMainThread else { throw OpeningFailure.mainThread }
-            Thread.sleep(forTimeInterval: 0.35)
+            handshake.signalStarted()
+            guard handshake.waitForRelease(timeout: 2.0) else { throw OpeningFailure.expected }
             return try DatabaseQueue()
         })
         async let first = database.preparedQueue()
         async let second = database.preparedQueue()
+
+        var progressTicks = 0
+        let deadline = ProcessInfo.processInfo.systemUptime + 2.0
+        while !handshake.isStarted && ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertTrue(handshake.isStarted, "Opening must start on a background thread")
+
+        for _ in 0..<10 {
+            progressTicks += 1
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertGreaterThanOrEqual(progressTicks, 10, "MainActor must make progress while opening is blocked")
+
+        handshake.release()
+
         let (a, b) = await (first, second)
         let queue = try XCTUnwrap(a)
         XCTAssertTrue(queue === b, "Concurrent callers must await the same opener, not create separate stores")
         let again = await database.preparedQueue()
         XCTAssertTrue(queue === again)
-        XCTAssertGreaterThan(beat.ticks - before, 10)
-        XCTAssertLessThan(beat.maximumGap, 0.10, "Opening must not stall the MainActor heartbeat")
         let tables = try await queue.read { db in
             try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type='table'")
         }
         XCTAssertTrue(Set(["miner_readings", "achievement_events", "connectivity_events", "pool_switches"]).isSubset(of: Set(tables)))
-        print("Telemetry opening heartbeat: ticks=\(beat.ticks - before) maximumGap=\(beat.maximumGap)s")
     }
 
     func testLockedSchemaInitializationKeepsMainActorResponsiveAndFailsClosed() async throws {

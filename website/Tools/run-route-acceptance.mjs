@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parsePlaywrightResult } from './playwright-result.mjs'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const origin = process.argv[2] ?? 'http://127.0.0.1:4175'
 assert(['http://127.0.0.1:4175', 'https://hashfleet.app'].includes(origin), 'Use the isolated Apache fixture or verified product site')
@@ -24,9 +25,8 @@ function cli(name, args) {
 cli('open', ['open', origin])
 cli('acceptance', ['run-code', fs.readFileSync(path.join(root, 'Tools/route-acceptance.js'), 'utf8')])
 const output = cli('result', ['eval', 'window.__hashfleetRouteAcceptance'])
-const match = output.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/)
-assert(match, `Missing actual browser result: ${relative}`)
-const result = JSON.parse(match[1].trim())
+const result = parsePlaywrightResult(output)
+assert(result !== undefined, `Missing actual browser result: ${relative}`)
 fs.writeFileSync(path.join(directory, 'result.json'), JSON.stringify(result, null, 2) + '\n')
 assert(result?.status === 'passed' && result.origin === origin && result.responseInterception === false && result.checks >= 100, `Route acceptance failed: ${relative}`)
 console.log(JSON.stringify({ ...result, artifacts: relative }, null, 2))

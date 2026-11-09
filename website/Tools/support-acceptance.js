@@ -3,7 +3,12 @@ async (page) => {
   const checks = []
   const errors = []
   const externalRequests = []
-  const check = (condition, label) => { if (!condition) throw new Error(label); checks.push(label) }
+  const check = (condition, label) => {
+    if (!condition) {
+      throw new Error(label)
+    }
+    checks.push(label)
+  }
   page.on('pageerror', error => errors.push(error.message))
   page.on('request', request => { if (new URL(request.url()).origin !== origin) externalRequests.push(request.url()) })
   await page.setViewportSize({ width: 1440, height: 1080 })

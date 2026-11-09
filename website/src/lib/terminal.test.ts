@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import TerminalDemo from '../components/TerminalDemo'
 import { demoMiners } from './demo'
 import captures from './cli-captures.json'
+import { compareText } from './order'
 import {
   createTerminalState,
   MAX_COMMAND_LENGTH,
@@ -86,7 +87,7 @@ describe('documented CLI sample commands', () => {
     expect(runCommand('hashfleet status --details').output).toBe(captures.commands.details)
     expect(runCommand('hashfleet --help').output).toBe(captures.commands.help)
     expect(runCommand('hashfleet status --json').output).toBe(captures.commands.json)
-    expect(captures.requestAudit.length).toBe(15)
+    expect(captures.requestAudit).toHaveLength(15)
     expect(captures.requestAudit.every(([method, path]) => method === 'GET' && path === '/api/system/info')).toBe(true)
   })
 
@@ -119,11 +120,11 @@ describe('truthful snapshot data and algorithm units', () => {
     const result = runCommand('hashfleet status --json')
     expect(result.kind).toBe('success')
     const snapshot = JSON.parse(result.output)
-    expect(Object.keys(snapshot).sort()).toEqual(['miners', 'observedAt'])
+    expect(Object.keys(snapshot).sort(compareText)).toEqual(['miners', 'observedAt'])
     expect(snapshot.observedAt).toBe(SAMPLE_OBSERVED_AT)
     expect(snapshot.miners).toHaveLength(3)
     for (const miner of snapshot.miners) {
-      expect(Object.keys(miner).sort()).toEqual(['device', 'info', 'observedAt'])
+      expect(Object.keys(miner).sort(compareText)).toEqual(['device', 'info', 'observedAt'])
       expect(miner.device.id).toMatch(/^[0-9a-f-]{36}$/)
       expect(miner.observedAt).toBe(SAMPLE_OBSERVED_AT)
       expect(miner.info.hashRate).toBeGreaterThan(0)

@@ -39,7 +39,11 @@ async function request(route, { status = 200, method = 'GET', file, type } = {})
 await request('/', { file: 'index.html', type: /^text\/html\b/ })
 await request('/', { method: 'HEAD', type: /^text\/html\b/ })
 for (const file of walk(root).filter(file => file !== '.htaccess')) {
-  const type = file.endsWith('.js') ? /javascript/ : file.endsWith('.css') ? /^text\/css\b/ : file.endsWith('.png') ? /^image\/png\b/ : file.endsWith('.xml') ? /xml/ : undefined
+  let type
+  if (file.endsWith('.js')) type = /javascript/
+  else if (file.endsWith('.css')) type = /^text\/css\b/
+  else if (file.endsWith('.png')) type = /^image\/png\b/
+  else if (file.endsWith('.xml')) type = /xml/
   await request(`/${file}`, { file, type })
 }
 for (const route of ['/assets/', '/images/', '/.htaccess']) {

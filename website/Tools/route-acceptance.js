@@ -13,7 +13,12 @@ async (page) => {
     'permissions-policy': 'camera=(), microphone=(), geolocation=()',
     'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
   }
-  const check = (value, label) => { if (!value) throw new Error(`Route acceptance: ${label}`); checks.push(label) }
+  const check = (value, label) => {
+    if (!value) {
+      throw new Error(`Route acceptance: ${label}`)
+    }
+    checks.push(label)
+  }
   page.on('pageerror', error => errors.push(error.message))
   page.on('requestfailed', request => failedRequests.push(request.url()))
   page.on('request', request => requests.push({ url: request.url(), method: request.method() }))

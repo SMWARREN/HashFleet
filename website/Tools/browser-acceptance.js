@@ -1,4 +1,12 @@
 async (page) => {
+async function verifyFaqDisclosures(page, check) {
+  for (const details of await page.locator('.faq-list details').all()) {
+    await details.locator('summary').click()
+    check(await details.getAttribute('open') !== null, 'FAQ opens with its native disclosure control')
+    await details.locator('summary').click()
+  }
+}
+
   const currentOrigin = new URL(page.url()).origin
   const localOrigins = ['http://127.0.0.1:4174', 'http://127.0.0.1:4175']
   const publicOrigin = 'https://hashfleet.app'
@@ -159,7 +167,7 @@ async (page) => {
   const snapshot = JSON.parse(await lastResult().innerText())
   check(snapshot.miners.length === 3, 'Terminal JSON contains the three native demo miners')
   check(snapshot.miners.every(miner => miner.device.kind === 'espMiner'), 'Terminal JSON contains ASIC-only sample kinds')
-  check(snapshot.miners.every(miner => /\.invalid$/.test(miner.device.address)), 'Terminal JSON contains reserved fictional hosts')
+  check(snapshot.miners.every(miner => miner.device.address.endsWith('.invalid')), 'Terminal JSON contains reserved fictional hosts')
   await command.fill('hashfleet status gamma-demo.invalid office-demo.invalid')
   await command.press('Enter')
   await textIncludes(lastResult(), '2/2 online', 'Terminal explicit host filtering uses native fixture hosts')
@@ -176,11 +184,7 @@ async (page) => {
   await terminal.getByRole('button', { name: 'hashfleet status', exact: true }).click()
   await textIncludes(lastResult(), '3/3 online', 'Terminal remains usable after clear')
 
-  for (const details of await page.locator('.faq-list details').all()) {
-    await details.locator('summary').click()
-    check(await details.getAttribute('open') !== null, 'FAQ opens with its native disclosure control')
-    await details.locator('summary').click()
-  }
+  await verifyFaqDisclosures(page, check)
   const privacyButton = page.getByRole('button', { name: 'Privacy', exact: true })
   await privacyButton.click()
   await textIncludes(page.getByRole('dialog'), 'fictional readings', 'Privacy explains demo data honestly')

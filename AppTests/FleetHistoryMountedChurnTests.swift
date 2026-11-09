@@ -261,7 +261,7 @@ struct FleetHistoryMountedChurnTests {
         var digestChangeCount = 0
         var unitStateChanges = 0
         var previousDigest: UInt64 = 0
-        var previousUnit: HashrateUnit? = nil
+        var previousUnit: HashrateUnit?
         var totalPointsGenerated = 0
         var inputChecksum: UInt64 = 20261107
 
@@ -333,12 +333,20 @@ struct FleetHistoryMountedChurnTests {
 
             if progressInterval > 0, step > 0, step % progressInterval == 0 {
                 let currentElapsed = Date().timeIntervalSince(startedAt)
-                print("Mounted churn checkpoint [step \(step)/\(totalSteps)]: renderCount=\(renderReceiptCount), digestChanges=\(digestChangeCount), unitFlips=\(unitStateChanges), elapsed=\(currentElapsed)s")
+                print(
+                    "Mounted churn checkpoint [step \(step)/\(totalSteps)]: " +
+                    "renderCount=\(renderReceiptCount), digestChanges=\(digestChangeCount), " +
+                    "unitFlips=\(unitStateChanges), elapsed=\(currentElapsed)s"
+                )
             }
         }
 
         let elapsed = Date().timeIntervalSince(startedAt)
-        print("Final mounted churn receipts [\(totalSteps) steps]: renderCount=\(renderReceiptCount), digestChanges=\(digestChangeCount), unitFlips=\(unitStateChanges), generatedPoints=\(totalPointsGenerated), elapsed=\(elapsed)s")
+        print(
+            "Final mounted churn receipts [\(totalSteps) steps]: " +
+            "renderCount=\(renderReceiptCount), digestChanges=\(digestChangeCount), " +
+            "unitFlips=\(unitStateChanges), generatedPoints=\(totalPointsGenerated), elapsed=\(elapsed)s"
+        )
 
         #expect(renderReceiptCount == totalSteps, "Must complete all \(totalSteps) mounted card updates")
         #expect(unitStateChanges >= minUnitFlips, "Must observe at least \(minUnitFlips) real alternating unit transitions (observed \(unitStateChanges))")

@@ -28,12 +28,17 @@ BINARY = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / ".build/ou
 OUT = ROOT / "website/src/lib/cli-captures.json"
 ALIASES = ["gamma-demo.invalid", "office-demo.invalid", "supra-demo.invalid"]
 NAMES = ["Workshop Gamma", "Office Gamma", "Little Supra"]
+POOL_PRIMARY = "solo.ckpool.org"
+POOL_FALLBACK = "bch.solofury.com"
+POOL_STRATUM = "stratum.ckpool.org"
+DEMO_VERSION = "Demo fixture"
+BEST_DIFFICULTY = "18.4G"
 # Safe synthetic equivalents of App/Store/DemoFleet.swift. Pool users, wallet identities,
 # credentials, local addresses and all unrelated secrets are intentionally omitted.
 INFO = [
-    {"hostname":"Workshop Gamma","hashRate":1218.0,"power":19.2,"temp":53.0,"vrTemp":61.0,"fanspeed":65,"fanrpm":4200,"voltage":5200,"frequency":575,"coreVoltage":1150,"sharesAccepted":12486,"sharesRejected":3,"uptimeSeconds":245820,"version":"Demo fixture","ASICModel":"BM1370","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":"18.4G","bestSessionDiff":"9.2M","stratumURL":"solo.ckpool.org","primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":"bch.solofury.com","pools":[{"id":0,"stratumURL":"stratum.ckpool.org"},{"id":1,"stratumURL":"bch.solofury.com"}],"wifiRSSI":-48},
-    {"hostname":"Office Gamma","hashRate":1164.0,"power":19.2,"temp":56.0,"vrTemp":62.0,"fanspeed":65,"fanrpm":4400,"voltage":5200,"frequency":575,"coreVoltage":1150,"sharesAccepted":13206,"sharesRejected":3,"uptimeSeconds":245820,"version":"Demo fixture","ASICModel":"BM1370","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":"18.4G","bestSessionDiff":"9.2M","stratumURL":"solo.ckpool.org","primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":"bch.solofury.com","pools":[{"id":0,"stratumURL":"stratum.ckpool.org"},{"id":1,"stratumURL":"bch.solofury.com"}],"wifiRSSI":-48},
-    {"hostname":"Little Supra","hashRate":638.0,"power":12.4,"temp":59.0,"vrTemp":63.0,"fanspeed":65,"fanrpm":4600,"voltage":5200,"frequency":525,"coreVoltage":1150,"sharesAccepted":13926,"sharesRejected":3,"uptimeSeconds":245820,"version":"Demo fixture","ASICModel":"BM1368","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":"18.4G","bestSessionDiff":"9.2M","stratumURL":"solo.ckpool.org","primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":"bch.solofury.com","pools":[{"id":0,"stratumURL":"stratum.ckpool.org"},{"id":1,"stratumURL":"bch.solofury.com"}],"wifiRSSI":-48},
+    {"hostname":"Workshop Gamma","hashRate":1218.0,"power":19.2,"temp":53.0,"vrTemp":61.0,"fanspeed":65,"fanrpm":4200,"voltage":5200,"frequency":575,"coreVoltage":1150,"sharesAccepted":12486,"sharesRejected":3,"uptimeSeconds":245820,"version":DEMO_VERSION,"ASICModel":"BM1370","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":BEST_DIFFICULTY,"bestSessionDiff":"9.2M","stratumURL":POOL_PRIMARY,"primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":POOL_FALLBACK,"pools":[{"id":0,"stratumURL":POOL_STRATUM},{"id":1,"stratumURL":POOL_FALLBACK}],"wifiRSSI":-48},
+    {"hostname":"Office Gamma","hashRate":1164.0,"power":19.2,"temp":56.0,"vrTemp":62.0,"fanspeed":65,"fanrpm":4400,"voltage":5200,"frequency":575,"coreVoltage":1150,"sharesAccepted":13206,"sharesRejected":3,"uptimeSeconds":245820,"version":DEMO_VERSION,"ASICModel":"BM1370","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":BEST_DIFFICULTY,"bestSessionDiff":"9.2M","stratumURL":POOL_PRIMARY,"primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":POOL_FALLBACK,"pools":[{"id":0,"stratumURL":POOL_STRATUM},{"id":1,"stratumURL":POOL_FALLBACK}],"wifiRSSI":-48},
+    {"hostname":"Little Supra","hashRate":638.0,"power":12.4,"temp":59.0,"vrTemp":63.0,"fanspeed":65,"fanrpm":4600,"voltage":5200,"frequency":525,"coreVoltage":1150,"sharesAccepted":13926,"sharesRejected":3,"uptimeSeconds":245820,"version":DEMO_VERSION,"ASICModel":"BM1368","asicCount":2,"statsFrequency":30,"autofanspeed":1,"temptarget":55,"bestDiff":BEST_DIFFICULTY,"bestSessionDiff":"9.2M","stratumURL":POOL_PRIMARY,"primaryPoolIndex":0,"secondaryPoolIndex":1,"isUsingFallbackStratum":0,"fallbackStratumURL":POOL_FALLBACK,"pools":[{"id":0,"stratumURL":POOL_STRATUM},{"id":1,"stratumURL":POOL_FALLBACK}],"wifiRSSI":-48},
 ]
 # Count is 12486 + 2 * 720, matching DemoFleet.sampleRawInfo.
 
@@ -51,6 +56,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *_args):
+        # BaseHTTPRequestHandler's logger is intentionally silent. Requests are
+        # instead recorded in the synthetic fixture's server.audit list.
         pass
 
     def _reject(self):

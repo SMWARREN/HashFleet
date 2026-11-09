@@ -2,6 +2,11 @@
 
 HashFleet can be shared as source without access to the original developer's accounts or miners. The generated Xcode project and local Swift package are included, along with the GPL license, API reference, privacy documentation and tests.
 
+For the maintained repository's PR checks and versioned Mac/CLI releases, see
+[automation and signing setup](AUTOMATION.md). Public app and CLI downloads remain
+separate. The local combined installer described elsewhere is not the public
+Homebrew release pipeline.
+
 ## Prepare a source archive
 
 Start from a clean, committed checkout:

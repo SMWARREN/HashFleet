@@ -4,7 +4,7 @@ import { copySupportAddress, cryptoSupport, paypalSupportURL } from '../lib/supp
 import type { CryptoSupport } from '../lib/support'
 import './support.css'
 
-function CryptoCard({ destination }: { destination: CryptoSupport }) {
+function CryptoCard({ destination }: Readonly<{ destination: CryptoSupport }>) {
   const [status, setStatus] = useState('')
   const [copying, setCopying] = useState(false)
   const addressRef = useRef<HTMLElement>(null)

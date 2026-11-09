@@ -113,7 +113,7 @@ struct FleetMinerDetailGridCacheRegressionTests {
         var cache = FleetMinerDetailGrid.Cache()
 
         var measurementsPerformed = 0
-        let measurementClosure: (Int, CGFloat) -> CGFloat = { index, _ in
+        let measurementClosure: (Int, CGFloat) -> CGFloat = { _, _ in
             measurementsPerformed += 1
             return 100.0
         }

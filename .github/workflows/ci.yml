@@ -1,44 +1,231 @@
-name: Swift validation
+name: HashFleet CI
+
+# Contribution CI. Pull requests run with a read-only token and no secrets. This workflow
+# deliberately never uses pull_request_target. Pushes to main re-run the same checks after a
+# reviewed merge, and the release workflow may gate on a successful push-to-main run.
+#
+# Branch protection should require exactly one status check: "CI required".
+#
+# Match the working local Xcode 27.2 SDK, including SwiftUI toolbar APIs.
+# Standard arm64 xcode-27 is a preview image, not the paid xlarge runner.
+# Source: https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       mode:
-        description: "Runner access check or explicitly requested app validation"
+        description: "runner-check confirms runner access only. simulator-ui-tests is the heavy manual opt-in suite."
         type: choice
         required: true
         default: runner-check
         options:
           - runner-check
-          - validation
+          - simulator-ui-tests
+
 permissions:
   contents: read
+
+concurrency:
+  group: hashfleet-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  # Supersede stale pull request runs only. Each main push has its own group (its commit SHA),
+  # so a newer push can never cancel or replace a pending run that release gating may need.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+
 jobs:
+  repo-checks:
+    name: Repository checks
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Syntax, source contracts and offline PHP tests
+        run: Scripts/ci/repo-checks.sh
+
+  website:
+    name: Website tests and build
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # vitest 5 requires Node ^22.12, ^24 or >=26.
+          node-version: 24
+      - run: npm ci
+      - name: Website tests with genuine V8 coverage
+        run: npm run test:coverage -- --coverage.reportsDirectory="$RUNNER_TEMP/hashfleet-website-coverage"
+      - run: npm run build
+      - name: Isolated hosting installer contracts
+        working-directory: .
+        env:
+          JCODE_SCRATCH_DIR: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          export HASHFLEET_TEST_PHP="$(command -v php)"
+          test -n "$HASHFLEET_TEST_PHP"
+          python3 -B Server/tests/deployment_test.py
+
+  swiftlint:
+    name: SwiftLint
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download and verify SwiftLint 0.65.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TOOL_DIR="$RUNNER_TEMP/hashfleet-swiftlint"
+          mkdir -m 700 "$TOOL_DIR"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --retry 3 --retry-all-errors --retry-max-time 240 --connect-timeout 20 --max-time 120 \
+            --header 'Accept: application/octet-stream' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/realm/SwiftLint/releases/assets/524187565 \
+            --output "$TOOL_DIR/swiftlint.zip"
+          printf '%s  %s\n' c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0 "$TOOL_DIR/swiftlint.zip" | shasum -a 256 -c -
+          unzip -q "$TOOL_DIR/swiftlint.zip" -d "$TOOL_DIR/bin"
+          test "$("$TOOL_DIR/bin/swiftlint" version)" = 0.65.1
+      - name: Enforce existing SwiftLint configuration
+        run: |
+          "$RUNNER_TEMP/hashfleet-swiftlint/bin/swiftlint" lint \
+            --config .swiftlint.yml --strict --no-cache --reporter github-actions-logging
+
+  swift-package:
+    name: Swift package tests and CLI build
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: swift --version && xcodebuild -version
+      - name: Test HashFleetCore and HashFleetWatchCore
+        run: swift test
+      - name: Build the hashfleet CLI and run its offline help
+        run: |
+          swift build --product hashfleet
+          "$(swift build --show-bin-path)/hashfleet" --help >/dev/null
+
+  mac-app-build:
+    name: Unsigned macOS app build
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Build HashFleetMac without signing
+        run: |
+          xcodebuild \
+            -project HashFleet.xcodeproj \
+            -scheme HashFleetMac \
+            -configuration Debug \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/derived-mac" \
+            -onlyUsePackageVersionsFromResolvedFile \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  ios-app-build:
+    name: Unsigned iOS simulator app build
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Build HashFleet (with widgets, notification service and Watch app) without signing
+        run: |
+          xcodebuild \
+            -project HashFleet.xcodeproj \
+            -scheme HashFleet \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/derived-ios" \
+            -onlyUsePackageVersionsFromResolvedFile \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  # Stable aggregate for branch protection. It fails on any failed, cancelled or skipped
+  # prerequisite, so the individual job names above can change without editing repository settings.
+  ci-required:
+    name: CI required
+    if: ${{ always() && github.event_name != 'workflow_dispatch' }}
+    needs: [repo-checks, website, swiftlint, swift-package, mac-app-build, ios-app-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every prerequisite to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Prerequisite results: $RESULTS"
+          read -r -a prerequisites <<< "$RESULTS"
+          # Keep this count aligned with the six explicit jobs in needs above.
+          [ "${#prerequisites[@]}" -eq 6 ] || { echo "Missing prerequisite results." >&2; exit 1; }
+          for result in "${prerequisites[@]}"; do
+            [ "$result" = success ] || { echo "A prerequisite did not succeed." >&2; exit 1; }
+          done
+
   runner-check:
-    if: ${{ inputs.mode == 'runner-check' }}
-    runs-on: macos-15
+    name: Runner access check
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'runner-check' }}
+    runs-on: xcode-27
     timeout-minutes: 2
     permissions: {}
     steps:
       - name: Confirm runner access without running application code
-        run: printf '%s\n' 'Runner access confirmed. No checkout, builds, app tests, or signing secrets used.'
-  test-and-build:
-    if: ${{ inputs.mode == 'validation' }}
-    runs-on: macos-15
+        run: |
+          printf '%s\n' 'Runner access confirmed. No checkout, builds, app tests, or signing secrets used.'
+          xcodebuild -version
+
+  simulator-ui-tests:
+    name: Simulator UI tests (manual)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'simulator-ui-tests' }}
+    runs-on: xcode-27
+    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - name: Toolchain
-        run: swift --version && xcodebuild -version
-      - name: Test API core
-        run: swift test
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build iOS simulator app
-        run: xcodebuild -project HashFleet.xcodeproj -scheme HashFleet -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-      - name: Native state, safety, and UI tests
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Native state, safety, and UI tests on an iPhone simulator
         shell: bash
         run: |
-          DEVICE_ID=$(xcrun simctl list devices available | grep 'iPhone' | head -n 1 | sed -E 's/.*\(([A-F0-9-]{36})\).*/\1/')
+          DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((x["udid"] for runtime,devices in sorted(d["devices"].items(), reverse=True) if "iOS" in runtime for x in devices if x.get("isAvailable") and x["name"].startswith("iPhone")), ""))')
           test -n "$DEVICE_ID"
-          xcodebuild -project HashFleet.xcodeproj -scheme HashFleet -destination "platform=iOS Simulator,id=$DEVICE_ID" -derivedDataPath build -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
+          xcodebuild \
+            -project HashFleet.xcodeproj \
+            -scheme HashFleet \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath "$RUNNER_TEMP/derived-ui" \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO \
+            test
