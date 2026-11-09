@@ -6,10 +6,9 @@ name: HashFleet CI
 #
 # Branch protection should require exactly one status check: "CI required".
 #
-# Runner and SDK choice: Package.swift targets watchOS 26.5, which needs Xcode 26.5 or newer.
-# The macos-15 image tops out at Xcode 26.3 (watchOS SDK 26.2). The macos-26 arm64 image
-# provides Xcode 26.6 and 26.5. Source of truth:
-# https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md
+# Match the working local Xcode 27.2 SDK, including SwiftUI toolbar APIs.
+# Standard arm64 xcode-27 is a preview image, not the paid xlarge runner.
+# Source: https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md
 on:
   pull_request:
   push:
@@ -35,7 +34,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
 
 jobs:
   repo-checks:
@@ -73,7 +72,7 @@ jobs:
   swift-package:
     name: Swift package tests and CLI build
     if: ${{ github.event_name != 'workflow_dispatch' }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,7 +90,7 @@ jobs:
   mac-app-build:
     name: Unsigned macOS app build
     if: ${{ github.event_name != 'workflow_dispatch' }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -114,7 +113,7 @@ jobs:
   ios-app-build:
     name: Unsigned iOS simulator app build
     if: ${{ github.event_name != 'workflow_dispatch' }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -156,7 +155,7 @@ jobs:
   runner-check:
     name: Runner access check
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'runner-check' }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 2
     permissions: {}
     steps:
@@ -168,7 +167,7 @@ jobs:
   simulator-ui-tests:
     name: Simulator UI tests (manual)
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'simulator-ui-tests' }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

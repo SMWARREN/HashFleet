@@ -29,4 +29,5 @@ python3 -B Scripts/check-native-navigation.py
 python3 -B Scripts/check-shared-page-shells.py
 python3 -B Scripts/tests/test_crypto_support.py
 python3 -B Scripts/tests/test_native_add_miner_completion.py
+python3 -B Scripts/release/test_release.py
 echo "Repository checks passed."
