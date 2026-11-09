@@ -2,7 +2,10 @@
 declare(strict_types=1);
 
 /** Private APNs transport. Fixed Apple endpoints, topic, TLS and HTTP/2 only. */
+final class FleetAPNsException extends RuntimeException {}
+
 final class FleetAPNs {
+    private const INVALID_SIGNATURE = 'Invalid signature';
     private ?OpenSSLAsymmetricKey $key = null;
 
     public function __construct(private array $config) {}
@@ -15,11 +18,15 @@ final class FleetAPNs {
             || !is_file($c['key_file'] ?? '') || !is_readable($c['key_file'])
             || ((fileperms($c['key_file']) & 0077) !== 0)
             || !function_exists('curl_version')
-            || !(curl_version()['features'] & CURL_VERSION_HTTP2)) return false;
+            || !(curl_version()['features'] & CURL_VERSION_HTTP2)) {
+            return false;
+        }
         $key = @openssl_pkey_get_private('file://' . $c['key_file']);
         $details = $key ? openssl_pkey_get_details($key) : false;
         if (!$details || ($details['type'] ?? null) !== OPENSSL_KEYTYPE_EC
-            || ($details['ec']['curve_name'] ?? '') !== 'prime256v1') return false;
+            || ($details['ec']['curve_name'] ?? '') !== 'prime256v1') {
+            return false;
+        }
         $this->key = $key;
         return true;
     }
@@ -32,39 +39,55 @@ final class FleetAPNs {
     public static function derToJose(string $der): string {
         $offset = 0;
         $byte = static function () use ($der, &$offset): int {
-            if ($offset >= strlen($der)) throw new RuntimeException('Invalid signature');
+            if ($offset >= strlen($der)) {
+                throw new FleetAPNsException(self::INVALID_SIGNATURE);
+            }
             return ord($der[$offset++]);
         };
         if ($byte() !== 0x30 || $byte() !== strlen($der) - 2) {
-            throw new RuntimeException('Invalid signature');
+            throw new FleetAPNsException(self::INVALID_SIGNATURE);
         }
         $result = '';
         for ($part = 0; $part < 2; $part++) {
-            if ($byte() !== 0x02) throw new RuntimeException('Invalid signature');
+            if ($byte() !== 0x02) {
+                throw new FleetAPNsException(self::INVALID_SIGNATURE);
+            }
             $length = $byte();
             if ($length < 1 || $length > 33 || $offset + $length > strlen($der)) {
-                throw new RuntimeException('Invalid signature');
+                throw new FleetAPNsException(self::INVALID_SIGNATURE);
             }
             $integer = substr($der, $offset, $length);
             $offset += $length;
-            if (ord($integer[0]) & 0x80) throw new RuntimeException('Invalid signature');
+            if (ord($integer[0]) & 0x80) {
+                throw new FleetAPNsException(self::INVALID_SIGNATURE);
+            }
             $integer = ltrim($integer, "\0");
-            if (strlen($integer) > 32) throw new RuntimeException('Invalid signature');
+            if (strlen($integer) > 32) {
+                throw new FleetAPNsException(self::INVALID_SIGNATURE);
+            }
             $result .= str_pad($integer, 32, "\0", STR_PAD_LEFT);
         }
-        if ($offset !== strlen($der)) throw new RuntimeException('Invalid signature');
+        if ($offset !== strlen($der)) {
+            throw new FleetAPNsException(self::INVALID_SIGNATURE);
+        }
         return $result;
     }
 
     public function jwt(int $now): string {
-        if (!$this->ready()) throw new RuntimeException('Provider is not configured');
+        if (!$this->ready()) {
+            throw new FleetAPNsException('Provider is not configured');
+        }
         // Reuse the same token across minute-by-minute cron processes. Never put this cache in webroot.
         $path = $this->config['jwt_cache'];
         $file = fopen($path, 'c+');
-        if (!$file) throw new RuntimeException('Provider cache is unavailable');
+        if (!$file) {
+            throw new FleetAPNsException('Provider cache is unavailable');
+        }
         chmod($path, 0600);
         try {
-            if (!flock($file, LOCK_EX)) throw new RuntimeException('Provider cache is unavailable');
+            if (!flock($file, LOCK_EX)) {
+                throw new FleetAPNsException('Provider cache is unavailable');
+            }
             $fingerprint = hash('sha256', file_get_contents($this->config['key_file'])
                 . $this->config['key_id'] . $this->config['team_id']);
             $cached = json_decode(stream_get_contents($file, 8192) ?: '{}', true);
@@ -77,7 +100,7 @@ final class FleetAPNs {
             $claims = self::base64url(json_encode(['iss' => $this->config['team_id'], 'iat' => $now], JSON_THROW_ON_ERROR));
             $message = $header . '.' . $claims;
             if (!openssl_sign($message, $der, $this->key, OPENSSL_ALGO_SHA256)) {
-                throw new RuntimeException('Provider signing failed');
+                throw new FleetAPNsException('Provider signing failed');
             }
             $token = $message . '.' . self::base64url(self::derToJose($der));
             rewind($file);
@@ -88,13 +111,29 @@ final class FleetAPNs {
         } finally { flock($file, LOCK_UN); fclose($file); }
     }
 
+    private static function retryAfterHeader(string $header, int $now, int $current): int {
+        if (stripos($header, 'retry-after:') !== 0) {
+            return $current;
+        }
+        $value = trim(substr($header, 12));
+        if (ctype_digit($value)) {
+            $seconds = (int)$value;
+        } else {
+            $retryTimestamp = strtotime($value) ?: $now;
+            $seconds = max(0, $retryTimestamp - $now);
+        }
+        return min(3600, $seconds);
+    }
+
     public function send(array $job, array $payload, int $now): array {
         $host = $job['environment'] === 'sandbox' ? 'api.sandbox.push.apple.com' : 'api.push.apple.com';
         if (!preg_match('/^[a-f0-9]{32,512}$/D', $job['token']) || strlen($job['token']) % 2) {
-            throw new RuntimeException('Invalid stored token');
+            throw new FleetAPNsException('Invalid stored token');
         }
         $json = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        if (strlen($json) > 4096) throw new RuntimeException('Payload exceeds APNs limit');
+        if (strlen($json) > 4096) {
+            throw new FleetAPNsException('Payload exceeds APNs limit');
+        }
         $retryAfter = 0;
         $response = '';
         $curl = curl_init('https://' . $host . '/3/device/' . $job['token']);
@@ -110,23 +149,24 @@ final class FleetAPNs {
                 'apns-expiration: ' . ($now + 300),
                 'apns-collapse-id: ' . hash('sha256', $job['installation'] . ':' . $job['miner']),
             ],
+            // cURL passes the handle first even when only the second argument is needed.
             CURLOPT_HEADERFUNCTION => static function ($handle, string $header) use (&$retryAfter, $now): int {
-                if (stripos($header, 'retry-after:') === 0) {
-                    $value = trim(substr($header, 12));
-                    $seconds = ctype_digit($value) ? (int)$value : max(0, (strtotime($value) ?: $now) - $now);
-                    $retryAfter = min(3600, $seconds);
-                }
+                $retryAfter = self::retryAfterHeader($header, $now, $retryAfter);
                 return strlen($header);
             },
             CURLOPT_WRITEFUNCTION => static function ($handle, string $data) use (&$response): int {
-                if (strlen($response) + strlen($data) > 8192) return 0;
+                if (strlen($response) + strlen($data) > 8192) {
+                    return 0;
+                }
                 $response .= $data;
                 return strlen($data);
             },
         ]);
         $result = curl_exec($curl);
         $status = $result === false ? 0 : (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-        if ((int)curl_getinfo($curl, CURLINFO_HTTP_VERSION) !== CURL_HTTP_VERSION_2_0) $status = 0;
+        if ((int)curl_getinfo($curl, CURLINFO_HTTP_VERSION) !== CURL_HTTP_VERSION_2_0) {
+            $status = 0;
+        }
         curl_close($curl);
         $decoded = json_decode($response, true);
         $reason = is_array($decoded) && is_string($decoded['reason'] ?? null) ? $decoded['reason'] : '';

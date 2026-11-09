@@ -26,7 +26,7 @@ ASSET_STEM = re.compile(r"[A-Za-z0-9_-]+")
 ASSET_PREFIX = "assets/"
 INDEX_FILE = "index.html"
 MEDIA = re.compile(r"^(?:assets|images)/[A-Za-z0-9._/-]+\.(?:png|jpe?g|gif|svg|webp|avif|ico|woff2?)$")
-ROOT_ASSETS = {"_headers", "apple-touch-icon.png", "favicon.png", "robots.txt", "sitemap.xml", "social-card.png"}
+ROOT_ASSETS = {"_headers", "apple-touch-icon.png", "favicon.png", "robots.txt", "sitemap.xml", "social-card.png", "support/index.html"}
 
 
 def hashed_asset(name: str) -> bool:

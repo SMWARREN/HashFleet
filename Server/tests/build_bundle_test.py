@@ -30,12 +30,13 @@ class BundleAssetTests(unittest.TestCase):
         self.assertFalse(PACK.hashed_asset("a-" * 100_000 + "!" + ".js"))
 
     def test_asset_paths_stay_constrained(self):
-        for path in ("assets/app-12345678.js", "images/demo.webp", "favicon.png"):
+        for path in ("assets/app-12345678.js", "images/demo.webp", "favicon.png", "support/index.html"):
             with self.subTest(path=path):
                 self.assertTrue(PACK.allowed_asset(path))
         for path in ("../assets/app-12345678.js", "assets//app-12345678.js",
                      "assets/./app-12345678.js", "assets/plain.js",
-                     "assets/nested/app-12345678.js", "images/../demo.webp"):
+                     "assets/nested/app-12345678.js", "images/../demo.webp",
+                     "other/index.html", "support/index.php", "support/../index.html", "support/nested/index.html"):
             with self.subTest(path=path):
                 self.assertFalse(PACK.allowed_asset(path))
 
