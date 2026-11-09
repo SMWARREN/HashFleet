@@ -76,6 +76,44 @@ gate checks. Missing reports or a failed gate must fail `CI required`. Do not
 label the hosted gate complete merely because the local analysis passed.
 
 
+### Hosted Sonar options researched November 9, 2026
+
+The operator authorized publication of the separate wrapper repository and
+hosting research, not a paid subscription, public exposure of the local server,
+or a HashFleet merge. The local passing gate is not hosted acceptance.
+
+- **Preferred candidate: SonarQube Cloud OSS plan.** Official documentation
+  describes free analysis of public repositories, unlimited branch and pull
+  request analysis, and custom gates. Cloud supports Swift, PHP, Python and
+  JavaScript/TypeScript, including native LCOV import. Confirm OSS eligibility
+  during account onboarding and select CI-based analysis for real coverage.
+  This avoids operating a public server or exposing the development Mac.
+- **Compatibility work is still required.** The current wrapper checks for an
+  exact `sonarapple` plugin in `server.py`; it is not a Cloud-compatible client
+  merely because LCOV validation now works. A separately tested backend adapter
+  must preserve validation and gate enforcement, use Cloud-supported analyzers
+  and issue formats, and validate an actual scan before becoming required CI.
+  Local profiles, baseline and reviewed dispositions do not migrate implicitly.
+- **Self-hosted alternative:** a dedicated HTTPS Sonar server can retain the
+  existing plugin-based workflow, but adds hosting, upgrades, backups, access
+  control and plugin compatibility obligations. Community Build does not supply
+  the same native PR-analysis capabilities as commercial Server editions.
+  No infrastructure or subscription has been purchased.
+- **Fork safety:** untrusted PR builds must not receive `SONAR_TOKEN`. A trusted
+  scan stage needs exact repository/commit binding and an explicit fork policy.
+  A scanner upload alone cannot pass the gate: wait for the actual result and
+  make failures, missing reports and missing mandatory results fail CI.
+
+Primary references checked on the date above:
+
+- [Cloud subscription plans](https://docs.sonarsource.com/sonarqube-cloud/administering-sonarcloud/managing-subscription/subscription-plans)
+- [OSS signup](https://docs.sonarsource.com/sonarqube-cloud/administering-sonarcloud/managing-subscription/signing-up-for-plan)
+- [Cloud Swift support](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/languages/swift)
+- [Cloud languages](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/languages)
+- [Cloud coverage import](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/test-coverage/javascript-typescript-test-coverage)
+- [GitHub integration and gate/fork behavior](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/ci-based-analysis/github-actions-for-sonarcloud)
+- [Server editions](https://www.sonarsource.com/plans-and-pricing/sonarqube/)
+
 ## Release (`.github/workflows/release.yml`, workflow `HashFleet Release`)
 
 Starts only after a successful `HashFleet CI` run. It is never triggered by a pull request.
