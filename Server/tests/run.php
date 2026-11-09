@@ -20,6 +20,7 @@ final class Fixture {
     public FleetService $service;
     public array $sent = [];
     public int $response = 200;
+    public string $reason = '';
     public int $retryAfter = 0;
     public ?Closure $duringSend = null;
     public string $id = '11111111-1111-4111-8111-111111111111';
@@ -33,7 +34,7 @@ final class Fixture {
         $sender = $withSender ? function ($job, $payload): array {
             $this->sent[] = $payload;
             if ($this->duringSend) ($this->duringSend)($job);
-            return ['status' => $this->response, 'retry_after' => $this->retryAfter];
+            return ['status' => $this->response, 'reason' => $this->reason, 'retry_after' => $this->retryAfter];
         } : null;
         if ($initializeService) $this->service = new FleetService($this->config, $this->db, fn() => $this->now, $sender);
     }
@@ -253,8 +254,31 @@ check($f->service->dispatchDue() === 1 && count($f->sent) === 2, 'later interval
 $f = new Fixture(); $f->register(); $f->enable(); $f->due(); $f->response = 403; $f->service->dispatchDue();
 check($f->scalar('SELECT token_valid FROM installations') === 1, 'provider auth failure is not invalid device token');
 check($f->scalar('SELECT status FROM jobs') === 'failed', 'provider configuration failure is recorded');
+// Apple's documented 400 reasons for a token that is unusable for this topic/environment.
+foreach (['BadDeviceToken', 'DeviceTokenNotForTopic'] as $reason) {
+    $f = new Fixture(); $f->register(); $f->enable(); $f->due(); $f->response = 400; $f->reason = $reason;
+    check($f->service->dispatchDue() === 1, "400 $reason is attempted once");
+    check($f->scalar('SELECT token_valid FROM installations') === 0, "400 $reason invalidates matching token generation");
+    check($f->scalar('SELECT status FROM jobs') === 'invalid_token', "400 $reason job recorded as invalid token");
+    check($f->scalar("SELECT detail FROM audit WHERE kind='invalid_token'") === "400:$reason", "400 $reason audit retains sanitized reason");
+    $f->now += 7200;
+    check($f->service->dispatchDue() === 0 && count($f->sent) === 1, "400 $reason is not resent every interval");
+    $f->call('POST', 'register', $f->registration(str_repeat('cd', 32)));
+    $f->response = 200; $f->reason = ''; $f->due();
+    check($f->service->dispatchDue() === 1, "re-registration after 400 $reason restores delivery");
+}
+$f = new Fixture(); $f->register(); $f->enable(); $f->due(); $f->response = 400; $f->reason = 'BadExpirationDate';
+$f->service->dispatchDue();
+check($f->scalar('SELECT token_valid FROM installations') === 1, 'non-token 400 does not invalidate the device');
+check($f->scalar("SELECT detail FROM audit WHERE kind='provider_error'") === '400:BadExpirationDate',
+    'provider error audit retains sanitized APNs reason');
+$f = new Fixture(); $f->register(); $f->enable(); $f->due(); $f->response = 400; $f->reason = "Bad Token\n<script>";
+$f->service->dispatchDue();
+check($f->scalar("SELECT detail FROM audit WHERE kind='provider_error'") === '400:BadTokenscript'
+    && $f->scalar('SELECT token_valid FROM installations') === 1, 'unexpected reason text is sanitized and not trusted');
 $f = new Fixture(); $f->register(); $f->enable(); $f->due(); $f->response = 410; $f->service->dispatchDue();
 check($f->scalar('SELECT token_valid FROM installations') === 0, '410 invalidates matching token generation');
+check($f->scalar("SELECT detail FROM audit WHERE kind='invalid_token'") === '410', '410 audit detail unchanged without reason');
 check($f->service->dispatchDue() === 0, 'invalid token is not retried');
 $f->call('POST', 'register', $f->registration(str_repeat('cd', 32)));
 check($f->scalar('SELECT token_generation FROM installations') === 2 && $f->scalar('SELECT token_valid FROM installations') === 1,

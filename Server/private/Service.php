@@ -462,19 +462,21 @@ final class FleetDispatchWorker {
 
     private function recordResponse(array $job, array $response, int $now): void {
         $status = (int)($response['status'] ?? 0);
+        // Provider reasons are untrusted text: keep only a short alphanumeric code for audit decisions.
+        $reason = preg_replace('/[^A-Za-z0-9]/', '', substr((string)($response['reason'] ?? ''), 0, 64));
         if ($status === 200) {
             $this->finish($job, 'sent', $now);
-        } elseif ($status === 410) {
-            $this->invalidateToken($job, $now);
+        } elseif ($status === 410 || ($status === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
+            $this->invalidateToken($job, $now, $status === 410 ? '410' : '400:' . $reason);
         } elseif (($status === 0 || $status === 429 || $status >= 500) && $job['attempts'] < 5) {
             $this->retry($job, $response, $status, $now);
         } else {
             $this->finish($job, 'failed', $now);
-            $this->audit('provider_error', (string)$status);
+            $this->audit('provider_error', $reason === '' ? (string)$status : $status . ':' . $reason);
         }
     }
 
-    private function invalidateToken(array $job, int $now): void {
+    private function invalidateToken(array $job, int $now, string $detail): void {
         $this->store->transaction(function () use ($job, $now) {
             // A late 410 cannot invalidate a refreshed token or a different wire-mode installation.
             $changed = $this->store->query('UPDATE installations SET token_valid=0,updated=? WHERE id=? AND mode=? AND token_generation=? AND token=?',
@@ -485,7 +487,7 @@ final class FleetDispatchWorker {
                 $this->cancelJobs($job['installation']);
             }
         });
-        $this->audit('invalid_token', '410');
+        $this->audit('invalid_token', $detail);
     }
 
     private function retry(array $job, array $response, int $status, int $now): void {
