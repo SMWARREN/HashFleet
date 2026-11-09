@@ -5,14 +5,14 @@ import type { NativePlatform } from '../lib/nativeScreens'
 
 export function StatusDot() { return <span className="status-dot" aria-hidden="true" /> }
 
-export function NativePreview({ platform }: { platform: NativePlatform }) {
+export function NativePreview({ platform }: Readonly<{ platform: NativePlatform }>) {
   const capture = captureFor(platform === 'mac' ? 'mac-overview' : 'ios-fleet')
   return <img className="native-preview" src={capture.src} alt={`Actual ${platform === 'mac' ? 'Mac' : 'iPhone'} app running in native demo mode`} width={capture.width} height={capture.height} />
 }
 
 type HistoryEntry = { id: string, left: number, top: number, target?: string }
 
-function NativeWalkthrough({ platform }: { platform: NativePlatform }) {
+function NativeWalkthrough({ platform }: Readonly<{ platform: NativePlatform }>) {
   const screens = screensFor(platform)
   const [screenId, setScreenId] = useState(screens[0].id)
   const [history, setHistory] = useState<HistoryEntry[]>([])
@@ -27,6 +27,7 @@ function NativeWalkthrough({ platform }: { platform: NativePlatform }) {
   const screen = screens.find(item => item.id === screenId) ?? screens[0]
   const capture = captureFor(screen.id)
   const platformName = platform === 'mac' ? 'Mac' : 'iPhone'
+  const enlargedWidth = platform === 'mac' ? 1440 : 402
 
   useLayoutEffect(() => {
     if (viewport.current) {
@@ -74,7 +75,7 @@ function NativeWalkthrough({ platform }: { platform: NativePlatform }) {
     </div>
     <div className="native-screen-status" role="status"><h3 ref={heading} tabIndex={-1}>{screen.label}</h3><p>{screen.description}</p></div>
     <div ref={viewport} className={`native-viewport ${showTargets ? 'native-viewport--targets' : ''} ${enlarged ? 'native-viewport--enlarged' : ''}`} tabIndex={0} aria-label={`${platformName} capture viewport, scroll to inspect the screen`}>
-      {failed ? <p className="native-load-error" role="alert">This native capture could not be loaded. Choose another screen or reload the page.</p> : <div className="native-canvas" style={{ width: enlarged ? (platform === 'mac' ? 1440 : 402) : '100%' }}>
+      {failed ? <p className="native-load-error" role="alert">This native capture could not be loaded. Choose another screen or reload the page.</p> : <div className="native-canvas" style={{ width: enlarged ? enlargedWidth : '100%' }}>
         <img key={capture.src} className="native-capture" src={capture.src} width={capture.width} height={capture.height} alt={`Actual native ${platformName} app: ${screen.label}`} loading="lazy" decoding="async" onError={() => setFailed(true)} data-native-capture={capture.id} />
         {screen.targets.filter(item => item.target !== screen.id).map(item => <button key={`${item.target}-${item.label}`} className="native-hotspot" data-capture-target={item.target} aria-label={`${platformName} walkthrough: ${item.label}`} title={item.label} onClick={() => navigate(item.target, true)} style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.width}%`, height: `${item.height}%` }}><span className="capture-sr-only">{item.label}</span></button>)}
       </div>}
@@ -85,7 +86,7 @@ function NativeWalkthrough({ platform }: { platform: NativePlatform }) {
   </section>
 }
 
-export function MacDemo({ compact = false }: { compact?: boolean }) {
+export function MacDemo({ compact = false }: Readonly<{ compact?: boolean }>) {
   return compact ? <NativePreview platform="mac" /> : <NativeWalkthrough platform="mac" />
 }
 

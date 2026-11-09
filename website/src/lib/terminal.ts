@@ -1,5 +1,6 @@
 import captures from './cli-captures.json'
 import { plainAnsi } from './ansi'
+import { compareText } from './order'
 
 /** Pure, allowlisted terminal simulator. It never evaluates shell input or performs I/O. */
 export const MAX_COMMAND_LENGTH = 256
@@ -73,7 +74,7 @@ export interface CommandResult {
 export function coloredStatus(details: boolean, selected: readonly string[], explicit: boolean): string {
   const capture = details ? captures.tty.details : captures.tty.table
   const groups = capture.miners as Record<string, string>
-  return [capture.header.replace(/\d+\/\d+ online/, `${selected.length}/${selected.length} online`),
+  return [capture.header.replace(/(?<!\d)\d+\/\d+ online/, `${selected.length}/${selected.length} online`),
     ...selected.map(host => explicit
       ? groups[host].replace(names[host].padEnd(23), host.padEnd(23))
       : groups[host]), capture.footer].join('\n')
@@ -103,29 +104,46 @@ function selectTable(capture: string, selected: readonly string[], explicit: boo
     return [[`${host.padEnd(20)}${group[0].slice(20)}`, ...group.slice(1)]]
   })
   const count = chosen.length
-  header[0] = header[0].replace(/\d+\/\d+ online/, `${count}/${count} online`)
+  header[0] = header[0].replace(/(?<!\d)\d+\/\d+ online/, `${count}/${count} online`)
   return [...header, ...chosen.flat()].join('\n')
 }
 
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue)
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, stableValue(item)]))
+    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => compareText(a, b)).map(([key, item]) => [key, stableValue(item)]))
   }
   return value
 }
 
-/** Supports native status syntax, with a stricter fictional-host allowlist in the browser. */
-export function runCommand(input: string): CommandResult {
-  const command = input.slice(0, MAX_COMMAND_LENGTH).replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
-  if (input.length > MAX_COMMAND_LENGTH) return failure(command, `Browser demo: input exceeds ${MAX_COMMAND_LENGTH} characters. Nothing was executed.`)
-  if (!input.trim()) return { command: '', kind: 'empty', output: '' }
-  if (/[^a-zA-Z0-9. :\t-]/.test(input)) return failure(command)
-  let tokens = input.trim().split(/[ \t]+/)
-  if (tokens.length === 1 && tokens[0] === 'clear') return { command, kind: 'clear', output: '' }
-  if (tokens.length === 1 && tokens[0] === 'help') return { command, kind: 'success', output: BROWSER_GUIDE }
-  if (tokens[0] !== 'hashfleet') return failure(command)
-  tokens = tokens.slice(1)
+type StatusOptions = { json: boolean, details: boolean, statusSeen: boolean, hosts: string[] }
+
+function consumeStatusToken(command: string, token: string, options: StatusOptions): CommandResult | undefined {
+  switch (token) {
+    case 'status':
+      if (options.statusSeen || options.hosts.length > 0 || options.json || options.details) {
+        return nativeParseError(command, 'status must be the first command word.')
+      }
+      options.statusSeen = true
+      break
+    case '--json':
+      if (options.json) return nativeParseError(command, '--json may be supplied only once.')
+      options.json = true
+      break
+    case '--details':
+      if (options.details) return nativeParseError(command, '--details may be supplied only once.')
+      options.details = true
+      break
+    default:
+      if (token.startsWith('-')) return nativeParseError(command, `unknown option '${token}'.`)
+      if (!ALLOWED_HOSTS.has(token)) {
+        return failure(command, `Browser demo: '${token}' is not an allowlisted fictional sample host. Nothing was executed.`)
+      }
+      options.hosts.push(token)
+  }
+}
+
+function specialCommand(command: string, tokens: string[]): CommandResult | undefined {
   if (tokens.includes('--help') || tokens.includes('-h')) return { command, kind: 'success', output: USAGE }
   if (tokens.length === 0 || (tokens[0] === 'watch' && (tokens.length === 1 || (tokens.length === 2 && tokens[1] === '--demo')))) {
     return { command, kind: 'success', output: 'Interactive sample dashboard. Use arrows, d for details, e for settings, or the buttons.', view: 'dashboard' }
@@ -136,33 +154,10 @@ export function runCommand(input: string): CommandResult {
   if (tokens.length === 1 && tokens[0] === 'logo') {
     return { command, kind: 'success', output: plainAnsi(captures.logo), ansi: captures.logo }
   }
+}
 
-  let json = false
-  let details = false
-  let statusSeen = false
-  const hosts: string[] = []
-  for (const token of tokens) {
-    if (token === 'status') {
-      if (statusSeen) return nativeParseError(command, 'status must be the first command word.')
-      if (hosts.length > 0 || json || details) return nativeParseError(command, 'status must be the first command word.')
-      statusSeen = true
-    } else if (token === '--json') {
-      if (json) return nativeParseError(command, '--json may be supplied only once.')
-      json = true
-    } else if (token === '--details') {
-      if (details) return nativeParseError(command, '--details may be supplied only once.')
-      details = true
-    } else if (token.startsWith('-')) {
-      return nativeParseError(command, `unknown option '${token}'.`)
-    } else if (!ALLOWED_HOSTS.has(token)) {
-      return failure(command, `Browser demo: '${token}' is not an allowlisted fictional sample host. Nothing was executed.`)
-    } else {
-      hosts.push(token)
-    }
-  }
-  if (json && details) return nativeParseError(command, '--json and --details are alternative output formats.')
-
-  const selected = hosts.length ? [...hosts].sort() : SAMPLE_MINERS.map((miner) => miner.address)
+function statusResult(command: string, { hosts, json, details }: StatusOptions): CommandResult {
+  const selected = hosts.length ? [...hosts].sort(compareText) : SAMPLE_MINERS.map((miner) => miner.address)
   const minerByHost = new Map(parsedSnapshot.miners.map((miner) => [miner.device.address, miner]))
   const miners = selected.flatMap((host) => minerByHost.get(host) ? [minerByHost.get(host)!] : [])
   if (json) {
@@ -180,6 +175,28 @@ export function runCommand(input: string): CommandResult {
     output: selectTable(details ? commands.details : commands.table, selected, hosts.length > 0),
     ansi: coloredStatus(details, selected, hosts.length > 0),
   }
+}
+
+/** Supports native status syntax, with a stricter fictional-host allowlist in the browser. */
+export function runCommand(input: string): CommandResult {
+  const command = input.slice(0, MAX_COMMAND_LENGTH).replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
+  if (input.length > MAX_COMMAND_LENGTH) return failure(command, `Browser demo: input exceeds ${MAX_COMMAND_LENGTH} characters. Nothing was executed.`)
+  if (!input.trim()) return { command: '', kind: 'empty', output: '' }
+  if (/[^a-zA-Z0-9. :\t-]/.test(input)) return failure(command)
+  const words = input.trim().split(/[ \t]+/)
+  if (words.length === 1 && words[0] === 'clear') return { command, kind: 'clear', output: '' }
+  if (words.length === 1 && words[0] === 'help') return { command, kind: 'success', output: BROWSER_GUIDE }
+  if (words[0] !== 'hashfleet') return failure(command)
+  const tokens = words.slice(1)
+  const special = specialCommand(command, tokens)
+  if (special) return special
+  const options: StatusOptions = { json: false, details: false, statusSeen: false, hosts: [] }
+  for (const token of tokens) {
+    const error = consumeStatusToken(command, token, options)
+    if (error) return error
+  }
+  if (options.json && options.details) return nativeParseError(command, '--json and --details are alternative output formats.')
+  return statusResult(command, options)
 }
 
 export interface TerminalState {

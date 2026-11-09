@@ -33,6 +33,6 @@ const paths: Record<IconName, string> = {
   info: 'M12 10v7m0-11h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
 }
 
-export default function Icon({ name, size = 20, style, className = '' }: { name: IconName, size?: number, style?: CSSProperties, className?: string }) {
+export default function Icon({ name, size = 20, style, className = '' }: Readonly<{ name: IconName, size?: number, style?: CSSProperties, className?: string }>) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} style={style}><path d={paths[name]} /></svg>
 }

@@ -5,7 +5,7 @@ import { watchCaptureFor, watchScreens } from '../lib/watchScreens'
 import type { WatchScreenId } from '../lib/watchScreens'
 import './watch.css'
 
-function WatchFrame({ children }: { children: ReactNode }) {
+function WatchFrame({ children }: Readonly<{ children: ReactNode }>) {
   return <span className="watch-device"><span className="watch-band watch-band--top" aria-hidden="true" /><span className="watch-case">{children}</span><span className="watch-band watch-band--bottom" aria-hidden="true" /></span>
 }
 

@@ -2,8 +2,9 @@ import { useId, useState } from 'react'
 import { chartValues } from '../lib/demo'
 import type { ChartRange } from '../lib/demo'
 
-export default function HashChart({ range = '1h', mini = false }: { range?: ChartRange, mini?: boolean }) {
-  const id = useId().replace(/:/g, '')
+export default function HashChart({ range = '1h', mini = false }: Readonly<{ range?: ChartRange, mini?: boolean }>) {
+  const id = useId().replaceAll(':', '')
+  const rangeStart = { '24h': '24 hours ago', '1h': '60 minutes ago', '15m': '15 minutes ago' }[range]
   const values = chartValues(range)
   const [hovered, setHovered] = useState<number | null>(null)
   const points = values.map((value, index) => [index / (values.length - 1) * 600, 155 - value * 1.32])
@@ -22,6 +23,6 @@ export default function HashChart({ range = '1h', mini = false }: { range?: Char
         {hovered !== null && <g><line x1={points[hovered][0]} x2={points[hovered][0]} y1="0" y2="170" stroke="var(--chart-accent, #f5ac26)" strokeOpacity="0.3" /><circle cx={points[hovered][0]} cy={points[hovered][1]} r="4" fill="var(--chart-accent, #f5ac26)" /></g>}
       </svg>
     </div>
-    {!mini && <div className="chart-axis"><span>{range === '24h' ? '24 hours ago' : range === '1h' ? '60 minutes ago' : '15 minutes ago'}</span><span>Illustrative trend · TH/s</span><span>Now</span></div>}
+    {!mini && <div className="chart-axis"><span>{rangeStart}</span><span>Illustrative trend · TH/s</span><span>Now</span></div>}
   </div>
 }

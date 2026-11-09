@@ -44,7 +44,7 @@ function NativeIdentityMark() {
   </div>
 }
 
-function Dialog({ name, onClose }: { name: Exclude<DialogName, null>, onClose: () => void }) {
+function Dialog({ name, onClose }: Readonly<{ name: Exclude<DialogName, null>, onClose: () => void }>) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { if (ref.current && !ref.current.open) ref.current.showModal() }, [])
   function close() {
@@ -83,7 +83,7 @@ function Dialog({ name, onClose }: { name: Exclude<DialogName, null>, onClose: (
   </dialog>
 }
 
-function HeroScene({ explore }: { explore: (platform: Platform) => void }) {
+function HeroScene({ explore }: Readonly<{ explore: (platform: Platform) => void }>) {
   return <div className="hero-scene" aria-label="Hash Fleet Mac, iPhone, Apple Watch and terminal product previews">
     <div className="scene-orbit orbit-one" /><div className="scene-orbit orbit-two" /><span className="scene-cross cross-one">+</span><span className="scene-cross cross-two">+</span>
     <div className="hero-mac"><MacDemo compact /></div>
@@ -107,7 +107,7 @@ const faqs = [
   { question: 'Will trying this demo change my miners?', answer: 'Never. This website has no connection to your mining hardware. The real app and CLI require review and confirmation before changing device settings. The CLI walkthrough here uses its read-only demo mode. Firmware upgrades, pool changes, and manual tuning still require hardware-specific care and can interrupt mining or damage a device.' },
 ]
 
-export default function App({ initialPlatform = 'mac', startAtDemo = false }: { initialPlatform?: Platform, startAtDemo?: boolean }) {
+export default function App({ initialPlatform = 'mac', startAtDemo = false }: Readonly<{ initialPlatform?: Platform, startAtDemo?: boolean }>) {
   const [platform, setPlatform] = useState<Platform>(initialPlatform)
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialog, setDialog] = useState<DialogName>(() => typeof window === 'undefined' ? null : resolveSiteDialog(window.location.hash))
@@ -158,7 +158,7 @@ export default function App({ initialPlatform = 'mac', startAtDemo = false }: { 
     demoRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
   }
   function tabKeyboard(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    let next = index
+    let next: number
     if (event.key === 'ArrowRight') next = (index + 1) % platforms.length
     else if (event.key === 'ArrowLeft') next = (index + platforms.length - 1) % platforms.length
     else if (event.key === 'Home') next = 0
@@ -183,9 +183,9 @@ export default function App({ initialPlatform = 'mac', startAtDemo = false }: { 
             {platforms.map((item, index) => <button ref={node => { tabRefs.current[index] = node }} id={`tab-${item.id}`} key={item.id} role="tab" aria-selected={platform === item.id} aria-controls={`panel-${item.id}`} tabIndex={platform === item.id ? 0 : -1} onKeyDown={event => tabKeyboard(event, index)} onClick={() => setPlatform(item.id)} className={platform === item.id ? 'is-active' : ''}><Icon name={item.icon} size={18} />{item.label}</button>)}
           </div>
           {platforms.map(item => <div key={item.id} id={`panel-${item.id}`} role="tabpanel" aria-labelledby={`tab-${item.id}`} hidden={platform !== item.id} className={`demo-panel demo-panel--${item.id}`}>
-            {item.id === 'mac' ? <MacDemo /> : item.id === 'iphone' ? <div className="iphone-stage"><div className="iphone-stage-copy"><span className="platform-number">02 / IPHONE</span><h3>A pocket-sized<br />{' '}<span>peace of mind.</span></h3><p>Follow the native gear menu.<br />{' '}Inspect the real cards and detail screens.</p><ul><li><Icon name="check" size={17} /> Native, glanceable fleet overview</li><li><Icon name="check" size={17} /> Clear readings, honest missing data</li><li><Icon name="check" size={17} /> Built for iPhone and iPad</li></ul><span className="stage-note"><Icon name="shield" size={16} /> Captured native screens with clickable tour navigation.</span></div><IPhoneDemo /></div> : item.id === 'watch' ? <WatchDemo /> : <div className="terminal-stage"><div className="terminal-stage-header"><div><span className="platform-number">04 / TERMINAL</span><h3>No mouse. No mystery.</h3></div><p>Type <code>hashfleet watch --demo</code><br />{' '}to explore with keys or buttons.</p></div><TerminalDemo /></div>}
+            {{ mac: <MacDemo />, iphone: <div className="iphone-stage"><div className="iphone-stage-copy"><span className="platform-number">02 / IPHONE</span><h3>A pocket-sized<br />{' '}<span>peace of mind.</span></h3><p>Follow the native gear menu.<br />{' '}Inspect the real cards and detail screens.</p><ul><li><Icon name="check" size={17} /> Native, glanceable fleet overview</li><li><Icon name="check" size={17} /> Clear readings, honest missing data</li><li><Icon name="check" size={17} /> Built for iPhone and iPad</li></ul><span className="stage-note"><Icon name="shield" size={16} /> Captured native screens with clickable tour navigation.</span></div><IPhoneDemo /></div>, watch: <WatchDemo />, terminal: <div className="terminal-stage"><div className="terminal-stage-header"><div><span className="platform-number">04 / TERMINAL</span><h3>No mouse. No mystery.</h3></div><p>Type <code>hashfleet watch --demo</code><br />{' '}to explore with keys or buttons.</p></div><TerminalDemo /></div> }[item.id]}
           </div>)}
-          <div className="demo-caption"><span><Icon name="shield" size={15} /> SAFE TO EXPLORE</span><p>{platforms.find(item => item.id === platform)?.caption} All readings are simulated. No real miners are connected.</p><span className="demo-caption-hint">{platform === 'mac' ? 'Click an outlined sidebar item or choose a captured screen.' : platform === 'iphone' ? 'Tap the outlined gear menu or choose a captured screen.' : platform === 'watch' ? 'Choose a Watch screen or follow an outlined navigation button.' : 'Type a command and press Enter.'}</span></div>
+          <div className="demo-caption"><span><Icon name="shield" size={15} /> SAFE TO EXPLORE</span><p>{platforms.find(item => item.id === platform)?.caption} All readings are simulated. No real miners are connected.</p><span className="demo-caption-hint">{{ mac: 'Click an outlined sidebar item or choose a captured screen.', iphone: 'Tap the outlined gear menu or choose a captured screen.', watch: 'Choose a Watch screen or follow an outlined navigation button.', terminal: 'Type a command and press Enter.' }[platform]}</span></div>
         </div>
       </section>
       <section className="principles-section container" id="principles"><div className="principles-art"><div className="art-halo" /><img src="/images/miner.png" alt="Hash Fleet's gold and graphite miner artwork" width="640" height="640" loading="lazy" /><span className="art-caption"><span className="caption-line" />MADE FOR THE HARDWARE YOU OWN</span></div><div className="principles-copy"><span className="eyebrow">NOT ANOTHER CLOUD DASHBOARD.</span><h2>Built for miners.<br />{' '}<span>Not for mining<br />{' '}your data.</span></h2><p>Your hardware is personal. The software you use to watch it should respect that.</p><div className="principle-row"><span>01</span><div><h3>Native where it matters.</h3><p>SwiftUI on Apple platforms. A focused CLI on your Mac. Each feels right where you use it.</p></div></div><div className="principle-row"><span>02</span><div><h3>Clear about what it knows.</h3><p>Missing sensors and stale snapshots stay visibly labeled in the real app. Captured timestamps and sample assumptions are not live fleet readings.</p></div></div><div className="principle-row"><span>03</span><div><h3>You stay in control.</h3><p>Read-only monitoring first. Explicit confirmation for changes. No surprise tuning or firmware updates.</p></div></div></div></section>

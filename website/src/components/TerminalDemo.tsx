@@ -10,11 +10,14 @@ import {
 import './terminal.css'
 const DashboardPreview = lazy(() => import('./DashboardPreview'))
 
-export default function TerminalDemo({ compact = false }: { compact?: boolean }) {
+export default function TerminalDemo({ compact = false }: Readonly<{ compact?: boolean }>) {
   const [terminal, setTerminal] = useState(createTerminalState)
   const inputRef = useRef<HTMLInputElement>(null)
-  const outputRef = useRef<HTMLDivElement>(null)
+  const outputRef = useRef<HTMLElement>(null)
   const id = useId()
+  const latest = terminal.entries.at(-1)
+  const latestMessage = latest?.kind === 'error' ? latest.output : 'Sample output ready in the terminal command output region.'
+  const announcement = latest ? `${latest.command}: ${latestMessage}` : 'Terminal panel cleared.'
 
   useEffect(() => {
     const output = outputRef.current
@@ -36,11 +39,11 @@ export default function TerminalDemo({ compact = false }: { compact?: boolean })
       </header>
 
       <div className="terminal-demo__notice" id={`${id}-notice`}>
-        <span className="terminal-demo__status-dot" aria-hidden="true" />
+        <span className="terminal-demo__status-dot" aria-hidden="true" />{' '}
         Browser demo · fictional fleet · no connections
       </div>
 
-      <div ref={outputRef} className="terminal-demo__output" role="region" aria-label="Terminal command output" tabIndex={0}>
+      <section ref={outputRef} className="terminal-demo__output" aria-label="Terminal command output" tabIndex={0}>
         {terminal.entries.length === 0 && <p className="terminal-demo__empty">Panel cleared. Try a suggested command below.</p>}
         {terminal.entries.map((entry, index) => (
           <div className="terminal-demo__entry" key={`${index}-${entry.command}`}
@@ -56,7 +59,7 @@ export default function TerminalDemo({ compact = false }: { compact?: boolean })
             </pre>}
           </div>
         ))}
-      </div>
+      </section>
 
       <form className="terminal-demo__form" onSubmit={(event) => { event.preventDefault(); execute() }}>
         <label htmlFor={`${id}-input`} className="terminal-demo__prompt"><span aria-hidden="true">❯</span><span className="terminal-demo__sr-only">Terminal command</span></label>
@@ -97,9 +100,7 @@ export default function TerminalDemo({ compact = false }: { compact?: boolean })
         <span>Native CLI sample · BEST (ALL) + BEST (SESSION) · simulated only</span>
         <span>↑ ↓ history · help / clear are browser-only utilities</span>
       </footer>
-      <p className="terminal-demo__sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {terminal.entries.length ? `${terminal.entries.at(-1)?.command}: ${terminal.entries.at(-1)?.kind === 'error' ? terminal.entries.at(-1)?.output : 'Sample output ready in the terminal command output region.'}` : 'Terminal panel cleared.'}
-      </p>
+      <output className="terminal-demo__sr-only" aria-live="polite" aria-atomic="true">{announcement}</output>
     </section>
   )
 }
