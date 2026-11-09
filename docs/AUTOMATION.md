@@ -207,5 +207,23 @@ with `gh` authenticated. Existing matching PRs are reused, not automatically mer
 
 The website is tested and built by CI, not automatically deployed to the private host.
 Its deployed versioned download links need updating when a new release is published.
+
+### Website publication verified November 9, 2026
+
+At 09:58 UTC, the operator-authorized frontend-only publication deployed the build
+from `828c9b1`. All 239 website tests and the production build passed beforehand.
+Only three hashed JS/CSS assets and `index.html` changed, with a private original-index
+backup, assets promoted before the entry point, and old assets retained for rollback.
+Before/after fingerprints confirmed that backend code, API, configuration, database,
+permissions, Apache policy, and crontab were unchanged. The existing host policy was
+deliberately preserved rather than overwritten with the repository's different policy.
+
+The unchanged public HTTP audit checked 47 responses. All tested build bytes and
+security headers matched. Its strict result remains **failed** for the previously
+documented `/.git/config` status difference: actual 403 versus expected 404. The path
+remains denied. No assertion was relaxed, and this is not a browser, accessibility,
+or comprehensive production-security certification. Deployment does not merge the PR
+or activate the release pipeline.
+
 Code-fix agents may follow `.github/copilot-instructions.md` and open PRs when explicitly
 enabled and assigned by a maintainer. These files do not activate a paid agent service.

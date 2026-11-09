@@ -86,6 +86,23 @@ cd website && npm run check && npm run build
 
 The backend tests use real in-memory SQLite and injected APNs outcomes. HTTP smoke checks run a real PHP server on loopback only. Installer tests use temporary local home directories. `website.cjs` guards the retired dashboard endpoints, not a replacement settings product. The original website has its own unit, build, and browser acceptance. None is real APNs delivery certification. Live deployment observations and acceptance receipts belong in `docs/APNS-REPLACEMENT-ACCEPTANCE.md`.
 
+## Operational check, November 9, 2026
+
+At 09:53 UTC, read-only inspection found saved hourly schedules but no HashFleet
+entry in the hosting account's crontab and no recorded dispatch jobs. Provider
+readiness was true. These observations are dated, not an assertion of current state.
+One operator-authorized test request to the recently active production installation
+received APNs HTTP 200 at 09:53:48 UTC. No other installation was contacted and no
+schedule was changed. Physical presentation and extension results still require
+the operator's observation. The operator was given the cron setup command, but
+automatic scheduling has not been verified by this receipt.
+
+Fresh offline checks passed: 145 backend checks, 10 Retry-After cases, valid DER
+conversion and five compatible rejection cases, and nine retired-endpoint checks.
+The separate frontend publication did not deploy the refactored PHP backend or
+change notification configuration. A future backend update requires its own
+reviewed deployment and acceptance checks.
+
 ## Apple primary references
 
 Checked October 25, 2026 UTC:
