@@ -63,31 +63,48 @@ struct MountedChartAXProbe {
                 result.truncatedDepthOrChildren = true
                 continue
             }
-            if let view = node as? UIView {
-                if view.subviews.count > 128 { result.truncatedDepthOrChildren = true }
-                for child in view.subviews.prefix(128).reversed() {
-                    pending.append((child, depth + 1))
-                }
-            }
-            let explicitChildren = node.accessibilityElements ?? []
-            if !explicitChildren.isEmpty {
-                if explicitChildren.count > 128 { result.truncatedDepthOrChildren = true }
-                for child in explicitChildren.prefix(128).reversed() {
-                    if let child = child as? NSObject { pending.append((child, depth + 1)) }
-                }
-            } else {
-                let count = node.accessibilityElementCount()
-                if count > 0 && count != NSNotFound {
-                    if count > 128 { result.truncatedDepthOrChildren = true }
-                    for index in (0..<min(count, 128)).reversed() {
-                        if let child = node.accessibilityElement(at: index) as? NSObject {
-                            pending.append((child, depth + 1))
-                        }
-                    }
-                }
-            }
+            appendChildren(of: node, depth: depth, to: &pending, observation: &result)
         }
         return result
+    }
+
+    private static func appendChildren(
+        of node: NSObject,
+        depth: Int,
+        to pending: inout [(NSObject, Int)],
+        observation: inout Observation
+    ) {
+        if let view = node as? UIView {
+            if view.subviews.count > 128 { observation.truncatedDepthOrChildren = true }
+            for child in view.subviews.prefix(128).reversed() {
+                pending.append((child, depth + 1))
+            }
+        }
+        let explicitChildren = node.accessibilityElements ?? []
+        if !explicitChildren.isEmpty {
+            if explicitChildren.count > 128 { observation.truncatedDepthOrChildren = true }
+            for child in explicitChildren.prefix(128).reversed() {
+                if let child = child as? NSObject { pending.append((child, depth + 1)) }
+            }
+        } else {
+            appendIndexedChildren(of: node, depth: depth, to: &pending, observation: &observation)
+        }
+    }
+
+    private static func appendIndexedChildren(
+        of node: NSObject,
+        depth: Int,
+        to pending: inout [(NSObject, Int)],
+        observation: inout Observation
+    ) {
+        let count = node.accessibilityElementCount()
+        guard count > 0 && count != NSNotFound else { return }
+        if count > 128 { observation.truncatedDepthOrChildren = true }
+        for index in (0..<min(count, 128)).reversed() {
+            if let child = node.accessibilityElement(at: index) as? NSObject {
+                pending.append((child, depth + 1))
+            }
+        }
     }
 }
 #endif

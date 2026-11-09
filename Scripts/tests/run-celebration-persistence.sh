@@ -23,7 +23,8 @@ swiftc -sdk "$SDK" -target "$TARGET" "$OPT" -parse-as-library -swift-version 6 -
   "$ROOT/App/Features/Celebration/FleetCelebrationQueue.swift" \
   "$ROOT/App/Features/Celebration/FleetCelebrationQueueStorage.swift" \
   "$OUT/FleetCelebrationModel.swift" \
-  "$ROOT/Tests/FleetCelebrationPersistenceRegressionTests.swift"
+  "$ROOT/Tests/FleetCelebrationPersistenceRegressionTests.swift" \
+  "$ROOT/Tests/FleetCelebrationPersistenceRegressionTests+Failures.swift"
 "$OUT/checks"
 swiftc -sdk "$SDK" -target "$TARGET" "$OPT" -parse-as-library -swift-version 6 -o "$OUT/background-checks" \
   "$ROOT/App/Features/Celebration/FleetCelebrationQueue.swift" \

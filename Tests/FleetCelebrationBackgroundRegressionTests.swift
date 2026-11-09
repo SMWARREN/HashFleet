@@ -5,7 +5,7 @@ import SQLite3
 /// preconditions under -O. Every database is inside the newly created argument directory.
 @main
 @MainActor
-struct FleetCelebrationBackgroundRegressionTests {
+struct CelebrationBackgroundRegressionTests {
     static func main() async throws {
         precondition(CommandLine.arguments.count == 2)
         let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
