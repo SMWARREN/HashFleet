@@ -21,7 +21,7 @@ class ReleaseContracts(unittest.TestCase):
         self.formula = (ROOT / 'Formula/hashfleet-cli.rb').read_text()
         # Normalize only fixture versions so later real releases do not turn these
         # policy tests into accidental downgrade attempts.
-        self.cask = re.sub(r'^  version "[^"]+"$', '  version "0.1.0"', self.cask, flags=re.MULTILINE)
+        self.cask = re.sub(r'^ {2}version "[^"]+"$', '  version "0.1.0"', self.cask, flags=re.MULTILINE)
         self.formula = re.sub(r'/v[0-9.]+/hashfleet-cli-[0-9.]+-macos-arm64', '/v0.1.0/hashfleet-cli-0.1.0-macos-arm64', self.formula)
         self.hashes = dict(zip(r.asset_names('0.2.0'), ['1' * 64, '2' * 64]))
 
@@ -45,7 +45,7 @@ class ReleaseContracts(unittest.TestCase):
                 r.checked_run(self.run, jobs)
 
     def test_semver_rejects_injection_and_nonstable_versions(self):
-        for version in ('v0.2.0', '0.2', '0.2.0-beta', '01.2.0', '0.2.0\n', '../../a', '1.2.3;echo BAD'):
+        for version in ('v0.2.0', '0.2', '0.2.0-beta', '01.2.0', '0.2.0\n', '../../a', '1.2.3;echo BAD', '1.2.3٣', '1.٢.3', '１.2.3'):
             with self.subTest(version=version), self.assertRaises(ValueError):
                 r.semver(version)
 
@@ -69,8 +69,9 @@ class ReleaseContracts(unittest.TestCase):
 
     def test_no_downgrade(self):
         updated = r.update_packages(self.cask, self.formula, '0.2.0', self.hashes)
+        previous_hashes = dict(zip(r.asset_names('0.1.0'), ['1' * 64, '2' * 64]))
         with self.assertRaises(ValueError):
-            r.update_packages(*updated, '0.1.0', dict(zip(r.asset_names('0.1.0'), ['1' * 64, '2' * 64])))
+            r.update_packages(*updated, '0.1.0', previous_hashes)
 
     def test_changed_template_and_duplicate_fields_rejected(self):
         for cask, formula in ((self.cask.replace('SMWARREN/HashFleet', 'other/repo'), self.formula), (self.cask + '\n  version "0.1.0"\n', self.formula), (self.cask, self.formula.replace('SMWARREN/HashFleet', 'other/repo'))):

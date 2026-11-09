@@ -879,8 +879,9 @@ class CLIBoundsValidationTests(unittest.TestCase):
     def test_exact_nominal_duration_ceiling_is_inclusive(self):
         args = dict(cycles=10, wait_seconds=60.0, full_tour=True, optional_controls=True)
         tour_smoke.validate_cli_bounds(dwell=6.0, **args)
+        excessive_dwell = math.nextafter(6.0, math.inf)
         with self.assertRaisesRegex(ValueError, "exceeds 480"):
-            tour_smoke.validate_cli_bounds(dwell=math.nextafter(6.0, math.inf), **args)
+            tour_smoke.validate_cli_bounds(dwell=excessive_dwell, **args)
         tour_smoke.validate_cli_bounds(50, 0.0, 60.0, True, True)
         tour_smoke.validate_cli_bounds(0, 10.0, 60.0, False, False)
 
