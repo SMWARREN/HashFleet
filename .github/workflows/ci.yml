@@ -1,10 +1,28 @@
 name: Swift validation
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Runner access check or explicitly requested app validation"
+        type: choice
+        required: true
+        default: runner-check
+        options:
+          - runner-check
+          - validation
 permissions:
   contents: read
 jobs:
+  runner-check:
+    if: ${{ inputs.mode == 'runner-check' }}
+    runs-on: macos-15
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Confirm runner access without running application code
+        run: printf '%s\n' 'Runner access confirmed. No checkout, builds, app tests, or signing secrets used.'
   test-and-build:
+    if: ${{ inputs.mode == 'validation' }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
