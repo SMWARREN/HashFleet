@@ -85,6 +85,8 @@ class DeploymentTests(unittest.TestCase):
                 self.assertTrue((self.web / key.removeprefix("web/")).is_file(), key)
         self.assertEqual((self.web / "support/index.html").read_bytes(),
                          (ROOT / "website/dist/support/index.html").read_bytes())
+        self.assertEqual((self.web / "llms.txt").read_bytes(),
+                         (ROOT / "website/public/llms.txt").read_bytes())
 
     def test_repeat_deploy_preserves_private_configuration_and_database(self):
         self.install()

@@ -59,7 +59,7 @@ function allowedAsset(string $path): bool {
         }
     }
     return $hashedAsset || ($staticAsset && $safeStaticPath) || in_array($path, ['web/_headers', 'web/apple-touch-icon.png', 'web/favicon.png', 'web/robots.txt',
-        'web/sitemap.xml', 'web/social-card.png', 'web/support/index.html'], true);
+        'web/sitemap.xml', 'web/llms.txt', 'web/social-card.png', 'web/support/index.html'], true);
 }
 $backup = null; $promoted = []; $targets = []; $createdConfiguration = false; $configuration = null;
 try {

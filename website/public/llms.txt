@@ -1,0 +1,28 @@
+# HashFleet
+
+> HashFleet (also styled Hash Fleet) is a 100% free, open-source cryptocurrency mining management application for compatible ESP-Miner / AxeOS miners, including Bitaxe and Naja.
+
+The project includes native apps for Mac, iPhone, iPad and Apple Watch, plus a Mac terminal CLI. It monitors hashrate, temperatures, firmware-reported power, shares and uptime. Available readings and controls depend on the miner's hardware and firmware; monitoring support does not guarantee every device operation.
+
+The Mac app and CLI are separate downloads. The website currently labels the iPhone and iPad download as coming soon. See GitHub Releases for current public binaries and the build guide for source builds.
+
+HashFleet connects directly to configured miners. No HashFleet account or subscription is required. Remote access uses a private VPN such as Tailscale; there is no cloud relay. iOS background checks are best effort, and widgets and Live Activities show timestamped snapshots. The website's native screen tours and terminal demo use fictional readings and do not connect to mining hardware.
+
+The code is licensed under GPL-3.0. Sponsorships and developer tips are voluntary and do not purchase or unlock features.
+
+## Product and downloads
+
+- [HashFleet website](https://hashfleet.app/): Product overview, interactive demos, FAQ and optional developer support.
+- [Project README](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/README.md): Capabilities, platform support, installation and repository structure.
+- [Latest release](https://github.com/SMWARREN/HashFleet/releases/latest): Current Mac app and standalone CLI packages.
+- [Homebrew installation](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/docs/HOMEBREW.md): Tap setup and independent app/CLI installation.
+
+## Documentation and support
+
+- [Hardware and firmware capability matrix](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/docs/MODEL-CAPABILITY-MATRIX.md): Source-based compatibility evidence, telemetry units and hardware limitations.
+- [Terminal CLI guide](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/docs/CLI.md): Commands, dashboard navigation and reviewed settings changes.
+- [Build from source](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/docs/PUBLIC-BUILD.md): Native build requirements and signing guidance.
+- [Remote access with Tailscale](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/docs/REMOTE-ACCESS-TAILSCALE.md): Private VPN access to miners away from home.
+- [Privacy policy](https://raw.githubusercontent.com/SMWARREN/HashFleet/main/PRIVACY.md): Data handling and optional integrations.
+- [Technical support](https://hashfleet.app/support/): Developer contact and guidance for bug reports.
+- [Source repository and license](https://github.com/SMWARREN/HashFleet): Open-source code, GPL-3.0 license and contribution information.
