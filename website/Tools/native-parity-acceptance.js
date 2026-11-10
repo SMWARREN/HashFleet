@@ -16,6 +16,11 @@ async function verifyNativeLanding(page, origin, publicHost, csp, manifest, chec
   const schema = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent())
   const software = schema['@graph'].find(item => item['@type'] === 'SoftwareApplication')
   check(schema['@context'] === 'https://schema.org' && software.isAccessibleForFree === true && software.offers.price === '0' && !software.aggregateRating && !software.review, 'Software schema describes the free app without invented ratings')
+  check(await page.locator('link[rel="describedby"]').count() === 1 && await page.locator('link[rel="describedby"]').getAttribute('href') === 'https://hashfleet.app/llms.txt', 'Product guide is discoverable from the homepage')
+  check(await page.evaluate(async () => {
+    const response = await fetch('/llms.txt')
+    return response.status === 200 && (response.headers.get('content-type') ?? '').includes('text/plain') && (await response.text()).startsWith('# HashFleet\n')
+  }), 'llms.txt is served as the real plain-text product guide')
   check(await page.locator('h1').count() === 1, 'Exactly one main heading')
   check(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark', 'The original site defaults to dark theme')
   check(await page.getByRole('img', { name: "Hash Fleet's gold and graphite miner artwork" }).count() === 1, 'Original product artwork keeps an accessible description')
