@@ -91,6 +91,15 @@ def asset_names(version):
     return [f'HashFleet-{version}-macos-arm64.zip', f'hashfleet-cli-{version}-macos-arm64.tar.gz']
 
 
+# Unversioned copies let https://github.com/<repo>/releases/latest/download/<name> always
+# resolve to the newest release, so the website never needs a rebuild for new versions.
+LATEST_NAMES = ['HashFleet-macos-arm64.zip', 'hashfleet-cli-macos-arm64.tar.gz']
+
+
+def release_files(version):
+    return asset_names(version) + LATEST_NAMES + [CHECKSUM_MANIFEST]
+
+
 def update_packages(cask, formula, version, hashes):
     names = asset_names(version)
     require(set(hashes) == set(names), 'Unexpected release assets')
@@ -116,12 +125,16 @@ def remote_hashes(version):
     require(not release['draft'] and not release['prerelease'], 'Not a published stable release')
     assets = {a['name']: a for a in release['assets']}
     names = asset_names(version)
-    require(len(release['assets']) == 3 and set(assets) == set(names + [CHECKSUM_MANIFEST]), 'Unexpected or missing public release assets')
+    legacy = set(names + [CHECKSUM_MANIFEST])
+    require(len(release['assets']) == len(assets) and set(assets) in (legacy, set(release_files(version))), 'Unexpected or missing public release assets')
     hashes = {}
     for name in names:
         digest = assets[name].get('digest', '')
         require(isinstance(digest, str) and re.fullmatch(r'sha256:[0-9a-f]{64}', digest) is not None, 'GitHub asset digest missing')
         hashes[name] = digest.removeprefix('sha256:')
+    for versioned, latest in zip(names, LATEST_NAMES):
+        if latest in assets:
+            require(assets[latest].get('digest') == assets[versioned]['digest'], 'Latest alias differs from versioned asset')
     return hashes
 
 
@@ -163,18 +176,22 @@ def publish(version, sha, directory):
     require(hashes == receipt['sha256'], 'Artifact changed after verification')
     expected = ''.join(f'{hashes[name]}  {name}\n' for name in names)
     require((root / CHECKSUM_MANIFEST).read_text() == expected, 'Checksum manifest mismatch')
+    for versioned, latest in zip(names, LATEST_NAMES):
+        (root / latest).write_bytes((root / versioned).read_bytes())
+        require(hashlib.sha256((root / latest).read_bytes()).hexdigest() == hashes[versioned], 'Latest alias copy mismatch')
+    files = release_files(version)
     require(not any(r['tag_name'] == f'v{version}' for r in release_list()), 'Release exists, refusing overwrite')
     require(not command('git', 'ls-remote', '--tags', 'origin', f'refs/tags/v{version}'), 'Tag exists, refusing overwrite')
     # Atomic create refuses a concurrent tag. A partial failure is retained for manual inspection.
     api('git/refs', ref=f'refs/tags/v{version}', sha=sha)
-    command('gh', 'release', 'create', f'v{version}', '--repo', REPO, '--verify-tag', '--draft', '--title', f'HashFleet {version}', '--notes', f'Separate signed and notarized Apple Silicon Mac app and CLI downloads. Requires macOS 14 or later.\n\nSource: {sha}\nInstallation: https://github.com/{REPO}/blob/main/docs/HOMEBREW.md', *[str(root / n) for n in names + [CHECKSUM_MANIFEST]])
+    command('gh', 'release', 'create', f'v{version}', '--repo', REPO, '--verify-tag', '--draft', '--title', f'HashFleet {version}', '--notes', f'Separate signed and notarized Apple Silicon Mac app and CLI downloads. Requires macOS 14 or later.\n\nSource: {sha}\nInstallation: https://github.com/{REPO}/blob/main/docs/HOMEBREW.md', *[str(root / n) for n in files])
     drafts = [r for r in release_list() if r['tag_name'] == f'v{version}' and r['draft']]
     require(len(drafts) == 1, 'Expected exactly one created draft')
     uploaded = api(f'releases/{drafts[0]["id"]}')
-    require(uploaded['draft'] and len(uploaded['assets']) == 3, 'Draft asset set mismatch')
+    require(uploaded['draft'] and len(uploaded['assets']) == len(files), 'Draft asset set mismatch')
     for asset in uploaded['assets']:
         local = root / asset['name']
-        require(asset['name'] in names + [CHECKSUM_MANIFEST], 'Unexpected uploaded asset')
+        require(asset['name'] in files, 'Unexpected uploaded asset')
         require(asset['digest'] == 'sha256:' + hashlib.sha256(local.read_bytes()).hexdigest(), 'Uploaded digest mismatch')
     command('gh', 'release', 'edit', f'v{version}', '--repo', REPO, '--draft=false', '--latest')
     homebrew(version)
