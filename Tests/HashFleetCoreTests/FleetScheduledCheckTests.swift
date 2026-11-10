@@ -224,11 +224,11 @@ struct FleetScheduledCheckTests {
     }
 
     private func batchPayload(_ ids: [UUID], primary: UUID? = nil) -> Data {
-        try! JSONSerialization.data(withJSONObject: [
+        (try? JSONSerialization.data(withJSONObject: [
             "app.hashfleet.deviceID": (primary ?? ids[0]).uuidString.lowercased(),
             "app.hashfleet.deviceIDs": ids.map { $0.uuidString.lowercased() },
             "app.hashfleet.checkVersion": 1, "app.hashfleet.checkIssuedAt": now.timeIntervalSince1970,
-            "app.hashfleet.checkRequestID": "check_123-abc"])
+            "app.hashfleet.checkRequestID": "check_123-abc"])) ?? Data()
     }
 
     @Test func batchPushParsesEveryListedMinerAndRejectsMalformedLists() throws {
