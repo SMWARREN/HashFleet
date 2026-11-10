@@ -54,7 +54,7 @@ async (page) => {
     await page.getByRole('link', { name: 'Back to Hash Fleet', exact: true }).focus()
     await page.keyboard.press('Enter')
     await page.waitForURL(origin + '/')
-    check(await page.title() === 'Hash Fleet | Your hash. Your hardware.', 'Keyboard recovery returns to the original homepage')
+    check(await page.title() === 'HashFleet | Free Bitaxe Mining Management Software', 'Keyboard recovery returns to the original homepage')
     check(await page.locator('meta[name="robots"]').count() === 0, 'Error-page noindex does not persist on the homepage')
     check(await page.locator('#tab-mac').getAttribute('aria-selected') === 'true', 'Homepage keeps the original Mac default')
     check(requests.every(request => new URL(request.url).origin === origin && request.method === 'GET'), 'Only same-origin GET requests occurred')

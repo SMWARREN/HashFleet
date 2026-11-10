@@ -52,7 +52,7 @@ async function verifyFaqDisclosures(page, check) {
 
   await page.getByRole('heading', { level: 1 }).waitFor()
   if (!isPublicHost) check((await page.locator('html').getAttribute('data-theme')) === 'dark', 'Local production preview defaults to dark theme')
-  check(await page.title() === 'Hash Fleet | Your hash. Your hardware.', 'Hash Fleet page title')
+  check(await page.title() === 'HashFleet | Free Bitaxe Mining Management Software', 'Hash Fleet page title')
   check(await page.locator('h1').count() === 1, 'One primary heading')
   check(await page.getByRole('link', { name: 'Hash Fleet home' }).count() === 2, 'Hash Fleet wordmark appears in header and footer')
   check(await page.locator('img[src="/images/brand.png"]').count() >= 1, 'Hash Fleet brand asset is rendered')
