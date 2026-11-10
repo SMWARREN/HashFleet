@@ -214,6 +214,85 @@ struct FleetScheduledCheckTests {
         }
         #expect(await task.value == .unavailable)
     }
+
+    private func fleet() -> [FleetScheduledCheckTarget] {
+        [("a24bf00d-1234-4234-8234-0123456789ab", "Naja", "http://192.168.1.10", "02:11:22:33:44:01"),
+         ("b24bf00d-1234-4234-8234-0123456789ab", "Naja 2", "http://192.168.1.11", "02:11:22:33:44:02"),
+         ("c24bf00d-1234-4234-8234-0123456789ab", "Gamma", "http://192.168.1.12", "02:11:22:33:44:03"),
+         ("d24bf00d-1234-4234-8234-0123456789ab", "Gamma 2", "http://192.168.1.13", "02:11:22:33:44:04")]
+            .map { .init(id: UUID(uuidString: $0.0)!, name: $0.1, baseURL: URL(string: $0.2)!, expectedMAC: $0.3) }
+    }
+
+    private func batchPayload(_ ids: [UUID], primary: UUID? = nil) -> Data {
+        try! JSONSerialization.data(withJSONObject: [
+            "app.hashfleet.deviceID": (primary ?? ids[0]).uuidString.lowercased(),
+            "app.hashfleet.deviceIDs": ids.map { $0.uuidString.lowercased() },
+            "app.hashfleet.checkVersion": 1, "app.hashfleet.checkIssuedAt": now.timeIntervalSince1970,
+            "app.hashfleet.checkRequestID": "check_123-abc"])
+    }
+
+    @Test func batchPushParsesEveryListedMinerAndRejectsMalformedLists() throws {
+        let ids = fleet().map(\.id)
+        let parsed = try #require(FleetScheduledCheckRequest.parse(batchPayload(ids), now: now))
+        #expect(parsed.deviceIDs == ids && parsed.deviceID == ids[0])
+        // Older single-miner pushes still parse as a one-miner list.
+        let single = try #require(FleetScheduledCheckRequest.parse(try JSONSerialization.data(withJSONObject: [
+            "app.hashfleet.deviceID": ids[0].uuidString.lowercased(), "app.hashfleet.checkVersion": 1,
+            "app.hashfleet.checkIssuedAt": now.timeIntervalSince1970, "app.hashfleet.checkRequestID": "x"]), now: now))
+        #expect(single.deviceIDs == [ids[0]])
+        #expect(FleetScheduledCheckRequest.parse(batchPayload([ids[0], ids[0]]), now: now) == nil)
+        #expect(FleetScheduledCheckRequest.parse(batchPayload([ids[1]], primary: ids[0]), now: now) == nil)
+        #expect(FleetScheduledCheckRequest.parse(batchPayload((0..<65).map { _ in UUID() }), now: now) == nil)
+    }
+
+    @Test func batchRendersEveryMinerInOneNotificationAndMarksFailures() async {
+        let targets = fleet()
+        let config = FleetScheduledCheckConfiguration(enabled: true, targets: targets)
+        let fixedNow = now
+        let req = FleetScheduledCheckRequest(deviceID: targets[0].id, deviceIDs: targets.map(\.id),
+            issuedAt: now.timeIntervalSince1970, requestID: "check_123-abc")
+        let unreachable = targets[3].id
+        let result = await FleetScheduledCheckRunner.perform(request: req, configuration: { config }, now: { fixedNow }, read: { target in
+            if target.id == unreachable { throw URLError(.timedOut) }
+            return .init(hashRateGHs: target.name.hasPrefix("Naja") ? 9400 : 1100, temperatureC: 47.4, powerW: 121.4)
+        })
+        #expect(result.title == "Fleet 19.90 TH/s · 3/4 online")
+        #expect(result.body == """
+            Naja: 9.40 TH/s · 47 °C · 121 W
+            Naja 2: 9.40 TH/s · 47 °C · 121 W
+            Gamma: 1.10 TH/s · 47 °C · 121 W
+            Gamma 2: unreachable
+            """)
+    }
+
+    @Test func batchSkipsMinersRemovedDuringIOAndFailsClosedWhenNothingRemains() async {
+        let targets = fleet()
+        let state = CheckState(.init(enabled: true, targets: targets))
+        let fixedNow = now
+        let req = FleetScheduledCheckRequest(deviceID: targets[0].id, deviceIDs: targets.map(\.id),
+            issuedAt: now.timeIntervalSince1970, requestID: "check_123-abc")
+        let trimmed = await FleetScheduledCheckRunner.perform(request: req, configuration: { state.value }, now: { fixedNow }, read: { _ in
+            state.value = .init(enabled: true, targets: Array(targets.prefix(2)))
+            return .init(hashRateGHs: 1000)
+        })
+        #expect(trimmed.body.split(separator: "\n").count == 2)
+        state.value = .init(enabled: true, targets: targets)
+        let gone = await FleetScheduledCheckRunner.perform(request: req, configuration: { state.value }, now: { fixedNow }, read: { _ in
+            state.value = .disabled
+            return .init(hashRateGHs: 1000)
+        })
+        #expect(gone == .unavailable)
+        let none = await FleetScheduledCheckRunner.perform(request: req, configuration: { state.value }, now: { fixedNow }, read: { _ in
+            Issue.record("Disabled configuration attempted network I/O")
+            return .init()
+        })
+        #expect(none == .unavailable)
+        state.value = .init(enabled: true, targets: targets)
+        let allDown = await FleetScheduledCheckRunner.perform(request: req, configuration: { state.value }, now: { fixedNow }, read: { _ in
+            throw URLError(.cannotConnectToHost)
+        })
+        #expect(allDown.title == "Fleet check: miners unreachable" && allDown.body.split(separator: "\n").count == 4)
+    }
 }
 
 /// All fixture state is lock protected. URLProtocol intercepts every request, so no test can reach a miner.

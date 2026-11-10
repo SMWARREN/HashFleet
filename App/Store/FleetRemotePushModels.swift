@@ -94,12 +94,14 @@ struct FleetRemotePushPreferences: Encodable, Equatable, Sendable {
 struct FleetRemotePushRegistration: Encodable, Sendable {
     struct Miner: Encodable, Sendable { let id: String }
     let mode = "device_check_v1"
+    /// Tells the server this app renders several miners from one push (one alert per hour).
+    let batch = true
     let deviceToken: String
     let environment: String
     let miners: [Miner]
 
     enum CodingKeys: String, CodingKey {
-        case mode, environment, miners
+        case mode, environment, miners, batch
         case deviceToken = "device_token"
     }
 }

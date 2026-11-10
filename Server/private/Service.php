@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS rate_limits(scope TEXT NOT NULL, slot INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT NOT NULL);
 SQL);
         $this->addColumnIfMissing('installations', 'mode', "TEXT NOT NULL DEFAULT 'legacy_inactive'");
+        // Set only by app versions that can render several miners from one push.
+        $this->addColumnIfMissing('installations', 'batch', 'INTEGER NOT NULL DEFAULT 0');
         $this->addColumnIfMissing('jobs', 'request_id', 'TEXT');
         foreach ($this->query('SELECT id FROM jobs WHERE request_id IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $id) {
             $this->query('UPDATE jobs SET request_id=? WHERE id=?', [FleetServiceInput::requestUUID(), $id]);
@@ -181,6 +183,10 @@ final class FleetRegistrationWriter {
         if ($body['mode'] !== FleetServiceProtocol::MODE) {
             FleetServiceInput::fail(400, 'Unsupported registration mode.');
         }
+        $batch = $body['batch'] ?? false;
+        if (!is_bool($batch)) {
+            FleetServiceInput::fail(400, 'Invalid registration.');
+        }
         $token = $body['device_token'];
         $environment = $body['environment'];
         if (!is_string($token) || !preg_match('/^[a-fA-F0-9]{32,512}$/D', $token) || strlen($token) % 2
@@ -196,8 +202,9 @@ final class FleetRegistrationWriter {
         } else {
             ($this->limit)('installation:' . $id, 60, 120);
         }
-        $this->store->transaction(function () use ($id, $headers, $credential, $token, $environment, $miners) {
+        $this->store->transaction(function () use ($id, $headers, $credential, $token, $environment, $miners, $batch) {
             $this->saveInstallation($id, $headers, $credential, $token, $environment, $miners);
+            $this->store->query('UPDATE installations SET batch=? WHERE id=?', [$batch ? 1 : 0, $id]);
         });
         return ($this->wrapper)($id);
     }
@@ -383,9 +390,17 @@ final class FleetDispatchWorker {
             if (!$this->eligible($job)) {
                 continue;
             }
-            $response = $this->send($job, $now);
+            // Batch-capable installations get one push for every miner due now, so APNs
+            // offline coalescing (one stored alert per app) cannot hide all but one miner.
+            $group = $job['batch'] ? [$job, ...$this->claimSiblings($job, $now)] : [$job];
+            $response = $this->send($job, $now, $group);
             $attempted++;
-            $this->recordResponse($job, $response, $now);
+            foreach ($group as $index => $member) {
+                $outcome = $this->recordResponse($member, $response, $now, $index === 0);
+                if ($outcome === 'invalid_token') {
+                    break;
+                }
+            }
         }
         $this->purge();
         return $attempted;
@@ -418,14 +433,33 @@ final class FleetDispatchWorker {
         });
     }
 
-    private function claimNext(int $now): ?array {
-        return $this->store->transaction(function () use ($now) {
+    /** Claims the other ready jobs of the same installation and token generation, in miner order. */
+    private function claimSiblings(array $job, int $now): array {
+        $siblings = [];
+        $ids = $this->store->query("SELECT j.id FROM jobs j JOIN installations i ON i.id=j.installation
+            JOIN miners m ON m.installation=j.installation AND m.id=j.miner
+            WHERE j.installation=? AND j.token_generation=? AND j.id<>? AND j.status='pending' AND j.attempts<5
+            AND j.next_attempt<=? AND j.lease_until<=? AND i.mode=? AND m.enabled=1 AND m.next_due=j.due
+            ORDER BY j.miner LIMIT 63",
+            [$job['installation'], $job['token_generation'], $job['id'], $now, $now, FleetServiceProtocol::MODE])->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($ids as $id) {
+            $sibling = $this->claimNext($now, (int)$id);
+            if ($sibling !== null && $this->eligible($sibling)) {
+                $siblings[] = $sibling;
+            }
+        }
+        return $siblings;
+    }
+
+    private function claimNext(int $now, ?int $only = null): ?array {
+        return $this->store->transaction(function () use ($now, $only) {
             $job = $this->store->query("SELECT j.*,i.token,i.environment,i.enabled installation_enabled,i.token_valid,
-                    i.token_generation current_generation,i.mode,m.enabled miner_enabled,m.interval_minutes,m.next_due
+                    i.token_generation current_generation,i.mode,i.batch,m.enabled miner_enabled,m.interval_minutes,m.next_due
                     FROM jobs j JOIN installations i ON i.id=j.installation
                     JOIN miners m ON m.installation=j.installation AND m.id=j.miner
                     WHERE i.mode=? AND j.status='pending' AND j.attempts<5 AND j.next_attempt<=? AND j.lease_until<=?
-                    ORDER BY j.id LIMIT 1", [FleetServiceProtocol::MODE, $now, $now])->fetch();
+                    " . ($only === null ? '' : 'AND j.id=? ') . "ORDER BY j.id LIMIT 1",
+                    [FleetServiceProtocol::MODE, $now, $now, ...($only === null ? [] : [$only])])->fetch();
             if (!$job) {
                 return null;
             }
@@ -450,30 +484,41 @@ final class FleetDispatchWorker {
             [$job['id'], $job['claim'], FleetServiceProtocol::MODE])->fetchColumn();
     }
 
-    private function send(array $job, int $now): array {
+    private function send(array $job, int $now, array $group): array {
         try {
+            $payload = $this->payload($job, $group);
+            // One collapse identity per installation for batches, per miner otherwise.
+            $job['collapse'] = $job['batch'] ? $job['installation'] . ':fleet' : $job['installation'] . ':' . $job['miner'];
             return $this->sender
-                ? ($this->sender)($job, $this->payload($job), $now)
-                : $this->provider->send($job, $this->payload($job), $now);
+                ? ($this->sender)($job, $payload, $now)
+                : $this->provider->send($job, $payload, $now);
         } catch (Throwable) {
             return ['status' => 0, 'reason' => 'TransportUnavailable'];
         }
     }
 
-    private function recordResponse(array $job, array $response, int $now): void {
+    /** Returns the recorded outcome so a batch stops after an invalidated token. */
+    private function recordResponse(array $job, array $response, int $now, bool $primary = true): string {
         $status = (int)($response['status'] ?? 0);
         // Provider reasons are untrusted text: keep only a short alphanumeric code for audit decisions.
         $reason = preg_replace('/[^A-Za-z0-9]/', '', substr((string)($response['reason'] ?? ''), 0, 64));
         if ($status === 200) {
             $this->finish($job, 'sent', $now);
-        } elseif ($status === 410 || ($status === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
+            return 'sent';
+        }
+        if ($status === 410 || ($status === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
             $this->invalidateToken($job, $now, $status === 410 ? '410' : '400:' . $reason);
-        } elseif (($status === 0 || $status === 429 || $status >= 500) && $job['attempts'] < 5) {
-            $this->retry($job, $response, $status, $now);
-        } else {
-            $this->finish($job, 'failed', $now);
+            return 'invalid_token';
+        }
+        if (($status === 0 || $status === 429 || $status >= 500) && $job['attempts'] < 5) {
+            $this->retry($job, $response, $status, $now, $primary);
+            return 'retry';
+        }
+        $this->finish($job, 'failed', $now);
+        if ($primary) {
             $this->audit('provider_error', $reason === '' ? (string)$status : $status . ':' . $reason);
         }
+        return 'failed';
     }
 
     private function invalidateToken(array $job, int $now, string $detail): void {
@@ -490,12 +535,14 @@ final class FleetDispatchWorker {
         $this->audit('invalid_token', $detail);
     }
 
-    private function retry(array $job, array $response, int $status, int $now): void {
+    private function retry(array $job, array $response, int $status, int $now, bool $primary = true): void {
         $delay = max($status >= 500 ? 900 : 60, min(3600, 60 * (2 ** ($job['attempts'] - 1))),
             min(3600, max(0, (int)($response['retry_after'] ?? 0))));
         $this->store->query('UPDATE jobs SET next_attempt=?,lease_until=0,claim=NULL,updated=? WHERE id=? AND claim=? AND status=\'pending\'',
             [$now + $delay, $now, $job['id'], $job['claim']]);
-        $this->audit('retry', (string)$status);
+        if ($primary) {
+            $this->audit('retry', (string)$status);
+        }
     }
 
     private function finish(array $job, string $status, int $now): void {
@@ -514,12 +561,18 @@ final class FleetDispatchWorker {
         });
     }
 
-    private function payload(array $job): array {
-        return ['aps' => ['alert' => ['title' => 'Scheduled miner check',
-                'body' => "Open Hash Fleet on your miners' network to check current readings."],
+    private function payload(array $job, array $group): array {
+        $batch = (bool)$job['batch'];
+        $payload = ['aps' => ['alert' => $batch
+                ? ['title' => 'Scheduled fleet check', 'body' => "Open Hash Fleet on your miners' network to check current readings."]
+                : ['title' => 'Scheduled miner check', 'body' => "Open Hash Fleet on your miners' network to check current readings."],
             'mutable-content' => 1, 'category' => 'app.hashfleet.summary', 'thread-id' => 'hashfleet-scheduled-checks'],
             'app.hashfleet.deviceID' => $job['miner'], 'app.hashfleet.checkVersion' => 1,
             'app.hashfleet.checkIssuedAt' => (int)$this->store->now(), 'app.hashfleet.checkRequestID' => $job['request_id']];
+        if ($batch) {
+            $payload['app.hashfleet.deviceIDs'] = array_values(array_map(static fn(array $member) => $member['miner'], $group));
+        }
+        return $payload;
     }
 
     private function audit(string $kind, string $detail): void {
@@ -627,8 +680,7 @@ final class FleetService {
         ?array $body, string $ipScope): array {
         $id = FleetServiceInput::uuid($headers['x-hashfleet-installation'] ?? null);
         if ($action === 'register' && $method === 'POST') {
-            return $this->registrationWriter->register($id, $headers,
-                FleetServiceInput::keys($body, ['mode', 'device_token', 'environment', 'miners']), $ipScope);
+            return $this->registrationWriter->register($id, $headers, self::registrationBody($body), $ipScope);
         }
         $installation = $this->authenticate($id, $headers);
         $this->limit('installation:' . $id, 60, 120);
@@ -646,6 +698,12 @@ final class FleetService {
                 FleetServiceInput::keys($body, ['enabled', 'miners']));
         }
         return $response;
+    }
+
+    /** Older apps omit the optional batch capability, which keeps their one-push-per-miner behavior. */
+    private static function registrationBody(?array $body): array {
+        $required = ['mode', 'device_token', 'environment', 'miners'];
+        return FleetServiceInput::keys($body, is_array($body) && array_key_exists('batch', $body) ? [...$required, 'batch'] : $required);
     }
 
     private function status(string $id): array {
