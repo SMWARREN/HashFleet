@@ -98,6 +98,28 @@ class ReleaseContracts(unittest.TestCase):
         with patch.object(r, 'api', return_value=broken), self.assertRaises(ValueError):
             r.remote_hashes('0.2.0')
 
+    def test_latest_aliases_must_match_versioned_assets(self):
+        names = r.asset_names('0.2.0')
+        assets = [{'name': n, 'digest': 'sha256:' + self.hashes[n]} for n in names]
+        aliases = [{'name': a, 'digest': 'sha256:' + self.hashes[n]} for n, a in zip(names, r.LATEST_NAMES)]
+        release = {'draft': False, 'prerelease': False, 'assets': assets + aliases + [{'name': 'SHA256SUMS.txt', 'digest': 'sha256:' + '3' * 64}]}
+        with patch.object(r, 'api', return_value=release):
+            self.assertEqual(r.remote_hashes('0.2.0'), self.hashes)
+        mismatched = copy.deepcopy(release)
+        mismatched['assets'][2]['digest'] = 'sha256:' + '9' * 64
+        with patch.object(r, 'api', return_value=mismatched), self.assertRaises(ValueError):
+            r.remote_hashes('0.2.0')
+        partial = copy.deepcopy(release)
+        del partial['assets'][3]
+        with patch.object(r, 'api', return_value=partial), self.assertRaises(ValueError):
+            r.remote_hashes('0.2.0')
+
+    def test_release_files_include_unversioned_aliases(self):
+        files = r.release_files('0.2.0')
+        self.assertEqual(len(files), 5)
+        self.assertIn('HashFleet-macos-arm64.zip', files)
+        self.assertIn('hashfleet-cli-macos-arm64.tar.gz', files)
+
     def test_draft_not_used_for_homebrew(self):
         with patch.object(r, 'api', return_value={'draft': True, 'prerelease': False}), self.assertRaises(ValueError):
             r.remote_hashes('0.2.0')

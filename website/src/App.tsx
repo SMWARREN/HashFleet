@@ -28,10 +28,14 @@ function safeReleaseUrl(value: unknown): string | undefined {
     return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined
   } catch { return undefined }
 }
-const macUrl = safeReleaseUrl(import.meta.env.VITE_MAC_DOWNLOAD_URL)
+// Default to GitHub's latest-release redirect so new releases need no website rebuild.
+// Releases upload unversioned copies (Scripts/release/release.py LATEST_NAMES) for this.
+const LATEST = 'https://github.com/SMWARREN/HashFleet/releases/latest/download'
+const envOr = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() !== '' ? value : fallback)
+const macUrl = safeReleaseUrl(envOr(import.meta.env.VITE_MAC_DOWNLOAD_URL, `${LATEST}/HashFleet-macos-arm64.zip`))
 const iosUrl = safeReleaseUrl(import.meta.env.VITE_IOS_DOWNLOAD_URL)
-const cliUrl = safeReleaseUrl(import.meta.env.VITE_CLI_DOWNLOAD_URL)
-const sourceUrl = safeReleaseUrl(import.meta.env.VITE_SOURCE_URL)
+const cliUrl = safeReleaseUrl(envOr(import.meta.env.VITE_CLI_DOWNLOAD_URL, `${LATEST}/hashfleet-cli-macos-arm64.tar.gz`))
+const sourceUrl = safeReleaseUrl(envOr(import.meta.env.VITE_SOURCE_URL, 'https://github.com/SMWARREN/HashFleet'))
 const previewTotals = summarizeFleet(demoMiners)
 function Brand() {
   return <a className="brand" href="#top" aria-label="Hash Fleet home"><img src="/images/brand.png" alt="" width="42" height="42" /><span>Hash<span className="brand-light">Fleet</span><i className="brand-period">.</i></span></a>
