@@ -312,7 +312,8 @@ struct FleetRemotePushTests {
         let bodies = await fixture.transport.bodies
         #expect(bodies.count == 2)
         let registration = try #require(try JSONSerialization.jsonObject(with: bodies[0]) as? [String: Any])
-        #expect(Set(registration.keys) == ["mode", "device_token", "environment", "miners"])
+        #expect(Set(registration.keys) == ["mode", "device_token", "environment", "miners", "batch"])
+        #expect(registration["batch"] as? Bool == true)
         #expect(registration["mode"] as? String == "device_check_v1")
         #expect((registration["miners"] as? [[String: String]]) == [["id": fixture.device.id.uuidString.lowercased()]])
         let preferences = try #require(try JSONSerialization.jsonObject(with: bodies[1]) as? [String: Any])
