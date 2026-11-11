@@ -30,12 +30,13 @@ struct DeveloperTipJarSection: View {
             } else if let error = service.loadError, service.products.isEmpty {
                 FleetSettingsRow(showsSeparator: false) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Tip options couldn't be loaded.")
+                        Text("Tip options aren't available right now.")
                             .fleetFont(.subheadline)
                             .foregroundStyle(FleetTheme.ink)
-                        Text(error)
+                        Text("Check your connection and tap Retry. Hash Fleet works fully without a tip.")
                             .fleetFont(.caption)
                             .foregroundStyle(FleetTheme.secondary)
+                            .help(error)
                         Button("Retry") {
                             Task { await service.loadProducts() }
                         }
