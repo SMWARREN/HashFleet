@@ -115,31 +115,50 @@ public enum FleetScheduledCheckStorage {
     }
 }
 
-/// Only these four scheduling fields are interpreted. The push cannot supply a URL or command.
+/// Only these scheduling fields are interpreted. The push cannot supply a URL or command.
+/// `deviceIDs` (optional) lists every miner due in one batched push; `deviceID` stays for older apps.
 public struct FleetScheduledCheckRequest: Decodable, Equatable, Sendable {
+    public static let maximumDevices = 64
     public let deviceID: UUID
+    public let deviceIDs: [UUID]
     public let version: Int
     public let issuedAt: TimeInterval
     public let requestID: String
     enum CodingKeys: String, CodingKey {
         case deviceID = "app.hashfleet.deviceID"
+        case deviceIDs = "app.hashfleet.deviceIDs"
         case version = "app.hashfleet.checkVersion"
         case issuedAt = "app.hashfleet.checkIssuedAt"
         case requestID = "app.hashfleet.checkRequestID"
     }
-    public init(deviceID: UUID, version: Int = 1, issuedAt: TimeInterval, requestID: String) {
+    public init(deviceID: UUID, deviceIDs: [UUID]? = nil, version: Int = 1, issuedAt: TimeInterval, requestID: String) {
         self.deviceID = deviceID
+        self.deviceIDs = deviceIDs ?? [deviceID]
         self.version = version
         self.issuedAt = issuedAt
         self.requestID = requestID
     }
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let id = try c.decode(String.self, forKey: .deviceID)
-        guard let uuid = UUID(uuidString: id), uuid.uuidString.lowercased() == id else {
-            throw DecodingError.dataCorruptedError(forKey: .deviceID, in: c, debugDescription: "Invalid device ID")
+        func uuid(_ id: String) throws -> UUID {
+            guard let uuid = UUID(uuidString: id), uuid.uuidString.lowercased() == id else {
+                throw DecodingError.dataCorruptedError(forKey: .deviceID, in: c, debugDescription: "Invalid device ID")
+            }
+            return uuid
         }
-        deviceID = uuid
+        deviceID = try uuid(c.decode(String.self, forKey: .deviceID))
+        if let raw = try c.decodeIfPresent([String].self, forKey: .deviceIDs) {
+            guard (1...Self.maximumDevices).contains(raw.count) else {
+                throw DecodingError.dataCorruptedError(forKey: .deviceIDs, in: c, debugDescription: "Invalid device list")
+            }
+            let ids = try raw.map(uuid)
+            guard Set(ids).count == ids.count, ids.contains(deviceID) else {
+                throw DecodingError.dataCorruptedError(forKey: .deviceIDs, in: c, debugDescription: "Invalid device list")
+            }
+            deviceIDs = ids
+        } else {
+            deviceIDs = [deviceID]
+        }
         version = try c.decode(Int.self, forKey: .version)
         issuedAt = try c.decode(Double.self, forKey: .issuedAt)
         requestID = try c.decode(String.self, forKey: .requestID)
@@ -147,6 +166,7 @@ public struct FleetScheduledCheckRequest: Decodable, Equatable, Sendable {
     public func isValid(now: Date = .now) -> Bool {
         let age = now.timeIntervalSince1970 - issuedAt
         return version == 1 && issuedAt.isFinite && (-120...600).contains(age)
+            && (1...Self.maximumDevices).contains(deviceIDs.count) && deviceIDs.contains(deviceID)
             && (1...64).contains(requestID.utf8.count)
             && requestID.utf8.allSatisfy {
                 (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 95
@@ -178,6 +198,25 @@ public struct FleetScheduledCheckReading: Equatable, Sendable {
         value.flatMap { $0.isFinite && range.contains($0) ? $0 : nil }
     }
     public var body: String {
+        let parts = summaryParts
+        return parts.isEmpty ? "Reached the saved miner, but summary measurements were unavailable."
+            : "Just checked: " + parts.joined(separator: " · ")
+    }
+
+    /// Compact one-line form used when several miners share one notification.
+    public var shortSummary: String {
+        let locale = Locale(identifier: "en_US_POSIX")
+        var parts: [String] = []
+        if let rate = hashRateGHs {
+            parts.append(rate >= 1000 ? String(format: "%.2f TH/s", locale: locale, rate / 1000)
+                : String(format: "%.1f GH/s", locale: locale, rate))
+        }
+        if let temp = temperatureC { parts.append(String(format: "%.0f °C", locale: locale, temp)) }
+        if let power = powerW { parts.append(String(format: "%.0f W", locale: locale, power)) }
+        return parts.isEmpty ? "no readings" : parts.joined(separator: " · ")
+    }
+
+    private var summaryParts: [String] {
         let locale = Locale(identifier: "en_US_POSIX")
         var parts: [String] = []
         if let rate = hashRateGHs {
@@ -188,8 +227,7 @@ public struct FleetScheduledCheckReading: Equatable, Sendable {
         if let power = powerW { parts.append(String(format: "%.1f W", locale: locale, power)) }
         if let accepted = sharesAccepted { parts.append("\(accepted) accepted shares") }
         if let rejected = sharesRejected { parts.append("\(rejected) rejected shares") }
-        return parts.isEmpty ? "Reached the saved miner, but summary measurements were unavailable."
-            : "Just checked: " + parts.joined(separator: " · ")
+        return parts
     }
 }
 
@@ -209,6 +247,9 @@ public enum FleetScheduledCheckRunner {
         now: @Sendable () -> Date = { .now },
         read: @Sendable (FleetScheduledCheckTarget) async throws -> FleetScheduledCheckReading
     ) async -> FleetScheduledCheckPresentation {
+        if request.deviceIDs.count > 1 {
+            return await performBatch(request: request, configuration: configuration, now: now, read: read)
+        }
         guard !Task.isCancelled, request.isValid(now: now()),
               let target = configuration().target(id: request.deviceID) else { return .unavailable }
         do {
@@ -219,5 +260,50 @@ public enum FleetScheduledCheckRunner {
             }
             return .init(title: target.name, body: reading.body)
         } catch { return .unavailable }
+    }
+
+    /// Reads every listed miner concurrently and renders one line per miner, in the push's order.
+    /// A miner that cannot be read is reported as unreachable instead of hiding the others.
+    static func performBatch(
+        request: FleetScheduledCheckRequest,
+        configuration: @Sendable () -> FleetScheduledCheckConfiguration,
+        now: @Sendable () -> Date,
+        read: @Sendable (FleetScheduledCheckTarget) async throws -> FleetScheduledCheckReading
+    ) async -> FleetScheduledCheckPresentation {
+        guard !Task.isCancelled, request.isValid(now: now()) else { return .unavailable }
+        let config = configuration()
+        let targets = request.deviceIDs.compactMap { config.target(id: $0) }
+        guard !targets.isEmpty else { return .unavailable }
+        let results = await withoutActuallyEscaping(read) { read in
+            await withTaskGroup(of: (Int, FleetScheduledCheckReading?).self) { group in
+                for (index, target) in targets.enumerated() {
+                    group.addTask { (index, try? await read(target)) }
+                }
+                var collected = [FleetScheduledCheckReading?](repeating: nil, count: targets.count)
+                for await (index, reading) in group { collected[index] = reading }
+                return collected
+            }
+        }
+        guard !Task.isCancelled, request.isValid(now: now()) else { return .unavailable }
+        let latest = configuration()
+        var lines: [String] = []
+        var online = 0
+        var totalGHs = 0.0
+        for (target, reading) in zip(targets, results) where latest.target(id: target.id) == target {
+            if let reading {
+                online += 1
+                totalGHs += reading.hashRateGHs ?? 0
+                lines.append("\(target.name): \(reading.shortSummary)")
+            } else {
+                lines.append("\(target.name): unreachable")
+            }
+        }
+        guard !lines.isEmpty else { return .unavailable }
+        let locale = Locale(identifier: "en_US_POSIX")
+        let total = totalGHs >= 1000 ? String(format: "%.2f TH/s", locale: locale, totalGHs / 1000)
+            : String(format: "%.1f GH/s", locale: locale, totalGHs)
+        let title = online == 0 ? "Fleet check: miners unreachable"
+            : "Fleet \(total) · \(online)/\(lines.count) online"
+        return .init(title: title, body: lines.joined(separator: "\n"))
     }
 }

@@ -359,4 +359,96 @@ rejects(400, fn() => $boundary->call('PUT', 'preferences', $invalidSchedule),
     'preference writer rejects intervals outside the supported schedule set');
 check(!$boundary->db->inTransaction() && (int)$boundary->scalar('SELECT interval_minutes FROM miners') === 60,
     'invalid preference schedule leaves storage unchanged and transaction closed');
+
+// Batched scheduled checks: one push covers every miner due now for batch-capable apps.
+$third = '44444444-4444-4444-8444-444444444444';
+$fourth = '55555555-5555-4555-8555-555555555555';
+$batch = new Fixture();
+$miners = [['id' => $batch->miner], ['id' => $batch->other], ['id' => $third], ['id' => $fourth]];
+$batch->call('POST', 'register', $batch->registration(null, $miners) + ['batch' => true]);
+check($batch->scalar('SELECT batch FROM installations') === 1, 'batch capability is stored when the app declares it');
+$batch->call('PUT', 'preferences', $batch->schedule(true, 60, [$batch->miner, $batch->other, $third, $fourth]));
+$batch->due();
+check($batch->service->dispatchDue() === 1 && count($batch->sent) === 1, 'four due miners produce exactly one APNs request');
+$p = $batch->sent[0];
+check($p['app.hashfleet.deviceIDs'] === [$batch->miner, $batch->other, $third, $fourth], 'batch payload lists every due miner once, in stable order');
+check($p['app.hashfleet.deviceID'] === $batch->miner && $p['aps']['alert']['title'] === 'Scheduled fleet check',
+    'batch payload keeps the single-miner field for compatibility and uses a fleet title');
+check(strlen(json_encode($p)) < 4096, 'batch payload stays under the APNs size limit');
+check((int)$batch->scalar("SELECT COUNT(*) FROM jobs WHERE status='sent'") === 4, 'every batched miner job is recorded as sent');
+check((int)$batch->scalar('SELECT COUNT(DISTINCT next_due) FROM miners') === 1
+    && (int)$batch->scalar('SELECT MIN(next_due) FROM miners') === $batch->now + 3600, 'all batched miners advance to the next interval together');
+check($batch->service->dispatchDue() === 0 && count($batch->sent) === 1, 'batched interval is not resent');
+$batch->now += 3600;
+check($batch->service->dispatchDue() === 1 && count($batch->sent) === 2, 'next hour again sends one push for the fleet');
+
+// Max fleet stays under APNs 4 KB.
+$big = new Fixture();
+$many = [];
+for ($i = 0; $i < 64; $i++) { $many[] = ['id' => sprintf('%08x-0000-4000-8000-%012x', $i + 1, $i + 1)]; }
+$big->call('POST', 'register', $big->registration(null, $many) + ['batch' => true]);
+$big->call('PUT', 'preferences', $big->schedule(true, 60, array_column($many, 'id')));
+$big->due();
+check($big->service->dispatchDue() === 1 && count($big->sent[0]['app.hashfleet.deviceIDs']) === 64
+    && strlen(json_encode($big->sent[0])) < 4096, '64-miner batch is one push under 4 KB');
+
+// Different intervals: only miners due now are included.
+$mixed = new Fixture();
+$mixed->call('POST', 'register', $mixed->registration(null, [['id' => $mixed->miner], ['id' => $mixed->other]]) + ['batch' => true]);
+$mixed->call('PUT', 'preferences', ['enabled' => true, 'miners' => [
+    ['id' => $mixed->miner, 'enabled' => true, 'interval_minutes' => 60],
+    ['id' => $mixed->other, 'enabled' => true, 'interval_minutes' => 180]]]);
+$mixed->now += 3600;
+check($mixed->service->dispatchDue() === 1 && $mixed->sent[0]['app.hashfleet.deviceIDs'] === [$mixed->miner],
+    'miners on a longer interval are not pulled into an early batch');
+
+// Disabled miner is excluded from the batch.
+$off = new Fixture();
+$off->call('POST', 'register', $off->registration(null, [['id' => $off->miner], ['id' => $off->other]]) + ['batch' => true]);
+$off->call('PUT', 'preferences', ['enabled' => true, 'miners' => [
+    ['id' => $off->miner, 'enabled' => true, 'interval_minutes' => 60],
+    ['id' => $off->other, 'enabled' => false, 'interval_minutes' => 60]]]);
+$off->due();
+check($off->service->dispatchDue() === 1 && $off->sent[0]['app.hashfleet.deviceIDs'] === [$off->miner], 'disabled miner is not in the batch');
+
+// Old apps (no batch field) keep one push per miner.
+$old = new Fixture();
+$old->call('POST', 'register', $old->registration(null, [['id' => $old->miner], ['id' => $old->other]]));
+check($old->scalar('SELECT batch FROM installations') === 0, 'registration without batch defaults to per-miner');
+$old->call('PUT', 'preferences', $old->schedule(true, 60, [$old->miner, $old->other]));
+$old->due();
+check($old->service->dispatchDue() === 2 && count($old->sent) === 2 && !isset($old->sent[0]['app.hashfleet.deviceIDs'])
+    && $old->sent[0]['aps']['alert']['title'] === 'Scheduled miner check', 'legacy app still gets one unchanged push per miner');
+
+// A later registration without batch turns batching back off (app downgrade).
+$batch->call('POST', 'register', $batch->registration(null, $miners));
+check($batch->scalar('SELECT batch FROM installations') === 0, 're-registration without batch disables batching');
+rejects(400, fn() => $batch->call('POST', 'register', $batch->registration(null, $miners) + ['batch' => 'yes']),
+    'non-boolean batch flag is rejected');
+rejects(400, fn() => $batch->call('POST', 'register', $batch->registration(null, $miners) + ['extra' => true]),
+    'unknown registration fields are still rejected');
+
+// Batch retry: a transient failure retries every member, and success later sends one push.
+$flaky = new Fixture();
+$flaky->call('POST', 'register', $flaky->registration(null, [['id' => $flaky->miner], ['id' => $flaky->other]]) + ['batch' => true]);
+$flaky->call('PUT', 'preferences', $flaky->schedule(true, 60, [$flaky->miner, $flaky->other]));
+$flaky->due();
+$flaky->response = 503;
+check($flaky->service->dispatchDue() === 1 && (int)$flaky->scalar("SELECT COUNT(*) FROM jobs WHERE status='pending' AND next_attempt>0") === 2,
+    'transient failure schedules a retry for every batched miner');
+check((int)$flaky->scalar("SELECT COUNT(*) FROM audit WHERE kind='retry'") === 1, 'one retry audit per batch, not per miner');
+$flaky->response = 200;
+$flaky->now = (int)$flaky->scalar('SELECT MAX(next_attempt) FROM jobs');
+check($flaky->service->dispatchDue() === 1 && count($flaky->sent) === 2 && count($flaky->sent[1]['app.hashfleet.deviceIDs']) === 2,
+    'retry resends the whole fleet as one push');
+
+// Batch invalid token: token invalidated once and all members stop.
+$dead = new Fixture();
+$dead->call('POST', 'register', $dead->registration(null, [['id' => $dead->miner], ['id' => $dead->other]]) + ['batch' => true]);
+$dead->call('PUT', 'preferences', $dead->schedule(true, 60, [$dead->miner, $dead->other]));
+$dead->due();
+$dead->response = 410;
+check($dead->service->dispatchDue() === 1 && $dead->scalar('SELECT token_valid FROM installations') === 0
+    && (int)$dead->scalar("SELECT COUNT(*) FROM jobs WHERE status='pending'") === 0, 'invalid token stops the whole batch');
+check((int)$dead->scalar("SELECT COUNT(*) FROM audit WHERE kind='invalid_token'") === 1, 'invalid token audited once');
 fwrite(STDOUT, "PASS: {$checks} backend checks. No APNs requests or miner access.\n");

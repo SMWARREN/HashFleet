@@ -147,7 +147,7 @@ final class FleetAPNs {
                 'authorization: bearer ' . $this->jwt($now), 'content-type: application/json',
                 'apns-topic: app.hashfleet', 'apns-push-type: alert', 'apns-priority: 5',
                 'apns-expiration: ' . ($now + 300),
-                'apns-collapse-id: ' . hash('sha256', $job['installation'] . ':' . $job['miner']),
+                'apns-collapse-id: ' . hash('sha256', $job['collapse'] ?? ($job['installation'] . ':' . $job['miner'])),
             ],
             // cURL passes the handle first even when only the second argument is needed.
             CURLOPT_HEADERFUNCTION => static function ($handle, string $header) use (&$retryAfter, $now): int {
