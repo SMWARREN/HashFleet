@@ -108,9 +108,30 @@ public final class DeveloperTipJarService {
             hasAttemptedLoad = true
         }
 
+        let productIDs = DeveloperTipProduct.allCases.map(\.rawValue)
+        var lastError: Error?
+        var fetched: [Product] = []
+        // App Review and fresh sandbox sessions can return a transient error or an
+        // empty list on the first request. Retry with backoff before surfacing anything.
+        for attempt in 0..<4 {
+            if attempt > 0 {
+                try? await Task.sleep(for: .seconds(Double(attempt) * 1.5))
+                if Task.isCancelled { return }
+            }
+            do {
+                fetched = try await Product.products(for: productIDs)
+                lastError = nil
+                if !fetched.isEmpty { break }
+            } catch {
+                lastError = error
+            }
+        }
+        if fetched.isEmpty, let lastError {
+            self.loadError = lastError.localizedDescription
+            return
+        }
+
         do {
-            let productIDs = DeveloperTipProduct.allCases.map(\.rawValue)
-            let fetched = try await Product.products(for: productIDs)
             // Filter strictly to consumable products belonging to approvedProductIDs
             let validConsumables = fetched.filter { product in
                 product.type == .consumable && Self.approvedProductIDs.contains(product.id)
@@ -120,8 +141,6 @@ public final class DeveloperTipJarService {
 
             // Process any pending unfinished transactions for these products
             await processUnfinishedTransactions()
-        } catch {
-            self.loadError = error.localizedDescription
         }
     }
 
