@@ -255,17 +255,24 @@ struct AddMinerView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(localNetwork.status == .denied
                  ? "Local network access is off. Turn on Hash Fleet in \(FleetDeviceCopy.hostSettingsAppName) › Privacy & Security › Local Network, then try again."
-                 : "Adding or scanning miners needs your permission to access your local network.")
+                 : "Hash Fleet finds and talks to your miners directly on your Wi-Fi network. Nothing is sent to the internet. Next, iOS will ask whether to allow this. You can choose either option and change it later in Settings.")
                 .fleetFont(.footnote)
                 .foregroundStyle(localNetwork.status == .denied ? FleetTheme.warning : FleetTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Button {
+                #if os(iOS)
+                    if localNetwork.status == .denied,
+                       let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                        return
+                    }
+                #endif
                 localNetwork.request()
             } label: {
                 HStack {
                     if localNetwork.status == .requesting { ProgressView().controlSize(.small) }
-                    Label(localNetwork.status == .requesting ? "Waiting for approval…" : "Allow local network access",
-                          systemImage: "lock.open")
+                    Label(localNetwork.status == .requesting ? "Waiting…" : localNetworkButtonTitle,
+                          systemImage: "arrow.right")
                 }
                 .frame(maxWidth: .infinity, minHeight: 24)
             }
@@ -281,8 +288,15 @@ struct AddMinerView: View {
             .buttonStyle(.bordered)
             .disabled(true)
             .accessibilityIdentifier("addMiner.discoveryStart")
-            .accessibilityHint("Available after you allow local network access.")
+            .accessibilityHint("Available after you respond to the local network prompt.")
         }
+    }
+
+    private var localNetworkButtonTitle: String {
+        #if os(iOS)
+            if localNetwork.status == .denied { return "Open Settings" }
+        #endif
+        return "Continue"
     }
 
     private var discoveryHostCount: Int {
