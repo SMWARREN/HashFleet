@@ -255,7 +255,8 @@ struct AddMinerView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(localNetwork.status == .denied
                  ? "Local network access is off. Turn on Hash Fleet in \(FleetDeviceCopy.hostSettingsAppName) › Privacy & Security › Local Network, then try again."
-                 : "Hash Fleet finds and talks to your miners directly on your Wi-Fi network. Nothing is sent to the internet. Next, iOS will ask whether to allow this. You can choose either option and change it later in Settings.")
+                 : "Hash Fleet finds and talks to your miners directly on your Wi-Fi network. Nothing is sent to the internet. "
+                    + "Next, iOS will ask whether to allow this. You can choose either option and change it later in Settings.")
                 .fleetFont(.footnote)
                 .foregroundStyle(localNetwork.status == .denied ? FleetTheme.warning : FleetTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
