@@ -31,10 +31,11 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 export WORK
 python3 -B - <<'PY'
-import base64, os
+import os
 from pathlib import Path
+from Scripts.release.signing import decode_certificate
 work = Path(os.environ['WORK'])
-(work / 'certificate.p12').write_bytes(base64.b64decode(os.environ['MACOS_CERTIFICATE_P12'], validate=True))
+(work / 'certificate.p12').write_bytes(decode_certificate(os.environ['MACOS_CERTIFICATE_P12']))
 (work / 'notary.p8').write_text(os.environ['APPLE_API_KEY_P8'])
 PY
 security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
