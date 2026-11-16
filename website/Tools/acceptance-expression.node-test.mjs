@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const toolsDirectory = path.dirname(fileURLToPath(import.meta.url))
 const payloads = [
-  'browser-acceptance.js', 'native-parity-acceptance.js', 'navigation-regression.js',
+  'download-acceptance.js', 'browser-acceptance.js', 'native-parity-acceptance.js', 'navigation-regression.js',
   'privacy-permalink-acceptance.js', 'public-contact-acceptance.js',
   'route-acceptance.js', 'support-acceptance.js', 'watch-acceptance.js',
 ]
