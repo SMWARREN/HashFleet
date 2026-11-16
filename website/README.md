@@ -109,6 +109,8 @@ For a frontend-only update, do not install that full package when private/backen
 
 ## Release links and privacy
 
-Only set verified public HTTPS destinations in ignored `.env.local`: `VITE_MAC_DOWNLOAD_URL`, `VITE_IOS_DOWNLOAD_URL` and `VITE_SOURCE_URL`. Rebuild afterward. Invalid, non-HTTPS or credential-bearing values are ignored. Until actual public releases are configured, the page says **Coming soon**. A domain or capture does not prove release availability.
+Mac and CLI downloads default to the existing GitHub latest-release assets. The iPhone/iPad download defaults to the public App Store listing `https://apps.apple.com/us/app/hash-fleet/id6812623943`, verified through Apple's public lookup on November 16, 2026 against app ID `6812623943`, developer Sean Warren and bundle `app.hashfleet`.
+
+Only set verified public HTTPS overrides in ignored `.env.local`: `VITE_MAC_DOWNLOAD_URL`, `VITE_CLI_DOWNLOAD_URL`, `VITE_IOS_DOWNLOAD_URL` and `VITE_SOURCE_URL`. Rebuild afterward. Empty overrides retain the defaults. Invalid, non-HTTPS or credential-bearing overrides disable the corresponding link rather than navigating to an unsafe destination. A domain or capture does not prove release availability.
 
 All `VITE_` inputs are public. Never include passwords, tokens, wallets, keys, real LAN endpoints or raw private responses. The site has no analytics, account forms, advertising, cookies or persisted demo choices. Hosting request logs follow the provider's policy. Optional native push settings and their activation gates remain separate from this website.
