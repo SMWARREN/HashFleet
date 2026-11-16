@@ -132,7 +132,10 @@ struct AboutView: View {
             }
             FleetSettingsSection("Open source") {
                 FleetSettingsRow {
-                    LabeledContent("Version", value: "0.1.0")
+                    LabeledContent(
+                        "Version",
+                        value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+                    )
                 }
                 FleetSettingsRow {
                     LabeledContent("License", value: "GPL-3.0")
