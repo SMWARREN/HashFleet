@@ -1,0 +1,48 @@
+.site-dialog.site-dialog--download { width: min(700px, calc(100% - 24px)); }
+.site-dialog--download .dialog-content { padding: 28px; }
+.site-dialog--download .dialog-close { width: 44px; height: 44px; top: 12px; right: 12px; }
+.download-options { min-width: 0; overflow-wrap: anywhere; }
+.download-options__header { padding-right: 28px; }
+.download-options__header img { border-radius: 10px; margin-bottom: 14px; }
+.download-options__header .eyebrow { font-size: 10px; }
+.download-options .download-options__header h2 { margin-top: 8px; font-size: clamp(27px, 4vw, 34px); line-height: 1.15; letter-spacing: -1.1px; }
+.download-options__header p { color: var(--dim); font-size: 13px; line-height: 1.6; margin-top: 10px; }
+.download-options__section { margin-top: 25px; }
+.download-options__section h3 { font-size: 15px; font-weight: 600; line-height: 1.5; }
+.download-options__section-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.download-options__section-heading > span { font-size: 11px; line-height: 1.6; color: var(--dim); }
+.download-options__rows, .download-options__standalone { border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; background: var(--surface); }
+.download-options__row { display: grid; grid-template-columns: 23px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 13px 14px; }
+.download-options__row > svg { color: var(--dim); }
+.download-options__row--primary > svg { color: var(--accent-ink); }
+.download-options__label { display: grid; gap: 3px; min-width: 0; }
+.download-options__label strong { font-size: 14px; font-weight: 550; line-height: 1.5; }
+.download-options__label > span { color: var(--dim); font-size: 11px; line-height: 1.6; }
+.download-options__action { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; max-width: 100%; padding: 10px 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--canvas); font-size: 12px; line-height: 1.5; font-weight: 600; text-align: center; }
+.download-options__action:hover { background: var(--raised); border-color: var(--accent-ink); }
+.download-options__action--primary { color: #17140d; background: #f5ac26; border-color: #f5ac26; }
+.download-options__action--primary:hover { background: #ffc351; border-color: #ffc351; }
+.download-options__status { color: var(--dim); font-size: 11px; line-height: 1.5; border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.download-options__watch { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 11px; line-height: 1.7; padding: 0 14px 13px; border-bottom: 1px solid var(--line); }
+.download-options__watch svg { color: var(--accent-ink); }
+.download-options__note { display: flex; align-items: flex-start; gap: 7px; color: var(--dim); font-size: 11px; line-height: 1.7; margin-top: 9px; }
+.download-options__note svg { margin-top: 2px; color: var(--accent-ink); }
+.download-options__section--terminal { padding-top: 21px; border-top: 1px solid var(--line); }
+.download-options__homebrew { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; margin-top: 5px; color: var(--dim); font-size: 11px; line-height: 1.8; }
+.download-options__homebrew a, .download-options__footer a { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding-block: 10px; }
+.download-options__homebrew a { color: var(--accent-ink); }
+.download-options__homebrew code { color: var(--ink); font-size: 11px; white-space: normal; }
+.download-options__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0 22px; border-top: 1px solid var(--line); margin-top: 17px; padding-top: 6px; color: var(--dim); font-size: 11px; line-height: 1.6; }
+.download-options__footer a:hover, .download-options__homebrew a:hover { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 560px) {
+  .site-dialog--download .dialog-content { padding: 24px 18px 18px; }
+  .download-options__row { grid-template-columns: 23px minmax(0, 1fr); gap: 8px 10px; padding: 12px; }
+  .download-options__action, .download-options__status { grid-column: 2; justify-self: start; }
+  .download-options__action--primary { width: 100%; }
+  .download-options__watch { align-items: flex-start; padding-inline: 12px; }
+  .download-options__watch svg { margin-top: 2px; }
+}
+@media (max-height: 500px) and (min-width: 561px) {
+  .site-dialog--download .dialog-content { padding-block: 20px; }
+  .download-options__header img { display: none; }
+}

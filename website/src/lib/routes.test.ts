@@ -1,13 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { privacyFragment, resolveSiteDialog, resolveSiteRoute } from './routes'
+import { downloadFragment, privacyFragment, resolveSiteDialog, resolveSiteRoute } from './routes'
 
 describe('privacy policy permalink', () => {
   it('opens only the explicit privacy fragment', () => {
     expect(privacyFragment).toBe('#privacy')
     expect(resolveSiteDialog('#privacy')).toBe('privacy')
   })
-  it.each(['', '#', '#support', '#download', '#Privacy', '#privacy/', '#privacy?next=https://example.invalid', '#privacy%20', '#%70rivacy', '#https://example.invalid', '#<script>'])('does not open a dialog for %s', fragment => {
+  it.each(['', '#', '#support', '#Privacy', '#privacy/', '#privacy?next=https://example.invalid', '#privacy%20', '#%70rivacy', '#https://example.invalid', '#<script>'])('does not open a dialog for %s', fragment => {
     expect(resolveSiteDialog(fragment)).toBeNull()
+  })
+})
+
+describe('download dialog permalink', () => {
+  it('opens the actual download dialog only for the exact fragment', () => {
+    expect(downloadFragment).toBe('#download')
+    expect(resolveSiteDialog(downloadFragment)).toBe('download')
+  })
+  it.each(['#Download', '#download/', '#download?next=https://example.invalid', '#download%20', '#%64ownload', '#download/../privacy'])('rejects modified download fragment %s', fragment => {
+    expect(resolveSiteDialog(fragment)).toBeNull()
+  })
+  it.each(['/', '/index.html', '/demo/mac', '/demo/iphone', '/demo/terminal'])('keeps #download independent of the existing path %s', path => {
+    const url = new URL(`${path}#download`, 'https://hashfleet.app')
+    expect(resolveSiteRoute(url.pathname).kind).not.toBe('unavailable')
+    expect(resolveSiteDialog(url.hash)).toBe('download')
+  })
+  it('does not invent a download server route', () => {
+    expect(resolveSiteRoute('/download')).toEqual({ kind: 'unavailable' })
   })
 })
 

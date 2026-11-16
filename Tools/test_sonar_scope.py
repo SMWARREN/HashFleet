@@ -5,7 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PAYLOADS = {
-    "browser-acceptance.js", "native-parity-acceptance.js", "navigation-regression.js",
+    "download-acceptance.js", "browser-acceptance.js", "native-parity-acceptance.js", "navigation-regression.js",
     "privacy-permalink-acceptance.js", "public-contact-acceptance.js",
     "route-acceptance.js", "support-acceptance.js", "watch-acceptance.js",
 }

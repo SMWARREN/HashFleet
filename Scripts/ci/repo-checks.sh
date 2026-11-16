@@ -37,7 +37,7 @@ php Server/tests/apns_response_test.php
 python3 -B Server/tests/build_bundle_test.py
 
 echo "== Offline browser-tool interfaces"
-node --test website/Tools/playwright-result.node-test.mjs website/Tools/acceptance-expression.node-test.mjs
+node --test website/Tools/playwright-result.node-test.mjs website/Tools/acceptance-expression.node-test.mjs website/Tools/download-network.node-test.mjs
 python3 -B website/Tools/test_capture_dashboard.py
 
 echo "== Sonar source/test classification contracts"

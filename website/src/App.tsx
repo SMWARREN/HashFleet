@@ -7,11 +7,12 @@ import Icon from './components/Icon'
 import type { IconName } from './components/Icon'
 import TerminalDemo from './components/TerminalDemo'
 import SupportSection from './components/SupportSection'
-import { privacyFragment, resolveSiteDialog } from './lib/routes'
+import DownloadOptions from './components/DownloadOptions'
+import { downloadFragment, privacyFragment, resolveSiteDialog } from './lib/routes'
 import cliCaptures from './lib/cli-captures.json'
 import AnsiOutput from './components/AnsiOutput'
 import { demoMiners, summarizeFleet } from './lib/demo'
-import { iosReleaseUrl, safeReleaseUrl } from './lib/releases'
+import { resolveReleaseLinks } from './lib/releases'
 
 type Platform = 'mac' | 'iphone' | 'watch' | 'terminal'
 type DialogName = 'download' | 'privacy' | null
@@ -22,14 +23,13 @@ const platforms: { id: Platform, label: string, icon: IconName, caption: string 
   { id: 'terminal', label: 'Terminal', icon: 'terminal', caption: 'Straight to the signal. No clicks required.' },
 ]
 
-// Default to GitHub's latest-release redirect so new releases need no website rebuild.
-// Releases upload unversioned copies (Scripts/release/release.py LATEST_NAMES) for this.
-const LATEST = 'https://github.com/SMWARREN/HashFleet/releases/latest/download'
-const envOr = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() !== '' ? value : fallback)
-const macUrl = safeReleaseUrl(envOr(import.meta.env.VITE_MAC_DOWNLOAD_URL, `${LATEST}/HashFleet-macos-arm64.zip`))
-const iosUrl = iosReleaseUrl(import.meta.env.VITE_IOS_DOWNLOAD_URL)
-const cliUrl = safeReleaseUrl(envOr(import.meta.env.VITE_CLI_DOWNLOAD_URL, `${LATEST}/hashfleet-cli-macos-arm64.tar.gz`))
-const sourceUrl = safeReleaseUrl(envOr(import.meta.env.VITE_SOURCE_URL, 'https://github.com/SMWARREN/HashFleet'))
+const releaseLinks = resolveReleaseLinks({
+  mac: import.meta.env.VITE_MAC_DOWNLOAD_URL,
+  ios: import.meta.env.VITE_IOS_DOWNLOAD_URL,
+  cli: import.meta.env.VITE_CLI_DOWNLOAD_URL,
+  source: import.meta.env.VITE_SOURCE_URL,
+})
+const sourceUrl = releaseLinks.source
 const previewTotals = summarizeFleet(demoMiners)
 function Brand() {
   return <a className="brand" href="#top" aria-label="Hash Fleet home"><img src="/images/brand.png" alt="" width="42" height="42" /><span>Hash<span className="brand-light">Fleet</span><i className="brand-period">.</i></span></a>
@@ -61,19 +61,10 @@ function Dialog({ name, onClose }: Readonly<{ name: Exclude<DialogName, null>, o
       next?.focus()
     }
   }
-  return <dialog ref={ref} className="site-dialog" onClose={onClose} onKeyDown={containTabFocus} onClick={event => { if (event.target === event.currentTarget) close() }} aria-labelledby="dialog-title">
+  return <dialog ref={ref} className={`site-dialog${name === 'download' ? ' site-dialog--download' : ''}`} onClose={onClose} onKeyDown={containTabFocus} onClick={event => { if (event.target === event.currentTarget) close() }} aria-labelledby="dialog-title">
     <div className="dialog-content"><button className="dialog-close icon-button" onClick={close} aria-label="Close dialog" autoFocus><Icon name="close" /></button>
-      <img className="dialog-brand" src="/images/brand.png" alt="" width="64" height="64" />
-      {name === 'download' ? <>
-        <span className="eyebrow">YOUR HASH. YOUR HARDWARE.</span><h2 id="dialog-title">Make it your fleet.</h2><p>Get the iPhone and iPad app from the App Store, or choose the native Mac app and standalone terminal CLI. Each installs independently. You can also explore the screen walkthroughs and browser CLI demo before downloading.</p>
-        <div className="release-card"><Icon name="mac" size={26} /><div><strong>Hash Fleet for Mac</strong><span>Apple Silicon · macOS 14+ · native app only</span></div>{macUrl ? <a className="button button-small" href={macUrl} target="_blank" rel="noopener noreferrer">Get Mac build <Icon name="external" size={15} /></a> : <span className="release-status">Preview above · public build soon</span>}</div>
-        <div className="release-card"><Icon name="phone" size={26} /><div><strong>Hash Fleet for iPhone & iPad</strong><span>iOS 17+ · native SwiftUI app</span></div>{iosUrl ? <a className="button button-small button-app-store" href={iosUrl} target="_blank" rel="noopener noreferrer">Download on the App Store <Icon name="external" size={15} /></a> : <span className="release-status">Coming soon</span>}</div>
-        <div className="release-card"><Icon name="watch" size={26} /><div><strong>Hash Fleet for Apple Watch</strong><span>watchOS 26.5+ · native Watch app</span></div><span className="release-status">Included with the iOS app</span></div>
-        <div className="release-card"><Icon name="terminal" size={26} /><div><strong>Hash Fleet CLI</strong><span>Apple Silicon · macOS 14+ · terminal only</span></div>{cliUrl ? <a className="button button-small" href={cliUrl} target="_blank" rel="noopener noreferrer">Get terminal CLI <Icon name="external" size={15} /></a> : <span className="release-status">Public CLI download coming soon</span>}</div>
-        {macUrl && cliUrl ? <div className="release-note"><strong>Prefer Homebrew? Install either or both:</strong><p><code>brew install --cask hashfleet</code></p><p><code>brew install hashfleet-cli</code></p><a href="https://github.com/SMWARREN/HashFleet/blob/main/docs/HOMEBREW.md" target="_blank" rel="noopener noreferrer">Homebrew setup and installation details</a></div> : null}
-        {sourceUrl ? <a className="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer"><Icon name="code" size={18} /> Explore the source <Icon name="external" size={14} /></a> : <p className="release-note"><Icon name="code" size={18} /> Open-source project · public repository link coming soon.</p>}
-        <p className="dialog-fineprint">No email signup, no waitlist tracking, no made-up download links.</p>
-      </> : <>
+      {name === 'download' ? <DownloadOptions links={releaseLinks} /> : <>
+        <img className="dialog-brand" src="/images/brand.png" alt="" width="64" height="64" />
         <span className="eyebrow">PRIVACY, NOT PROMISES</span><h2 id="dialog-title">Your fleet stays yours.</h2>
         <div className="privacy-copy"><h3>This website</h3><p>The native-screen walkthroughs and terminal demo use fictional readings and run in your browser. Native images are captured screens with tour navigation, not a native app stream. They do not discover, connect to, or change miners. There are no analytics scripts, advertising, cookies, account forms, or telemetry uploads in this website. Your demo choices are not persisted.</p><p>The hosting provider may process standard request logs such as IP addresses to deliver the website. Visiting external release or repository links follows the destination's privacy policy.</p><h3>The native apps</h3><p>Hash Fleet stores fleet configuration locally and connects directly to the miners you add. Optional public chain and pool services can be disabled. Logs and raw miner responses may contain sensitive information, so review them before sharing.</p><p>Optional scheduled push checks are off by default and controlled inside the iPhone and Mac apps, not this website. When configured and enabled, the scheduling service receives a push token, opaque miner IDs, switches and intervals. Miner names, LAN addresses and readings stay on your device. A bundled notification extension attempts a short local check after an Apple push. Delivery and local-network access are best effort, not continuous monitoring or guaranteed hourly updates. No separate companion app is required.</p><h3>Your connection</h3><p>Miner HTTP APIs are generally plaintext local-network endpoints. Use a trusted VPN for remote access. Never port-forward a miner to the public internet.</p><h3>Contact and privacy requests</h3><p>For app support, privacy questions or data-removal requests, contact Sean Warren at <a href="mailto:support@hashfleet.app">support@hashfleet.app</a>. Email contains the information you choose to send. Do not include passwords, private keys or unredacted miner logs.</p><p><a href="/support/">Technical support and contact details</a></p></div>
       </>}
@@ -116,17 +107,19 @@ export default function App({ initialPlatform = 'mac', startAtDemo = false }: Re
 
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => {
-    function syncPrivacyFragment() {
+    function syncDialogFragment() {
       const linkedDialog = resolveSiteDialog(window.location.hash)
       if (linkedDialog) {
-        dialogInvoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('.site-dialog')) {
+          dialogInvoker.current = document.activeElement
+        }
         setDialog(linkedDialog)
       } else {
-        setDialog(current => current === 'privacy' ? null : current)
+        setDialog(null)
       }
     }
-    window.addEventListener('hashchange', syncPrivacyFragment)
-    return () => window.removeEventListener('hashchange', syncPrivacyFragment)
+    window.addEventListener('hashchange', syncDialogFragment)
+    return () => window.removeEventListener('hashchange', syncDialogFragment)
   }, [])
   useEffect(() => {
     if (!startAtDemo) return
@@ -135,8 +128,9 @@ export default function App({ initialPlatform = 'mac', startAtDemo = false }: Re
   }, [startAtDemo])
   function openDialog(name: Exclude<DialogName, null>) {
     dialogInvoker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    if (name === 'privacy' && window.location.hash !== privacyFragment) {
-      window.history.pushState(null, '', privacyFragment)
+    const fragment = name === 'privacy' ? privacyFragment : downloadFragment
+    if (window.location.hash !== fragment) {
+      window.history.pushState(null, '', fragment)
     }
     setDialog(name)
   }
@@ -189,7 +183,7 @@ export default function App({ initialPlatform = 'mac', startAtDemo = false }: Re
       <section className="principles-section container" id="principles"><div className="principles-art"><div className="art-halo" /><img src="/images/miner.png" alt="Hash Fleet's gold and graphite miner artwork" width="640" height="640" loading="lazy" /><span className="art-caption"><span className="caption-line" />MADE FOR THE HARDWARE YOU OWN</span></div><div className="principles-copy"><span className="eyebrow">NOT ANOTHER CLOUD DASHBOARD.</span><h2>Built for miners.<br />{' '}<span>Not for mining<br />{' '}your data.</span></h2><p>Your hardware is personal. The software you use to watch it should respect that.</p><div className="principle-row"><span>01</span><div><h3>Native where it matters.</h3><p>SwiftUI on Apple platforms. A focused CLI on your Mac. Each feels right where you use it.</p></div></div><div className="principle-row"><span>02</span><div><h3>Clear about what it knows.</h3><p>Missing sensors and stale snapshots stay visibly labeled in the real app. Captured timestamps and sample assumptions are not live fleet readings.</p></div></div><div className="principle-row"><span>03</span><div><h3>You stay in control.</h3><p>Read-only monitoring first. Explicit confirmation for changes. No surprise tuning or firmware updates.</p></div></div></div></section>
       <section className="faq-section container" id="faq"><div><span className="eyebrow">A FEW THINGS WORTH KNOWING</span><h2>Hash Fleet FAQ.<br />{' '}<span>Straight answers.</span></h2></div><div className="faq-list">{faqs.map((faq, index) => <details key={faq.question}><summary><span className="faq-number">0{index + 1}</span><span>{faq.question}</span><Icon name="plus" size={18} /></summary><p>{faq.answer}{faq.link ? <>{' '}<a href={faq.link.href} target="_blank" rel="noopener noreferrer">{faq.link.label} <Icon name="external" size={13} /></a></> : null}</p></details>)}</div></section>
       <SupportSection />
-      <section className="final-cta container"><span className="eyebrow">THE FLEET IS YOURS.</span><h2>Download Hash Fleet.</h2><p>Less tab juggling. More time for everything else.</p><button className="button button-primary" onClick={() => openDialog('download')}>Get Hash Fleet <Icon name="arrow-up" size={18} /></button><span className="cta-availability">Mac · iPhone & iPad · Terminal <span>{macUrl || cliUrl ? "Mac and terminal downloads available" : "Public builds coming soon"}</span></span></section>
+      <section className="final-cta container"><span className="eyebrow">THE FLEET IS YOURS.</span><h2>Download Hash Fleet.</h2><p>Less tab juggling. More time for everything else.</p><button className="button button-primary" onClick={() => openDialog('download')}>Get Hash Fleet <Icon name="arrow-up" size={18} /></button><span className="cta-availability">iPhone & iPad · Native Mac · Terminal <span>Choose your platform and download channel.</span></span></section>
     </main>
     <footer className="site-footer container"><div className="footer-main"><Brand /><span>Your hash. Your hardware.</span><nav aria-label="Footer navigation"><button onClick={() => openDialog('privacy')}>Privacy</button><a href="/support/">Help & contact</a><a href="#faq">Compatibility & safety</a><a href="#support">Support</a>{sourceUrl ? <a href={sourceUrl} target="_blank" rel="noopener noreferrer">Source <Icon name="external" size={13} /></a> : <button onClick={() => openDialog('download')}>Open source <Icon name="external" size={13} /></button>}</nav></div><div className="footer-bottom"><span>© 2026 Hash Fleet. Made for the independent miner.</span><span>Independent project. Not affiliated with Apple, Bitaxe, or the miners' manufacturers.</span><span className="footer-domain">HASHFLEET.APP <span className="kicker-dot" /></span></div></footer>
     {dialog && <Dialog name={dialog} onClose={closeDialog} />}
