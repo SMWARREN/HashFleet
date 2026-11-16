@@ -11,6 +11,7 @@ import { privacyFragment, resolveSiteDialog } from './lib/routes'
 import cliCaptures from './lib/cli-captures.json'
 import AnsiOutput from './components/AnsiOutput'
 import { demoMiners, summarizeFleet } from './lib/demo'
+import { iosReleaseUrl, safeReleaseUrl } from './lib/releases'
 
 type Platform = 'mac' | 'iphone' | 'watch' | 'terminal'
 type DialogName = 'download' | 'privacy' | null
@@ -21,19 +22,12 @@ const platforms: { id: Platform, label: string, icon: IconName, caption: string 
   { id: 'terminal', label: 'Terminal', icon: 'terminal', caption: 'Straight to the signal. No clicks required.' },
 ]
 
-function safeReleaseUrl(value: unknown): string | undefined {
-  if (typeof value !== 'string' || value.trim() === '') return undefined
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined
-  } catch { return undefined }
-}
 // Default to GitHub's latest-release redirect so new releases need no website rebuild.
 // Releases upload unversioned copies (Scripts/release/release.py LATEST_NAMES) for this.
 const LATEST = 'https://github.com/SMWARREN/HashFleet/releases/latest/download'
 const envOr = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() !== '' ? value : fallback)
 const macUrl = safeReleaseUrl(envOr(import.meta.env.VITE_MAC_DOWNLOAD_URL, `${LATEST}/HashFleet-macos-arm64.zip`))
-const iosUrl = safeReleaseUrl(import.meta.env.VITE_IOS_DOWNLOAD_URL)
+const iosUrl = iosReleaseUrl(import.meta.env.VITE_IOS_DOWNLOAD_URL)
 const cliUrl = safeReleaseUrl(envOr(import.meta.env.VITE_CLI_DOWNLOAD_URL, `${LATEST}/hashfleet-cli-macos-arm64.tar.gz`))
 const sourceUrl = safeReleaseUrl(envOr(import.meta.env.VITE_SOURCE_URL, 'https://github.com/SMWARREN/HashFleet'))
 const previewTotals = summarizeFleet(demoMiners)
@@ -71,9 +65,9 @@ function Dialog({ name, onClose }: Readonly<{ name: Exclude<DialogName, null>, o
     <div className="dialog-content"><button className="dialog-close icon-button" onClick={close} aria-label="Close dialog" autoFocus><Icon name="close" /></button>
       <img className="dialog-brand" src="/images/brand.png" alt="" width="64" height="64" />
       {name === 'download' ? <>
-        <span className="eyebrow">YOUR HASH. YOUR HARDWARE.</span><h2 id="dialog-title">Make it your fleet.</h2><p>Choose the native Mac app, the standalone terminal CLI, or both. Each installs independently. You can also explore the screen walkthroughs and browser CLI demo before downloading.</p>
+        <span className="eyebrow">YOUR HASH. YOUR HARDWARE.</span><h2 id="dialog-title">Make it your fleet.</h2><p>Get the iPhone and iPad app from the App Store, or choose the native Mac app and standalone terminal CLI. Each installs independently. You can also explore the screen walkthroughs and browser CLI demo before downloading.</p>
         <div className="release-card"><Icon name="mac" size={26} /><div><strong>Hash Fleet for Mac</strong><span>Apple Silicon · macOS 14+ · native app only</span></div>{macUrl ? <a className="button button-small" href={macUrl} target="_blank" rel="noopener noreferrer">Get Mac build <Icon name="external" size={15} /></a> : <span className="release-status">Preview above · public build soon</span>}</div>
-        <div className="release-card"><Icon name="phone" size={26} /><div><strong>Hash Fleet for iPhone & iPad</strong><span>iOS 17+ · native SwiftUI app</span></div>{iosUrl ? <a className="button button-small" href={iosUrl} target="_blank" rel="noopener noreferrer">Get iOS build <Icon name="external" size={15} /></a> : <span className="release-status">Coming soon</span>}</div>
+        <div className="release-card"><Icon name="phone" size={26} /><div><strong>Hash Fleet for iPhone & iPad</strong><span>iOS 17+ · native SwiftUI app</span></div>{iosUrl ? <a className="button button-small button-app-store" href={iosUrl} target="_blank" rel="noopener noreferrer">Download on the App Store <Icon name="external" size={15} /></a> : <span className="release-status">Coming soon</span>}</div>
         <div className="release-card"><Icon name="watch" size={26} /><div><strong>Hash Fleet for Apple Watch</strong><span>watchOS 26.5+ · native Watch app</span></div><span className="release-status">Included with the iOS app</span></div>
         <div className="release-card"><Icon name="terminal" size={26} /><div><strong>Hash Fleet CLI</strong><span>Apple Silicon · macOS 14+ · terminal only</span></div>{cliUrl ? <a className="button button-small" href={cliUrl} target="_blank" rel="noopener noreferrer">Get terminal CLI <Icon name="external" size={15} /></a> : <span className="release-status">Public CLI download coming soon</span>}</div>
         {macUrl && cliUrl ? <div className="release-note"><strong>Prefer Homebrew? Install either or both:</strong><p><code>brew install --cask hashfleet</code></p><p><code>brew install hashfleet-cli</code></p><a href="https://github.com/SMWARREN/HashFleet/blob/main/docs/HOMEBREW.md" target="_blank" rel="noopener noreferrer">Homebrew setup and installation details</a></div> : null}

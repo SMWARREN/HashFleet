@@ -4,9 +4,15 @@
 
 Native apps and a terminal dashboard for monitoring your mining fleet. Built for macOS, iPhone, iPad, and Apple Watch, with support for miners running ESP-Miner / AxeOS.
 
-[Website](https://hashfleet.app) · [Downloads](https://github.com/SMWARREN/HashFleet/releases/latest) · [Documentation](docs/README.md) · [Build from source](docs/PUBLIC-BUILD.md)
+[Website](https://hashfleet.app) · [iOS App Store](https://apps.apple.com/us/app/hash-fleet/id6812623943) · [Mac & CLI downloads](https://github.com/SMWARREN/HashFleet/releases/latest) · [Documentation](docs/README.md) · [Build from source](docs/PUBLIC-BUILD.md)
 
 ## Install
+
+### iPhone and iPad
+
+[Download Hash Fleet on the App Store](https://apps.apple.com/us/app/hash-fleet/id6812623943). Requires iOS or iPadOS 17 or later and includes the companion Apple Watch app.
+
+### Mac app and CLI
 
 The **Mac app** and **CLI** are separate downloads. Choose either or both.
 Current binaries support **Apple Silicon Macs running macOS 14 or later** and are Developer ID signed and Apple-notarized.
