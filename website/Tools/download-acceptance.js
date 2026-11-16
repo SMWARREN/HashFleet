@@ -1,18 +1,14 @@
-// Real browser acceptance, executed by the installed Playwright CLI. No response interception.
+// Real browser acceptance with request isolation, never mocked/fulfilled responses.
 async (page) => {
-  const origin = new URL(page.url()).origin
-  if (!['http://127.0.0.1:4173', 'http://127.0.0.1:4174'].includes(origin)) throw new Error('Use an isolated localhost website only')
+  const origin = __DOWNLOAD_ORIGIN__
+  const requestIsolation = await (__DOWNLOAD_NETWORK_INSTALL__)(page, origin)
   const checks = []
   const browserErrors = []
   const failedRequests = []
-  const externalRequests = []
+  const externalRequests = requestIsolation.blockedRequests
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
   page.on('requestfailed', request => failedRequests.push({ url: request.url(), error: request.failure()?.errorText }))
-  page.on('request', request => {
-    const url = new URL(request.url())
-    if (['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol) && url.hostname !== '127.0.0.1') externalRequests.push(url.origin)
-  })
   function check(condition, description) {
     if (!condition) throw new Error(description)
     checks.push(description)
@@ -134,8 +130,8 @@ async (page) => {
   await openDownload()
   check(browserErrors.length === 0, `No browser errors: ${JSON.stringify(browserErrors)}`)
   check(failedRequests.length === 0, `No failed requests: ${JSON.stringify(failedRequests)}`)
-  check(externalRequests.length === 0, `No external or miner requests: ${JSON.stringify(externalRequests)}`)
-  const result = { status: 'passed', origin, checks: checks.length, responseInterception: false, layouts, browserErrors, failedRequests, externalRequests }
+  check(externalRequests.length === 0, `No requests outside the exact authorized origin: ${JSON.stringify(externalRequests)}`)
+  const result = { status: 'passed', origin, checks: checks.length, responseInterception: false, responseMocking: false, requestIsolation, layouts, browserErrors, failedRequests, externalRequests }
   await page.evaluate(value => { window.__hashfleetDownloadAcceptance = value }, result)
   return result
 }

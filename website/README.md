@@ -53,14 +53,44 @@ node Tools/run-download-acceptance.mjs http://127.0.0.1:4173
 node Tools/run-download-acceptance.mjs http://127.0.0.1:4174
 ```
 
-This loopback-only runner checks real responses without interception, all five
+This runner keeps the 185 functional checks against real responses: all five
 viewport sizes, 44px controls, exact release links and pending Mac Store state,
 Tab containment, Escape/close/backdrop focus restoration, browser history,
 privacy, themes, FAQ and the existing iPhone walkthrough route. It never clicks
-an external download or contacts miners. Each run retains its logs and result
-under ignored `output/playwright/`, then closes only its own browser. Native
-`<dialog>` close events are allowed to reach React before asserting URL cleanup.
-The earlier failing timing receipt is retained, not counted as a pass.
+an external download. Request isolation is enabled, but responses are not
+fulfilled, mocked, rewritten or replaced with fixtures.
+
+Each run creates a fresh isolated Chrome context with service workers blocked
+at creation. It opens only `about:blank`, then installs context-wide HTTP and
+WebSocket guards before the first website navigation. Only the selected exact
+`http://127.0.0.1:4173` **or** `http://127.0.0.1:4174` origin and its matching
+`ws://` endpoint are allowed, not every localhost port. Popups and subframes
+share these context guards. Because Playwright request routing does not run
+again on redirect hops, a per-context deny-only loopback proxy is the backstop:
+Chromium's implicit loopback bypass is disabled and only those exact HTTP/WS
+origins bypass the proxy. The proxy closes connections without forwarding them
+or generating responses. Allowed traffic still reaches the real local server
+directly. Any recorded off-origin attempt or proxy connection fails acceptance.
+This is a guard for this runner's page-initiated HTTP(S)/WebSocket traffic, not a
+machine-wide firewall or a claim about unrelated browser/background protocols.
+
+Logs, the per-run CLI configuration, request-isolation counters and the result
+are retained under ignored `output/playwright/`. The runner closes only its own
+browser and proxy. The CLI must support context proxy options, isolated contexts,
+service-worker blocking and `routeWebSocket`, otherwise setup fails before
+website navigation. Native `<dialog>` close events are allowed to reach React
+before asserting URL cleanup. The earlier failing timing receipt is retained,
+not counted as a pass. Offline helper tests use no browser, server or network:
+
+```sh
+node --test Tools/download-network.node-test.mjs
+```
+
+Offline tests are not proof of Chromium's proxy behavior. Before accepting a
+runner change, separately run both real local 185-check suites and loopback
+counter tests for disallowed HTTP(S)/WebSocket requests, redirect hops, subframes
+and popups. Those browser receipts, not the helper tests, establish the tested
+isolation behavior.
 
 Keep the production preview running for the existing native-tour acceptance,
 using the installed Jcode Playwright CLI skill through the checked-in runner:
