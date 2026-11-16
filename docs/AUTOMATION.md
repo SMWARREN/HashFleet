@@ -150,13 +150,19 @@ An authorized maintainer must add these secrets to the `release` environment:
 
 | Secret | Value |
 | --- | --- |
-| `MACOS_CERTIFICATE_P12` | Base64-encoded Developer ID Application certificate and private key |
+| `MACOS_CERTIFICATE_P12` | Standard Base64-encoded Developer ID Application certificate and private key; ASCII line wrapping is accepted |
 | `MACOS_CERTIFICATE_PASSWORD` | Password protecting that exported P12 |
 | `APPLE_SIGNING_IDENTITY` | Developer ID Application identity name or certificate SHA-1 |
 | `APPLE_TEAM_ID` | Team ID expected in both signatures |
 | `APPLE_API_KEY_P8` | App Store Connect notarization API private key text |
 | `APPLE_API_KEY_ID` | Notarization key ID |
 | `APPLE_API_ISSUER_ID` | Notarization issuer ID |
+
+The certificate decoder removes only ASCII whitespace used for Base64 wrapping,
+then validates the standard alphabet and padding strictly. Empty input, other
+formatting and non-ASCII characters still fail without exposing the input in
+errors. This does not bypass PKCS#12 import, signing identity checks, signature
+verification, notarization or Gatekeeper assessment. No secret value is changed.
 
 ### Add the credentials, step by step
 

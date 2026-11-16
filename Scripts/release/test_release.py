@@ -1,13 +1,57 @@
 #!/usr/bin/env python3
 """Offline release policy tests. No GitHub calls, signing, builds or publication."""
+import base64
 import copy
 import re
 from pathlib import Path
 import unittest
 from unittest.mock import patch
 import release as r
+from signing import decode_certificate
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class SigningInputContracts(unittest.TestCase):
+    def setUp(self):
+        # Opaque synthetic bytes, not a certificate or private key.
+        self.payload = bytes(range(64))
+        self.encoded = base64.b64encode(self.payload).decode('ascii')
+
+    def test_single_line_certificate_encoding_is_preserved(self):
+        self.assertEqual(decode_certificate(self.encoded), self.payload)
+
+    def test_ascii_wrapped_certificate_encoding_is_preserved(self):
+        for separator in ('\n', '\r\n', ' ', '\t', '\f', '\v'):
+            wrapped = separator + separator.join(self.encoded[i:i + 12] for i in range(0, len(self.encoded), 12)) + separator
+            with self.subTest(separator=repr(separator)):
+                self.assertEqual(decode_certificate(wrapped), self.payload)
+
+    def test_non_alphabet_characters_are_not_discarded(self):
+        for value in (self.encoded + '!', '"' + self.encoded + '"', '-----BEGIN CERTIFICATE-----\n' + self.encoded):
+            with self.subTest(value_type='invalid formatting'), self.assertRaises(ValueError):
+                decode_certificate(value)
+
+    def test_unicode_whitespace_and_zero_width_characters_are_rejected(self):
+        for character in ('\u00a0', '\u200b', '\u2028', '\ufeff'):
+            with self.subTest(character=repr(character)), self.assertRaises(ValueError):
+                decode_certificate(self.encoded + character)
+
+    def test_invalid_padding_is_rejected(self):
+        for value in ('A', 'YWE', 'YW=E', 'YWE=YWE='):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                decode_certificate(value)
+
+    def test_empty_and_non_string_inputs_are_rejected(self):
+        for value in ('', ' \t\r\n\f\v', None, b'YWE='):
+            with self.subTest(value_type=type(value).__name__), self.assertRaises(ValueError):
+                decode_certificate(value)
+
+    def test_invalid_input_is_not_exposed_in_errors(self):
+        secret_marker = 'synthetic-private-value!'
+        with self.assertRaises(ValueError) as caught:
+            decode_certificate(secret_marker)
+        self.assertNotIn(secret_marker, str(caught.exception))
 
 
 class ReleaseContracts(unittest.TestCase):
