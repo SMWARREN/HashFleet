@@ -49,6 +49,8 @@ async function verifyNativeDownloadDialog(page, focused, check) {
   const iosDownload = dialog.getByRole('link', { name: 'Download on the App Store' })
   check(await iosDownload.getAttribute('href') === 'https://apps.apple.com/us/app/hash-fleet/id6812623943', 'Launched iOS app links to its verified App Store listing')
   check(await iosDownload.getAttribute('target') === '_blank' && await iosDownload.getAttribute('rel') === 'noopener noreferrer', 'App Store download keeps safe external-link behavior')
+  const iosTarget = await iosDownload.boundingBox()
+  check(iosTarget && iosTarget.width >= 44 && iosTarget.height >= 44, 'App Store action keeps a minimum 44-pixel tap target')
   check(await dialog.getByText('Coming soon', { exact: true }).count() === 0, 'Launched iOS app is no longer marked coming soon')
   check(await focused(dialog.getByRole('button', { name: 'Close dialog' })), 'Dialog begins with focus inside')
   await page.keyboard.press('Shift+Tab')

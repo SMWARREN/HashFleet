@@ -69,6 +69,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .button-text { padding-inline: 14px; color: var(--dim); }
 .button-text:hover { color: var(--ink); }
 .button-small { font-size: 11px; min-height: 34px; background: var(--accent); color: #17140d; padding: 8px 10px; }
+.button-app-store { min-height: 44px; }
 .text-link { display: inline-flex; align-items: center; gap: 12px; padding: 0; font-size: 12px; font-weight: 600; color: var(--accent-ink); }
 .text-link:hover svg { transform: translateX(3px); }
 .skip-link { position: fixed; top: -70px; left: 20px; z-index: 100; background: var(--accent); color: #111; padding: 15px 22px; border-radius: 5px; }
@@ -472,8 +473,10 @@ h2 > span { color: var(--dim); }
   .footer-domain { margin-top: 7px; }
   .dialog-content { padding: 29px 21px; }
   .dialog-content h2 { font-size: 31px; }
-  .release-card { gap: 11px; padding: 16px 11px; }
+  .release-card { display: grid; grid-template-columns: 21px minmax(0, 1fr); align-items: start; gap: 11px; padding: 16px 11px; }
   .release-card > svg { width: 21px; }
+  .release-card > .button, .release-card > .release-status { grid-column: 2; justify-self: start; max-width: 100%; white-space: normal; }
+  .dialog-content > .release-note { display: block; overflow-wrap: anywhere; }
   .release-card strong { font-size: 11px; }
   .release-card div > span { font-size: 8px; }
   .release-status { font-size: 8px; padding: 6px; }
