@@ -2,10 +2,13 @@ export type PreviewPlatform = 'mac' | 'iphone' | 'terminal'
 export type SiteRoute = { kind: 'home' } | { kind: 'demo', platform: PreviewPlatform } | { kind: 'unavailable' }
 
 export const privacyFragment = '#privacy'
+export const downloadFragment = '#download'
 
 // Fragments stay on the existing page and never become redirect destinations.
-export function resolveSiteDialog(fragment: string): 'privacy' | null {
-  return fragment === privacyFragment ? 'privacy' : null
+export function resolveSiteDialog(fragment: string): 'privacy' | 'download' | null {
+  if (fragment === privacyFragment) return 'privacy'
+  if (fragment === downloadFragment) return 'download'
+  return null
 }
 
 // An explicit page allowlist, not a file/API router or a redirect destination.
