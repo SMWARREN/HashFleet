@@ -26,7 +26,14 @@ npm ci
 npm run dev
 ```
 
-The development preview listens only on loopback, port 4173. For production-artifact acceptance:
+The development preview listens only on loopback, port 4173. Open
+`http://127.0.0.1:4173/#download` for the interactive download dialog. It lists
+App Store first, distinguishes the native Mac App Store review state from the
+signed direct Mac download, and keeps the CLI a separate installation. Closing
+the dialog returns to the existing homepage. This fragment needs no new server
+route. Store availability is a dated operational fact, not an automatic feed.
+
+For production-artifact acceptance:
 
 ```sh
 npm run check
@@ -38,7 +45,25 @@ Deploy only the build contents, never the source directory or `node_modules/`. T
 
 ## Reproduce current acceptance
 
-Keep the production preview running, then use the installed Jcode Playwright CLI skill through the checked-in runner:
+For the compact download dialog, keep the local development server or built
+preview running, then use the installed Playwright CLI with isolated Chrome:
+
+```sh
+node Tools/run-download-acceptance.mjs http://127.0.0.1:4173
+node Tools/run-download-acceptance.mjs http://127.0.0.1:4174
+```
+
+This loopback-only runner checks real responses without interception, all five
+viewport sizes, 44px controls, exact release links and pending Mac Store state,
+Tab containment, Escape/close/backdrop focus restoration, browser history,
+privacy, themes, FAQ and the existing iPhone walkthrough route. It never clicks
+an external download or contacts miners. Each run retains its logs and result
+under ignored `output/playwright/`, then closes only its own browser. Native
+`<dialog>` close events are allowed to reach React before asserting URL cleanup.
+The earlier failing timing receipt is retained, not counted as a pass.
+
+Keep the production preview running for the existing native-tour acceptance,
+using the installed Jcode Playwright CLI skill through the checked-in runner:
 
 ```sh
 node Tools/run-native-parity.mjs http://127.0.0.1:4174
