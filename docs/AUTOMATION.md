@@ -132,6 +132,18 @@ Releases run one at a time (`release-global`) and are never cancelled midway. A 
 - Published releases must be treated as immutable. Do not replace the assets of an old version. Fix forward with a new version.
 - Never put signing material in a pull request, an issue, or a log.
 
+### App Store launch version alignment, November 16, 2026
+
+The public iPhone/iPad App Store listing reports version `1.0`. The matching
+direct Mac app and separate CLI release uses `1.0.0` in `version.txt`, because
+the release pipeline requires a three-part stable version. This is release-number
+alignment, not a claim that the different platform binaries are identical.
+`prepare.sh` passes this version to the Mac app's `MARKETING_VERSION` and uses it
+in the separate CLI archive name. The new artifacts must be built from the
+reviewed commit after its required push-to-main CI checks pass, then signed,
+notarized and verified before publication. The published `v0.1.0` tag and assets
+remain unchanged. This release does not upload or resubmit the iOS app.
+
 ### One-time signing setup
 
 An authorized maintainer must add these secrets to the `release` environment:
