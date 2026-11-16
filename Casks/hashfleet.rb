@@ -1,6 +1,6 @@
 cask "hashfleet" do
-  version "0.1.0"
-  sha256 "8dc45b35331c58cd1097e08911815e1ab971e1774259554a7261a6286f8c79d0"
+  version "1.0.0"
+  sha256 "74ae6c668dc6d891ff7cb07798e1668459782516626b941583394291e411b850"
 
   url "https://github.com/SMWARREN/HashFleet/releases/download/v#{version}/HashFleet-#{version}-macos-arm64.zip"
   name "Hash Fleet"
