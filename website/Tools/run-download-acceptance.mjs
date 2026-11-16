@@ -30,7 +30,7 @@ async function cli(name, args) {
   let output
   try {
     // Asynchronous execution lets the deny-only listener reject redirect hops.
-    output = await execute(wrapper, ['--session', session, '--config', configPath, ...args], {
+    output = await execute(wrapper, ['--session', session, ...(args[0] === 'open' ? ['--config', configPath] : []), ...args], {
       cwd: root, encoding: 'utf8', timeout: 180000, maxBuffer: 8 * 1024 * 1024,
     })
   } catch (error) {
@@ -56,7 +56,7 @@ await withDownloadCleanup(async () => {
     code = code.replace(placeholder, () => value)
   }
   await cli('acceptance', ['run-code', code])
-  result = parsePlaywrightResult(await cli('result', ['eval', 'window.__hashfleetDownloadAcceptance']))
+  result = JSON.parse(parsePlaywrightResult(await cli('result', ['eval', 'JSON.stringify(window.__hashfleetDownloadAcceptance)'])))
   validateDownloadResult(result, origin, denyProxy.counters.deniedConnections)
 }, async () => {
   // Keep the deny proxy bound while requesting closure of this Chrome session.

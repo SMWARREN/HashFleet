@@ -61,7 +61,13 @@ an external download. Request isolation is enabled, but responses are not
 fulfilled, mocked, rewritten or replaced with fixtures.
 
 Each run creates a fresh isolated Chrome context with service workers blocked
-at creation. It opens only `about:blank`, then installs context-wide HTTP and
+at creation. Autofill server communication is disabled in that test browser
+only. A real diagnostic found Chrome's own autofill CONNECT attempts during
+page interactions, so this prevents them rather than ignoring denied traffic
+or relaxing the zero-proxy-connection requirement. The extra feature switch
+retains the installed Playwright automation defaults, which are recorded in
+`download-network.mjs` and must be revalidated when upgrading the CLI.
+It opens only `about:blank`, then installs context-wide HTTP and
 WebSocket guards before the first website navigation. Only the selected exact
 `http://127.0.0.1:4173` **or** `http://127.0.0.1:4174` origin and its matching
 `ws://` endpoint are allowed, not every localhost port. Popups and subframes
@@ -79,7 +85,8 @@ are retained under ignored `output/playwright/`. The runner closes only its own
 browser and proxy. The CLI must support context proxy options, isolated contexts,
 service-worker blocking and `routeWebSocket`, otherwise setup fails before
 website navigation. Native `<dialog>` close events are allowed to reach React
-before asserting URL cleanup. The earlier failing timing receipt is retained,
+before asserting URL cleanup, and walkthrough assets finish loading before
+the next test navigation. The earlier failing timing receipt is retained,
 not counted as a pass. Offline helper tests use no browser, server or network:
 
 ```sh

@@ -31,6 +31,15 @@ for (const port of [4173, 4174]) {
       bypass: `<-loopback>,http://127.0.0.1:${port},ws://127.0.0.1:${port}`,
     })
     assert.equal(config.browser.launchOptions.channel, 'chrome')
+    assert.equal(config.browser.launchOptions.args.length, 1)
+    const disabled = config.browser.launchOptions.args[0].replace(/^--disable-features=/, '').split(',')
+    for (const feature of [
+      'AutofillServerCommunication', 'AvoidUnnecessaryBeforeUnloadCheckSync', 'DestroyProfileOnBrowserClose',
+      'HttpsUpgrades', 'HttpsFirstBalancedModeAutoEnable', 'LensOverlay', 'MediaRouter',
+      'PaintHolding', 'ThirdPartyStoragePartitioning', 'AvoidCorsURLLoaderRestartOnRedirect',
+      'TcpPortRandomizationWin', 'OptimizationHints', 'NetworkTimeServiceQuerying',
+      'AimEnabled', 'PreconnectToSearch', 'msForceBrowserSignIn', 'msEdgeUpdateLaunchServicesPreferredVersion',
+    ]) assert(disabled.includes(feature), `Missing automation feature control: ${feature}`)
   })
 }
 

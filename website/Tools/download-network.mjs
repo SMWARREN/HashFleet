@@ -2,6 +2,17 @@ import assert from 'node:assert/strict'
 import net from 'node:net'
 
 const origins = ['http://127.0.0.1:4173', 'http://127.0.0.1:4174']
+// Chromium uses the last --disable-features switch. Retain the installed
+// Playwright 1.66.0-alpha-1794252756000 defaults instead of replacing them.
+// Revalidate these and the strict proxy counter when upgrading the CLI.
+const disabledFeatures = [
+  'AvoidUnnecessaryBeforeUnloadCheckSync', 'DestroyProfileOnBrowserClose',
+  'HttpsUpgrades', 'HttpsFirstBalancedModeAutoEnable', 'LensOverlay', 'MediaRouter',
+  'PaintHolding', 'ThirdPartyStoragePartitioning', 'AvoidCorsURLLoaderRestartOnRedirect',
+  'TcpPortRandomizationWin', 'OptimizationHints', 'NetworkTimeServiceQuerying',
+  'AimEnabled', 'PreconnectToSearch', 'msForceBrowserSignIn',
+  'msEdgeUpdateLaunchServicesPreferredVersion', 'AutofillServerCommunication',
+]
 
 export function downloadBrowserConfig(origin, proxyServer) {
   assert(origins.includes(origin), 'Only an exact documented loopback origin is allowed')
@@ -10,7 +21,9 @@ export function downloadBrowserConfig(origin, proxyServer) {
     browser: {
       browserName: 'chromium',
       isolated: true,
-      launchOptions: { channel: 'chrome' },
+      // Chrome autofill queries bypass page request events. Disable them only
+      // in this fresh test browser, never in the operator's normal profile.
+      launchOptions: { channel: 'chrome', args: [`--disable-features=${disabledFeatures.join(',')}`] },
       contextOptions: {
         serviceWorkers: 'block',
         proxy: {

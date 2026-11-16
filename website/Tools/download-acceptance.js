@@ -126,6 +126,7 @@ async (page) => {
   }
   await page.goto(`${origin}/demo/iphone`)
   await page.getByRole('tab', { name: 'iPhone app', exact: true }).waitFor()
+  await page.waitForLoadState('networkidle')
   check(await page.getByRole('tab', { name: 'iPhone app', exact: true }).getAttribute('aria-selected') === 'true', 'Existing direct iPhone walkthrough route is preserved')
   await openDownload()
   check(browserErrors.length === 0, `No browser errors: ${JSON.stringify(browserErrors)}`)
