@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import Icon from './Icon'
-import { copySupportAddress, cryptoSupport, paypalSupportURL } from '../lib/support'
+import { copySupportAddress, cryptoSupport, paypalSupportURL, strikeSupportURL } from '../lib/support'
 import type { CryptoSupport } from '../lib/support'
 import './support.css'
 
@@ -56,7 +56,10 @@ export default function SupportSection() {
       <p>Choose your amount with PayPal. Apple Pay, cards and Venmo may also be available at checkout, depending on your device and location.</p>
       <p className="support-small">Opens PayPal in a new tab. PayPal handles payment details and any verification.</p>
     </div><a className="button button-primary" href={paypalSupportURL} target="_blank" rel="noopener noreferrer">Leave a tip via PayPal <Icon name="external" size={17} /></a></div>
-    <div className="support-crypto-heading"><h3>Prefer crypto?</h3><p>Send directly from your own wallet. These transfers are separate from PayPal. No wallet connection is requested by this site.</p></div>
+    <div className="support-crypto-heading"><h3>Prefer crypto?</h3><p>Send directly from your own wallet. These transfers are separate from PayPal. No wallet connection is requested by this site.</p>
+      <a className="button button-primary support-strike" href={strikeSupportURL} target="_blank" rel="noopener noreferrer">Pay a tip via Strike <Icon name="external" size={17} /></a>
+      <p className="support-small">Opens Strike in a new tab.</p>
+    </div>
     <div className="support-crypto-grid">{cryptoSupport.map(destination => <CryptoCard key={destination.symbol} destination={destination} />)}</div>
     <p className="support-safety">Use only the named coin and mainnet. Verify the full receiving address in your wallet before sending. Crypto transfers cannot be reversed by Hash Fleet. Never share a seed phrase or private key.</p>
   </section>

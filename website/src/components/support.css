@@ -7,9 +7,10 @@
 .support-paypal { display: flex; align-items: center; gap: 32px; justify-content: space-between; padding: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
 .support-paypal > div { max-width: 690px; min-width: 0; }
 .support-section h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.support-paypal .support-small { margin-top: 8px; font-size: 12px; }
+.support-section .support-small { margin-top: 8px; font-size: 12px; }
 .support-paypal > a { flex-shrink: 0; white-space: normal; text-align: center; }
 .support-crypto-heading { margin-top: 36px; margin-bottom: 18px; }
+.support-strike { margin-top: 16px; white-space: normal; text-align: center; }
 .support-crypto-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .support-crypto-card { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .support-coin-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
@@ -32,6 +33,6 @@
 @media (max-width: 540px) {
   .support-section { padding-block: 48px; }
   .support-paypal, .support-crypto-card { padding: 18px; }
-  .support-paypal > a { width: 100%; }
+  .support-paypal > a, .support-strike { width: 100%; }
   .support-intro .eyebrow { letter-spacing: 1px; }
 }

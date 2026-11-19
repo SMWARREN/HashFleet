@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import SupportSection from '../components/SupportSection'
-import { copySupportAddress, cryptoSupport, paypalSupportURL } from './support'
+import { copySupportAddress, cryptoSupport, paypalSupportURL, strikeSupportURL } from './support'
 
 const expected = [
   ['BTC', 'Bitcoin mainnet', '1AZLMVdq1Dpc8FqibVUoMqJkh5wMQpd1wg'],
@@ -12,6 +12,21 @@ describe('public developer support', () => {
   it('preserves the exact owner-supplied destinations and mainnets', () => {
     expect(cryptoSupport.map(({ symbol, network, address }) => [symbol, network, address])).toEqual(expected)
     expect(paypalSupportURL).toBe('https://www.paypal.com/ncp/payment/6NAMWWPAKSFV2')
+    expect(strikeSupportURL).toBe('https://strike.me/@saintsean')
+  })
+  it('places the exact safe Strike tip link under Prefer crypto, after PayPal and before wallet cards', () => {
+    const html = renderToStaticMarkup(<SupportSection />)
+    const paypalIndex = html.indexOf(`href="${paypalSupportURL}"`)
+    const cryptoHeadingIndex = html.indexOf('<h3>Prefer crypto?</h3>')
+    const strikeIndex = html.indexOf(`href="${strikeSupportURL}"`)
+    const walletCardsIndex = html.indexOf('class="support-crypto-grid"')
+    expect(paypalIndex).toBeGreaterThan(-1)
+    expect(cryptoHeadingIndex).toBeGreaterThan(paypalIndex)
+    expect(strikeIndex).toBeGreaterThan(cryptoHeadingIndex)
+    expect(walletCardsIndex).toBeGreaterThan(strikeIndex)
+    expect(html.split(`href="${strikeSupportURL}"`)).toHaveLength(2)
+    expect(html).toContain(`href="${strikeSupportURL}" target="_blank" rel="noopener noreferrer">Pay a tip via Strike`)
+    expect(html).toContain('Opens Strike in a new tab.')
   })
   it.each(expected)('copies the exact %s destination', async (_symbol, _network, address) => {
     const writeText = vi.fn().mockResolvedValue(undefined)

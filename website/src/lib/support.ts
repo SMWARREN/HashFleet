@@ -1,5 +1,6 @@
 /** Public receiving destinations supplied by the project owner. Never add wallet secrets. */
 export const paypalSupportURL = 'https://www.paypal.com/ncp/payment/6NAMWWPAKSFV2'
+export const strikeSupportURL = 'https://strike.me/@saintsean'
 
 export const cryptoSupport = [
   { symbol: 'BTC', name: 'Bitcoin', network: 'Bitcoin mainnet', address: '1AZLMVdq1Dpc8FqibVUoMqJkh5wMQpd1wg' },

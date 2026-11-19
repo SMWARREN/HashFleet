@@ -21,6 +21,19 @@ async (page) => {
   const paypal = support.getByRole('link', { name: /Leave a tip via PayPal/ })
   check(await paypal.getAttribute('href') === 'https://www.paypal.com/ncp/payment/6NAMWWPAKSFV2', 'exact verified PayPal link')
   check(await paypal.getAttribute('target') === '_blank' && await paypal.getAttribute('rel') === 'noopener noreferrer', 'safe external PayPal tab')
+  const strike = support.getByRole('link', { name: 'Pay a tip via Strike', exact: true })
+  check(await strike.count() === 1, 'one Strike tip link')
+  check(await strike.getAttribute('href') === 'https://strike.me/@saintsean', 'exact owner-supplied Strike link')
+  check(await strike.getAttribute('target') === '_blank' && await strike.getAttribute('rel') === 'noopener noreferrer', 'safe external Strike tab')
+  check(await support.locator('.support-crypto-heading').getByRole('link', { name: 'Pay a tip via Strike', exact: true }).count() === 1, 'Strike under Prefer crypto')
+  check(await strike.evaluate(element => {
+    const paypal = document.querySelector('.support-paypal')
+    const cards = document.querySelector('.support-crypto-grid')
+    return Boolean(paypal && cards && (paypal.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) && (element.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING))
+  }), 'Strike follows PayPal and precedes direct wallet cards')
+  await paypal.focus()
+  await page.keyboard.press('Tab')
+  check(await strike.evaluate(element => document.activeElement === element), 'keyboard Tab reaches Strike after PayPal')
   check((await support.innerText()).includes('No features are purchased or unlocked.'), 'optional tip not a purchase')
   const expected = [
     ['BTC', 'Bitcoin mainnet', '1AZLMVdq1Dpc8FqibVUoMqJkh5wMQpd1wg'],
@@ -52,12 +65,23 @@ async (page) => {
       await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme)
       await support.scrollIntoViewIfNeeded()
       check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), width + ' ' + theme + ' no horizontal overflow')
+      const strikeBox = await strike.boundingBox()
+      check(strikeBox && strikeBox.height >= 44 && strikeBox.width >= 44, width + ' ' + theme + ' Strike minimum tap target')
+      check(strikeBox && strikeBox.x >= 0 && strikeBox.x + strikeBox.width <= width + 1, width + ' ' + theme + ' Strike link contained')
       for (const [symbol] of expected) {
         const box = await page.locator('#support-address-' + symbol.toLowerCase()).boundingBox()
         check(box && box.x >= 0 && box.x + box.width <= width + 1, width + ' ' + theme + ' ' + symbol + ' address contained')
       }
     }
   }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await strike.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'output/playwright/support-strike-phone.png' })
+  await page.setViewportSize({ width: 844, height: 390 })
+  await strike.scrollIntoViewIfNeeded()
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'landscape Strike no horizontal overflow')
+  await page.screenshot({ path: 'output/playwright/support-strike-landscape.png' })
+  await page.setViewportSize({ width: 320, height: 1080 })
   await page.getByRole('button', { name: 'Open navigation' }).click()
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Support', exact: true }).click()
   check(await page.getByRole('button', { name: 'Open navigation' }).getAttribute('aria-expanded') === 'false', 'mobile Support link closes menu')
