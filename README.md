@@ -82,6 +82,8 @@ Read the [API reference](docs/API-COVERAGE.md) and [model compatibility guide](d
 
 See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), and [release status](docs/STATUS.md).
 
+For local firmware and protocol testing without physical miners, see the [Virtual Miner Lab](Tools/virtual-miners/README.md).
+
 ## License
 
 [GPL-3.0](LICENSE). HashFleet is an independent community project and is not affiliated with or endorsed by Bitaxe, ESP-Miner, or OSMU.

@@ -1,0 +1,14 @@
+# API-only examples. These do not start an emulator or execute guest instructions.
+[[miner]]
+name = "fixture-a"
+board = "gamma-601"
+backend = "api-fixture"
+http_port = 18181
+scenario = "normal"
+
+[[miner]]
+name = "fixture-b"
+board = "gamma-601"
+backend = "api-fixture"
+http_port = 18182
+scenario = "degraded"
