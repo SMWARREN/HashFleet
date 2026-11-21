@@ -22,6 +22,7 @@
 ## Development and distribution
 
 - [Core networking contract](CORE-CONTRACT.md)
+- [Animated WebP playback and focused performance checks](ANIMATED-WEBP-PLAYBACK.md)
 - [iOS build configurations](IOS-BUILD-CONFIGURATIONS.md)
 - [Local Mac packaging](MAC-DISTRIBUTION.md) and [installation](MAC-NATIVE-INSTALL.md)
 - [Release preparation](RELEASING.md)

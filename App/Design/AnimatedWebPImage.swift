@@ -1,321 +1,366 @@
-import ImageIO
-import SwiftUI
 import Foundation
+import ImageIO
+import QuartzCore
+import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
 
-/// Plays a bundled animated WebP while retaining only the currently displayed frame.
-/// The animation is optional so the approved static launch artwork remains the fallback.
+typealias WebPPlatformImageView = UIImageView
+
+/// Plays the approved artwork using prepared frames, with a static first frame when paused.
 struct AnimatedWebPImage: UIViewRepresentable {
     let data: Data
     let isPlaying: Bool
     let displaySize: CGSize
-
-    nonisolated static func frameDuration(from properties: [CFString: Any]?) -> CFTimeInterval {
-        let unclamped = (properties?[kCGImagePropertyWebPUnclampedDelayTime] as? NSNumber)?.doubleValue
-        let clamped = (properties?[kCGImagePropertyWebPDelayTime] as? NSNumber)?.doubleValue
-        let validDelay = [unclamped, clamped].compactMap { $0 }.first { $0 > 0.01 }
-        return min(max(validDelay ?? (1.0 / 24.0), 0.01), 1.0)
-    }
-
-    nonisolated static func isAnimated(_ data: Data) -> Bool {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let type = CGImageSourceGetType(source),
-              type as String == "org.webmproject.webp" else { return false }
-        return CGImageSourceGetCount(source) > 1
-    }
+    var posterName: String?
 
     func makeUIView(context: Context) -> WebPFrameImageView {
         let view = WebPFrameImageView(frame: .zero)
-        view.configure(data: data, isPlaying: isPlaying, displaySize: displaySize)
+        view.configure(data: data, isPlaying: isPlaying, displaySize: displaySize, posterName: posterName)
         return view
     }
 
     func updateUIView(_ uiView: WebPFrameImageView, context: Context) {
-        uiView.configure(data: data, isPlaying: isPlaying, displaySize: displaySize)
+        uiView.configure(data: data, isPlaying: isPlaying, displaySize: displaySize, posterName: posterName)
     }
 
-    static func dismantleUIView(_ uiView: WebPFrameImageView, coordinator: ()) {
-        uiView.stop()
-    }
+    static func dismantleUIView(_ uiView: WebPFrameImageView, coordinator: ()) { uiView.stop() }
 }
-
-@MainActor
-final class WebPFrameImageView: UIImageView {
-    private var sourceData: Data?
-    private var source: CGImageSource?
-    private var frameDurations: [CFTimeInterval] = []
-    private var totalDuration: CFTimeInterval = 0
-    private var currentFrameIndex: Int?
-    private var playbackStartedAt: CFTimeInterval = 0
-    private var displayLink: CADisplayLink?
-    private var displayLinkTarget: WebPDisplayLinkTarget?
-    private var displaySize: CGSize?
-    private var wantsPlayback = false
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        contentMode = .scaleAspectFit
-        backgroundColor = .clear
-        isOpaque = false
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        contentMode = .scaleAspectFit
-        backgroundColor = .clear
-        isOpaque = false
-    }
-
-    isolated deinit { displayLink?.invalidate() }
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        if window == nil { pause() } else if wantsPlayback { start() }
-    }
-
-    func configure(data: Data, isPlaying: Bool, displaySize: CGSize) {
-        self.displaySize = displaySize
-        if sourceData != data {
-            pause()
-            sourceData = data
-            source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
-            loadFrameDurations()
-            currentFrameIndex = nil
-            showFrame(at: 0)
-        }
-        wantsPlayback = isPlaying
-        if isPlaying, window != nil {
-            start()
-        } else {
-            pause()
-            if !isPlaying { showFrame(at: 0) }
-        }
-    }
-
-    func stop() {
-        wantsPlayback = false
-        pause()
-    }
-
-    private func pause() {
-        displayLink?.invalidate()
-        displayLink = nil
-        displayLinkTarget = nil
-    }
-
-    private func loadFrameDurations() {
-        guard let source else {
-            frameDurations = []
-            totalDuration = 0
-            return
-        }
-        frameDurations = (0..<CGImageSourceGetCount(source)).map { index in
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
-            let webP = properties?[kCGImagePropertyWebPDictionary] as? [CFString: Any]
-            return AnimatedWebPImage.frameDuration(from: webP)
-        }
-        totalDuration = frameDurations.reduce(0, +)
-    }
-
-    private func start() {
-        guard wantsPlayback, window != nil, displayLink == nil, frameDurations.count > 1, totalDuration > 0 else { return }
-        let target = WebPDisplayLinkTarget(owner: self)
-        let link = CADisplayLink(target: target, selector: #selector(WebPDisplayLinkTarget.tick(_:)))
-        displayLinkTarget = target
-        displayLink = link
-        playbackStartedAt = CACurrentMediaTime()
-        link.add(to: .main, forMode: .common)
-    }
-
-    fileprivate func advance(using link: CADisplayLink) {
-        guard totalDuration > 0 else { return }
-        var elapsed = (link.timestamp - playbackStartedAt).truncatingRemainder(dividingBy: totalDuration)
-        var targetIndex = 0
-        for (index, duration) in frameDurations.enumerated() {
-            if elapsed < duration { targetIndex = index; break }
-            elapsed -= duration
-            targetIndex = index
-        }
-        showFrame(at: targetIndex)
-    }
-
-    private func showFrame(at index: Int) {
-        guard let displaySize, displaySize.width > 0, displaySize.height > 0,
-              index != currentFrameIndex, let source,
-              index >= 0, index < CGImageSourceGetCount(source),
-              let frame = CGImageSourceCreateImageAtIndex(source, index, [kCGImageSourceShouldCache: false] as CFDictionary) else { return }
-        currentFrameIndex = index
-        let imageScale = CGFloat(frame.width) / displaySize.width
-        image = UIImage(cgImage: frame, scale: imageScale, orientation: .up)
-    }
-}
-
-@MainActor
-private final class WebPDisplayLinkTarget: NSObject {
-    weak var owner: WebPFrameImageView?
-    init(owner: WebPFrameImageView) { self.owner = owner }
-    @objc func tick(_ displayLink: CADisplayLink) { owner?.advance(using: displayLink) }
-}
-
 #elseif canImport(AppKit)
 import AppKit
 
-/// AppKit-backed counterpart of the iOS frame player. ImageIO supplies real WebP frames and a
-/// main-run-loop timer advances them; Reduce Motion and paused views still show the first frame.
+typealias WebPPlatformImageView = NSImageView
+
 struct AnimatedWebPImage: NSViewRepresentable {
     let data: Data
     let isPlaying: Bool
     let displaySize: CGSize
-
-    nonisolated static func frameDuration(from properties: [CFString: Any]?) -> CFTimeInterval {
-        let unclamped = (properties?[kCGImagePropertyWebPUnclampedDelayTime] as? NSNumber)?.doubleValue
-        let clamped = (properties?[kCGImagePropertyWebPDelayTime] as? NSNumber)?.doubleValue
-        let validDelay = [unclamped, clamped].compactMap { $0 }.first { $0 > 0.01 }
-        return min(max(validDelay ?? (1.0 / 24.0), 0.01), 1.0)
-    }
-
-    nonisolated static func isAnimated(_ data: Data) -> Bool {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let type = CGImageSourceGetType(source),
-              type as String == "org.webmproject.webp" else { return false }
-        return CGImageSourceGetCount(source) > 1
-    }
+    var posterName: String?
 
     func makeNSView(context: Context) -> WebPFrameImageView {
         let view = WebPFrameImageView(frame: .zero)
-        view.configure(data: data, isPlaying: isPlaying, displaySize: displaySize)
+        view.configure(data: data, isPlaying: isPlaying, displaySize: displaySize, posterName: posterName)
         return view
     }
 
     func updateNSView(_ nsView: WebPFrameImageView, context: Context) {
-        nsView.configure(data: data, isPlaying: isPlaying, displaySize: displaySize)
+        nsView.configure(data: data, isPlaying: isPlaying, displaySize: displaySize, posterName: posterName)
     }
 
-    static func dismantleNSView(_ nsView: WebPFrameImageView, coordinator: ()) {
-        nsView.stop()
+    static func dismantleNSView(_ nsView: WebPFrameImageView, coordinator: ()) { nsView.stop() }
+}
+#endif
+
+extension AnimatedWebPImage {
+    nonisolated static func frameDuration(from properties: [CFString: Any]?) -> CFTimeInterval {
+        WebPFrameStore.frameDuration(from: properties)
+    }
+
+    nonisolated static func isAnimated(_ data: Data) -> Bool {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetType(source) as String? == "org.webmproject.webp" else { return false }
+        return CGImageSourceGetCount(source) > 1
     }
 }
 
+/// UIKit and AppKit share the same preparation/lifetime rules. The main-thread clock only
+/// chooses an authored frame index and assigns a ready bitmap. It never invokes ImageIO.
 @MainActor
-final class WebPFrameImageView: NSImageView {
+final class WebPFrameImageView: WebPPlatformImageView {
     private var sourceData: Data?
-    private var source: CGImageSource?
-    private var frameDurations: [CFTimeInterval] = []
-    private var totalDuration: CFTimeInterval = 0
-    private var currentFrameIndex: Int?
-    private var playbackStartedAt: CFTimeInterval = 0
-    private var timer: Timer?
-    private var timerTarget: WebPTimerTarget?
-    private var displaySize: CGSize?
+    private var animation: WebPAnimation?
+    private var displaySize = CGSize.zero
+    private var pixelSize: WebPPixelSize?
+    private var currentPixelSize: WebPPixelSize?
+    private var currentFrame: WebPFrameLease?
+    private(set) var currentFrameIndex: Int?
+    private var desiredFrameIndex = 0
+    private var playbackStartedAt: CFTimeInterval?
     private var wantsPlayback = false
+    private var explicitlyStopped = false
+    private var frameUnavailable = false
+    private var generation: UInt64 = 0
+    private var preparationTask: Task<Void, Never>?
+    private var frameTask: Task<Void, Never>?
+    private let frameStore: WebPFrameStore
+#if canImport(UIKit)
+    private var displayLink: CADisplayLink?
+#else
+    private var timer: Timer?
+#endif
+    private var clockTarget: WebPClockTarget?
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        imageScaling = .scaleProportionallyUpOrDown
-        imageAlignment = .alignCenter
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+    override init(frame: CGRect) {
+        frameStore = .shared
+        super.init(frame: frame)
+        setUpImageView()
+    }
+
+    init(frame: CGRect, frameStore: WebPFrameStore) {
+        self.frameStore = frameStore
+        super.init(frame: frame)
+        setUpImageView()
     }
 
     required init?(coder: NSCoder) {
+        frameStore = .shared
         super.init(coder: coder)
+        setUpImageView()
+    }
+
+    isolated deinit {
+        preparationTask?.cancel()
+        frameTask?.cancel()
+#if canImport(UIKit)
+        displayLink?.invalidate()
+#else
+        timer?.invalidate()
+#endif
+    }
+
+    private func setUpImageView() {
+#if canImport(UIKit)
+        contentMode = .scaleAspectFit
+        backgroundColor = .clear
+        isOpaque = false
+        registerForTraitChanges([UITraitDisplayScale.self]) { (view: WebPFrameImageView, _: UITraitCollection) in
+            view.updatePixelSize()
+        }
+#else
         imageScaling = .scaleProportionallyUpOrDown
         imageAlignment = .alignCenter
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+#endif
     }
 
-    isolated deinit { timer?.invalidate() }
+#if canImport(UIKit)
+    override var intrinsicContentSize: CGSize {
+        // A named PNG can have a much larger intrinsic size than its SwiftUI frame.
+        // Use the requested logical geometry for both the poster and prepared frames.
+        guard displaySize.width.isFinite, displaySize.height.isFinite,
+              displaySize.width > 0, displaySize.height > 0 else {
+            return super.intrinsicContentSize
+        }
+        return displaySize
+    }
 
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        movedToWindow()
+    }
+#else
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil { pause() } else if wantsPlayback { start() }
+        movedToWindow()
     }
 
-    func configure(data: Data, isPlaying: Bool, displaySize: CGSize) {
-        self.displaySize = displaySize
-        if sourceData != data {
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        updatePixelSize()
+    }
+#endif
+
+    private func movedToWindow() {
+        if window == nil {
+            pause()
+        } else if !explicitlyStopped {
+            updatePixelSize()
+            prepareIfNeeded()
+            requestFrame()
+            start()
+        }
+    }
+
+    func configure(data: Data, isPlaying: Bool, displaySize: CGSize, posterName: String? = nil) {
+        let dataChanged = sourceData != data
+        let motionChanged = wantsPlayback != isPlaying
+        explicitlyStopped = false
+        wantsPlayback = isPlaying
+        if dataChanged {
             pause()
             sourceData = data
-            source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
-            loadFrameDurations()
+            animation = nil
+            // The approved PNG is only an opening placeholder, never layered behind
+            // transparent moving frames. No WebP frame is decoded on the UI executor.
+#if canImport(UIKit)
+            image = posterName.flatMap { UIImage(named: $0) }
+#else
+            image = posterName.flatMap { NSImage(named: $0)?.copy() as? NSImage }
+            image?.size = displaySize
+#endif
+            currentFrame = nil
             currentFrameIndex = nil
-            showFrame(at: 0)
+            currentPixelSize = nil
+            desiredFrameIndex = 0
         }
-        wantsPlayback = isPlaying
-        if isPlaying, window != nil {
-            start()
-        } else {
+        let sizeChanged = self.displaySize != displaySize
+        self.displaySize = displaySize
+#if canImport(UIKit)
+        if sizeChanged { invalidateIntrinsicContentSize() }
+#endif
+        updatePixelSize(force: sizeChanged)
+        if motionChanged, !isPlaying {
             pause()
-            if !isPlaying { showFrame(at: 0) }
+            desiredFrameIndex = 0
         }
+        prepareIfNeeded()
+        if !isPlaying { desiredFrameIndex = 0 }
+        requestFrame()
+        start()
     }
 
     func stop() {
+        explicitlyStopped = true
         wantsPlayback = false
         pause()
     }
 
-    private func pause() {
-        timer?.invalidate()
-        timer = nil
-        timerTarget = nil
+    private func updatePixelSize(force: Bool = false) {
+#if canImport(UIKit)
+        let scale = max(window?.screen.scale ?? traitCollection.displayScale, 1)
+        let next = WebPPixelSize(displaySize: displaySize, scale: scale)
+#else
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        let next = WebPPixelSize(displaySize: displaySize, scale: scale, geometry: .logicalSize)
+#endif
+        guard force || next != pixelSize else { return }
+        cancelPendingWork()
+        pixelSize = next
+        currentPixelSize = nil
+        if next == nil {
+            stopClock()
+            image = nil
+            currentFrame = nil
+            currentFrameIndex = nil
+        }
+        prepareIfNeeded()
+        requestFrame()
     }
 
-    private func loadFrameDurations() {
-        guard let source else {
-            frameDurations = []
-            totalDuration = 0
-            return
+    private func prepareIfNeeded() {
+        guard !explicitlyStopped, pixelSize != nil, animation == nil,
+              preparationTask == nil, let data = sourceData else { return }
+        let revision = generation
+        preparationTask = Task { [weak self, frameStore] in
+            let prepared = await frameStore.animation(for: data)
+            guard !Task.isCancelled, let self, self.generation == revision else { return }
+            self.preparationTask = nil
+            self.animation = prepared
+            self.requestFrame()
         }
-        frameDurations = (0..<CGImageSourceGetCount(source)).map { index in
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
-            let webP = properties?[kCGImagePropertyWebPDictionary] as? [CFString: Any]
-            return AnimatedWebPImage.frameDuration(from: webP)
+    }
+
+    private func requestFrame() {
+        guard !explicitlyStopped, !frameUnavailable, frameTask == nil, let animation, let pixelSize,
+              currentFrameIndex != desiredFrameIndex || currentPixelSize != pixelSize else { return }
+        let index = desiredFrameIndex
+        let revision = generation
+        frameTask = Task { [weak self, frameStore] in
+            var result = await frameStore.prepareFrame(for: animation, index: index, pixelSize: pixelSize)
+            // A full cache is temporary, not a permanently blank paused poster. Retry
+            // with one cancellable task at a bounded rate, never a task per UI tick.
+            // Do not retain the view across the wait or retry invalid/oversized inputs.
+            while case .busy = result {
+                guard !Task.isCancelled, self?.generation == revision else { return }
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                result = await frameStore.prepareFrame(for: animation, index: index, pixelSize: pixelSize)
+            }
+            guard !Task.isCancelled, let self, self.generation == revision else { return }
+            self.frameTask = nil
+            guard case let .ready(frame) = result else {
+                // A permanent decode/geometry failure cannot improve on the next tick.
+                // Keep the approved poster or last frame and retry only after a new
+                // data, size/scale or playback lifecycle generation is configured.
+                self.frameUnavailable = true
+                self.stopClock()
+                return
+            }
+            // Replacing the image before releasing the previous lease keeps all live bitmaps
+            // accounted for. Data, scale, pause and teardown changes invalidate the generation.
+#if canImport(UIKit)
+            self.image = UIImage(cgImage: frame.image,
+                                 scale: CGFloat(frame.image.width) / self.displaySize.width, orientation: .up)
+#else
+            self.image = NSImage(cgImage: frame.image, size: self.displaySize)
+#endif
+            self.currentFrame = frame
+            self.currentFrameIndex = index
+            self.currentPixelSize = pixelSize
+            self.start()
+            // Skip obsolete intermediate frames, rather than queuing a decode per clock tick.
+            if self.desiredFrameIndex != index { self.requestFrame() }
         }
-        totalDuration = frameDurations.reduce(0, +)
     }
 
     private func start() {
-        guard wantsPlayback, window != nil, timer == nil, frameDurations.count > 1, totalDuration > 0 else { return }
-        playbackStartedAt = ProcessInfo.processInfo.systemUptime
-        let target = WebPTimerTarget(owner: self)
+        guard wantsPlayback, !explicitlyStopped, !frameUnavailable, window != nil,
+              animation != nil, currentFrame != nil, !hasClock else { return }
+        playbackStartedAt = CACurrentMediaTime()
+        let target = WebPClockTarget(owner: self)
+        clockTarget = target
+#if canImport(UIKit)
+        let link = CADisplayLink(target: target, selector: #selector(WebPClockTarget.tick(_:)))
+        displayLink = link
+        link.add(to: .main, forMode: .common)
+#else
         let timer = Timer(timeInterval: 1.0 / 30.0, target: target,
-                          selector: #selector(WebPTimerTarget.tick(_:)), userInfo: nil, repeats: true)
-        timerTarget = target
+                          selector: #selector(WebPClockTarget.tick(_:)), userInfo: nil, repeats: true)
         self.timer = timer
         RunLoop.main.add(timer, forMode: .common)
+#endif
     }
 
-    fileprivate func advance() {
-        guard totalDuration > 0 else { return }
-        var elapsed = (ProcessInfo.processInfo.systemUptime - playbackStartedAt)
-            .truncatingRemainder(dividingBy: totalDuration)
-        var targetIndex = 0
-        for (index, duration) in frameDurations.enumerated() {
-            if elapsed < duration { targetIndex = index; break }
-            elapsed -= duration
-            targetIndex = index
-        }
-        showFrame(at: targetIndex)
+    private var hasClock: Bool {
+#if canImport(UIKit)
+        displayLink != nil
+#else
+        timer != nil
+#endif
     }
 
-    private func showFrame(at index: Int) {
-        guard let displaySize, displaySize.width > 0, displaySize.height > 0,
-              index != currentFrameIndex, let source,
-              index >= 0, index < CGImageSourceGetCount(source),
-              let frame = CGImageSourceCreateImageAtIndex(source, index, [kCGImageSourceShouldCache: false] as CFDictionary) else { return }
-        currentFrameIndex = index
-        image = NSImage(cgImage: frame, size: displaySize)
+    private func stopClock() {
+#if canImport(UIKit)
+        displayLink?.invalidate()
+        displayLink = nil
+#else
+        timer?.invalidate()
+        timer = nil
+#endif
+        clockTarget = nil
+        playbackStartedAt = nil
+    }
+
+    private func pause() {
+        stopClock()
+        cancelPendingWork()
+    }
+
+    private func cancelPendingWork() {
+        generation &+= 1
+        frameUnavailable = false
+        preparationTask?.cancel()
+        preparationTask = nil
+        frameTask?.cancel()
+        frameTask = nil
+    }
+
+    fileprivate func advance(at now: CFTimeInterval) {
+        guard wantsPlayback, window != nil, !explicitlyStopped,
+              let animation, let playbackStartedAt else { return }
+        desiredFrameIndex = animation.frameIndex(at: max(0, now - playbackStartedAt))
+        requestFrame()
     }
 }
 
 @MainActor
-private final class WebPTimerTarget: NSObject {
+private final class WebPClockTarget: NSObject {
     weak var owner: WebPFrameImageView?
     init(owner: WebPFrameImageView) { self.owner = owner }
-    @objc func tick(_ timer: Timer) { owner?.advance() }
-}
+#if canImport(UIKit)
+    @objc func tick(_ displayLink: CADisplayLink) { owner?.advance(at: displayLink.timestamp) }
+#else
+    @objc func tick(_ timer: Timer) { owner?.advance(at: CACurrentMediaTime()) }
 #endif
+}

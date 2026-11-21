@@ -78,7 +78,8 @@ struct FleetStartupSplash: View {
                     AnimatedWebPImage(
                         data: brandLoopData,
                         isPlaying: !reduceMotion,
-                        displaySize: CGSize(width: brandArtworkSize, height: brandArtworkSize)
+                        displaySize: CGSize(width: brandArtworkSize, height: brandArtworkSize),
+                        posterName: "HashFleetLaunch"
                     )
                 } else {
                     Image("HashFleetLaunch")

@@ -23,7 +23,7 @@ enum FleetArtLoop: String, CaseIterable, Sendable {
         }
     }
 
-    /// Decoded once per process; `NSDataAsset` reads are not free and several screens share a loop.
+    /// Compressed bytes loaded once per process; prepared frames have a separate bounded cache.
     @MainActor private static var cache: [FleetArtLoop: Data] = [:]
 
     @MainActor var loopData: Data? {
@@ -55,7 +55,8 @@ struct FleetAnimatedArt: View {
     var body: some View {
         Group {
             if let data = loop.loopData {
-                AnimatedWebPImage(data: data, isPlaying: isPlaying && !reduceMotion, displaySize: size)
+                AnimatedWebPImage(data: data, isPlaying: isPlaying && !reduceMotion, displaySize: size,
+                                  posterName: loop.staticImageName)
             } else {
                 Image(loop.staticImageName)
                     .renderingMode(.original)
