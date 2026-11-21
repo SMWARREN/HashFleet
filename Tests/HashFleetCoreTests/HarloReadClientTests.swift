@@ -212,6 +212,73 @@ struct HarloReadClientTests {
     }
 }
 
+// Reductions from original Harlo firmware run under esp-emu, NOT synthetic firmware responses.
+// See Tools/virtual-miners/evidence/harlo-gamma601.md, receipts 21954476pb and 30116217jw.
+// Tests replay only the non-sensitive fields required here. Empty entry objects below mean
+// ALL entry members were removed, not that the original objects were empty. This test suite
+// does not boot firmware, contact a miner, or claim that a route is necessarily advertised.
+@Suite("Harlo reduced original-firmware captures")
+struct HarloCapturedContractTests {
+    private static let info = #"""
+        {"firmware":"Harlo-OS-V2","version":"0.2.101","fleet_api_version":1,
+         "profile":{"id":"bitaxe-gamma-601","name":"Bitaxe Gamma 601","display_supported":true}}
+        """#
+    private static let fleet = #"{"devices":[]}"#
+
+    @Test func capturedOptInIdentityAdvertisesOnlyFleetAndDoesNotProbeOtherRoutes() async throws {
+        let fixture = try SyntheticHarloFixture(profile: .gamma601V02101) { request, _ in
+            switch request.url?.path {
+            case "/api/info": return try stubResponse(for: request, data: Data(Self.info.utf8))
+            case "/api/fleet": return try stubResponse(for: request, data: Data(Self.fleet.utf8))
+            default: throw URLError(.unsupportedURL)
+            }
+        }
+        #expect(try await fixture.client.read(.info) == .info(identity: .matchesConfiguredProfile, advertised: [.fleet]))
+        #expect(try await fixture.client.read(.fleet) == .fleet(reportedEntryCount: 0))
+        for endpoint: HarloReadEndpoint in [.telemetry, .network, .pools, .logs] {
+            await #expect(throws: HarloReadError.notAdvertised) { try await fixture.client.read(endpoint) }
+        }
+        #expect(fixture.record.count == 2)
+        #expect(HarloReadResult.project(.info, body: Data(Self.info.utf8), profile: nil) == .info(identity: .unconfirmed, advertised: []))
+    }
+
+    @Test func capturedShapesPreserveMissingMeasurementsAndWithholdContents() {
+        let reductions: [(HarloReadEndpoint, String, HarloReadResult)] = [
+            (.telemetry, #"{"hashrate_ghs":null,"device_power_w":null,"asic_temp_c":null}"#, .telemetry(hashrateGHs: nil, powerW: nil, asicTemperatureC: nil)),
+            (.network, #"{"interfaces":[{},{},{}]}"#, .network(interfaceCount: 3)),
+            (.pools, #"{"pools":[{},{},{},{}]}"#, .pools(entryCount: 4)),
+            (.fleet, Self.fleet, .fleet(reportedEntryCount: 0)),
+            (.logs, "{}", .logsWithheld) // All log fields omitted from the public fixture.
+        ]
+        for (endpoint, reduction, expected) in reductions {
+            #expect(HarloReadResult.project(endpoint, body: Data(reduction.utf8), profile: .gamma601V02101) == expected)
+        }
+    }
+
+    // Intentionally synthetic NEGATIVE variants of the reduced /api/info receipt, not captures.
+    @Test func identityAndAdvertisementRequireExactIndependentMatches() throws {
+        let captured = try JSONDecoder().decode([String: JSONValue].self, from: Data(Self.info.utf8))
+        func project(changing key: String, to value: JSONValue?) throws -> HarloReadResult {
+            var fields = captured
+            fields[key] = value
+            return .project(.info, body: try JSONEncoder().encode(fields), profile: .gamma601V02101)
+        }
+        for (key, mismatch): (String, JSONValue) in [("firmware", .string("Other")), ("version", .string("0.2.102")),
+                ("profile", .object(["id": .string("another-board")]))] {
+            #expect(try project(changing: key, to: mismatch) == .info(identity: .unconfirmed, advertised: []))
+            #expect(try project(changing: key, to: nil) == .info(identity: .unconfirmed, advertised: []))
+        }
+        for value: JSONValue? in [nil, .null, .string("1"), .bool(true), .number(1.5), .integer(0), .integer(2), .integer(-1)] {
+            #expect(try project(changing: "fleet_api_version", to: value) == .info(identity: .matchesConfiguredProfile, advertised: []))
+        }
+        for invalid: Int64 in [-1, 0, 65_536] {
+            #expect(throws: HarloReadError.invalidPolicy) { try HarloInfoProfile.Field(keys: ["v"], equals: .integer(invalid)) }
+        }
+        let integer = try HarloInfoProfile.Field(keys: ["v"], equals: .integer(1))
+        #expect(throws: HarloReadError.invalidPolicy) { try HarloInfoProfile(identity: [integer], advertisements: [:]) }
+    }
+}
+
 private struct SyntheticHarloFixture: Sendable {
     let client: HarloReadClient
     let record: SyntheticCount
