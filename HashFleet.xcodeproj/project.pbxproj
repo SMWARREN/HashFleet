@@ -349,6 +349,7 @@
 		62B7B4080F4E29E6259FB688 /* MinerReportedStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDC3F93DC0982D2C3EC6C37 /* MinerReportedStateTests.swift */; };
 		62DE038970287BA02E0A26B8 /* MinerCustomJSONView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B16E1FC7836C36E9122012E /* MinerCustomJSONView.swift */; };
 		635662313017346831014740 /* DeveloperSupportAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCF01E5D9667322A02B5AA3 /* DeveloperSupportAvailability.swift */; };
+		647D069BF7EA7E92E79636B2 /* WebPFrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4DA4AA59D15FD07D25C667 /* WebPFrameStore.swift */; };
 		649633B3B5BF80DBC0D07620 /* MinerTuningReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C69A0E77E3B5D500092800 /* MinerTuningReview.swift */; };
 		65A7E514D28AE35DC968B7D3 /* TuningInputTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BBC0505F84F45408A63DC43 /* TuningInputTestSupport.swift */; };
 		65DB6E7CCCA660501DC91C8D /* FleetTourContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E625A186D58B63A873A0F2A6 /* FleetTourContentTests.swift */; };
@@ -365,6 +366,7 @@
 		6BD39FD35C475DA9D70AF211 /* NetworkInsightsView+SoloOutcomes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 441449A244F1DBE6FFE839AD /* NetworkInsightsView+SoloOutcomes.swift */; };
 		6C0F041BB03282A03D5DF313 /* FleetTextRecognitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49B439FDB7BD69B2B1874CD8 /* FleetTextRecognitionTests.swift */; };
 		6C78F9FEEF9AE6275F78440C /* DashboardCardInteractionUITests+EasyTuning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCD568000571AF41220D435 /* DashboardCardInteractionUITests+EasyTuning.swift */; };
+		6C7DE057BA8D2684355FCA49 /* WebPFrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4DA4AA59D15FD07D25C667 /* WebPFrameStore.swift */; };
 		6D09540EDD2A3C6D7FA74F90 /* XMRigControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08CAEB82E938D009403428F /* XMRigControlView.swift */; };
 		6E0746EB2D4AB1C4731C65D6 /* DashboardView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47E90BA8CA783EFB697C33B /* DashboardView+Sections.swift */; };
 		6E2638106A49EFC4F469A72B /* FirmwareTelemetryHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2F20BCEEEC605ACB57C539 /* FirmwareTelemetryHistoryTests.swift */; };
@@ -477,6 +479,7 @@
 		8D57A261132EE92BABD9BC05 /* DeveloperSupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3793767BD2578C6E877ED549 /* DeveloperSupportView.swift */; };
 		8D7CBBEAC2357DC5285618A4 /* MinerUptimeHeatmapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9D028A438A433F3297CAD7 /* MinerUptimeHeatmapTests.swift */; };
 		8D7D38173C9AC77E38003F0B /* FleetWidgetAppearancePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9084F69DCF7522F24CAC25 /* FleetWidgetAppearancePolicy.swift */; };
+		8D8D5C3BF368F47FC0BA8FF8 /* AnimatedWebPPlaybackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80506CA1E1D8F6359674B089 /* AnimatedWebPPlaybackTests.swift */; };
 		8D9D03EF9CAD38C60AD3740C /* LocalNetworkAuthorizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31FD26489611AE88C98E9A9B /* LocalNetworkAuthorizationTests.swift */; };
 		8DC9D6A530EF8E3056E28279 /* FleetChartSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9999C630960816E49B77032 /* FleetChartSelection.swift */; };
 		8DD1B376DA46E7225F770211 /* FleetWidgetRefreshIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E9E5974D3EE85C8B7D8F344 /* FleetWidgetRefreshIntegrationTests.swift */; };
@@ -1286,6 +1289,7 @@
 		7F8EE41C5D7A2CA89D2832EA /* HashFleetUITests+Theming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HashFleetUITests+Theming.swift"; sourceTree = "<group>"; };
 		7F91B3EB290114CC0A693305 /* FleetBalancedColumnsLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetBalancedColumnsLayout.swift; sourceTree = "<group>"; };
 		803DA0BF146D1C18EA43F2B9 /* MinerDetailView+Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MinerDetailView+Desktop.swift"; sourceTree = "<group>"; };
+		80506CA1E1D8F6359674B089 /* AnimatedWebPPlaybackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedWebPPlaybackTests.swift; sourceTree = "<group>"; };
 		80A20BCAE59278DC67CA67FB /* FleetPreferencesSortingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPreferencesSortingTests.swift; sourceTree = "<group>"; };
 		80C4BA813C35F93DB164B992 /* FleetRemotePushModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRemotePushModels.swift; sourceTree = "<group>"; };
 		81375A7769D6A01D5FB1D94A /* FleetCelebrationQueueFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetCelebrationQueueFactory.swift; sourceTree = "<group>"; };
@@ -1348,6 +1352,7 @@
 		98DA00D6CBD84B0B5063CBAC /* FleetTickerCursorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetTickerCursorTests.swift; sourceTree = "<group>"; };
 		99406A3D085F69306E6732DD /* MinerDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerDiagnosticsView.swift; sourceTree = "<group>"; };
 		99619288A9B145C2A692212B /* FleetReportCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportCSV.swift; sourceTree = "<group>"; };
+		9A4DA4AA59D15FD07D25C667 /* WebPFrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPFrameStore.swift; sourceTree = "<group>"; };
 		9A8497EC53E368E7C6EAFA72 /* FleetLoadingSkeleton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLoadingSkeleton.swift; sourceTree = "<group>"; };
 		9B8F8286268A0A2D2719B915 /* FleetRemotePushCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRemotePushCoordinator.swift; sourceTree = "<group>"; };
 		9BE70F9787CD1055E5527290 /* FleetMinerCardObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMinerCardObservationTests.swift; sourceTree = "<group>"; };
@@ -1732,6 +1737,7 @@
 				B152254B0B0B9FB814842770 /* FleetWindowViewport.swift */,
 				EA0D2B584268AEE5054BE6C3 /* LucideIconHelper.swift */,
 				8A1D3ED7F99A4767ABE9159D /* MiningDifficultyFormat.swift */,
+				9A4DA4AA59D15FD07D25C667 /* WebPFrameStore.swift */,
 				1DDD8DAB9B7FA274FABB70F5 /* MacSupport */,
 			);
 			path = Design;
@@ -2084,6 +2090,7 @@
 			children = (
 				8EEFD5420845C197DEE0B0CB /* AddMinerBulkCompletionTests.swift */,
 				A6D2AFF079924FF3EABF40A7 /* AddMinerScanRadarTests.swift */,
+				80506CA1E1D8F6359674B089 /* AnimatedWebPPlaybackTests.swift */,
 				134A859F599B5BA11DD0EEBE /* FleetChangeEffectsTests.swift */,
 				4166425DADA5EEFEE90044AC /* FleetDailyEnergyTests.swift */,
 				B54EF8BA540F30C4A900A581 /* FleetDemoIsolationTests.swift */,
@@ -3338,6 +3345,7 @@
 				CC06E2F8F480DA54823A6A0C /* PlatformViewModifiers.swift in Sources */,
 				8054F85DEFE4207C33CB9779 /* PoolStatsHubView.swift in Sources */,
 				142D2FA825EEE30AEA5223C7 /* SoloPoolPreset.swift in Sources */,
+				647D069BF7EA7E92E79636B2 /* WebPFrameStore.swift in Sources */,
 				44AD1B5FB974BA69DBB6654F /* XMRigControlView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3620,6 +3628,7 @@
 				EA700E2C55014E7EB722B97F /* PlatformViewModifiers.swift in Sources */,
 				9C4F6420C05C3EDDA5DBAB98 /* PoolStatsHubView.swift in Sources */,
 				700CADF3CB7F226B9C2200DF /* SoloPoolPreset.swift in Sources */,
+				6C7DE057BA8D2684355FCA49 /* WebPFrameStore.swift in Sources */,
 				6D09540EDD2A3C6D7FA74F90 /* XMRigControlView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3889,6 +3898,7 @@
 			files = (
 				DE0E59F614287B581F81AB9F /* AddMinerBulkCompletionTests.swift in Sources */,
 				D7CA5AA60494E1C2A6C25BC3 /* AddMinerScanRadarTests.swift in Sources */,
+				8D8D5C3BF368F47FC0BA8FF8 /* AnimatedWebPPlaybackTests.swift in Sources */,
 				DCC6F37905DA2DE81109121D /* DeduplicateDevicesByMACFailureTests+Transfers.swift in Sources */,
 				A344311A8034EAA14EC08ED3 /* DeduplicateDevicesByMACFailureTests.swift in Sources */,
 				27D858E44717F5081195736C /* FleetBackgroundPublicationTests.swift in Sources */,

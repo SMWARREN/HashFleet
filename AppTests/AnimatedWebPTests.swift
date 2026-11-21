@@ -1,4 +1,5 @@
 import ImageIO
+import SwiftUI
 import Testing
 import UIKit
 @testable import HashFleet
@@ -7,6 +8,20 @@ private final class AnimatedWebPTestBundleAnchor: NSObject {}
 
 @Suite
 struct AnimatedWebPTests {
+    /// Off-main preparation is intentionally asynchronous. Keep the original image,
+    /// geometry and motion assertions, but wait for a realized frame rather than
+    /// forcing a synchronous WebP decode just to satisfy a test's setup assumption.
+    @MainActor private func waitForPreparedFrame(_ view: WebPFrameImageView) async throws {
+        let deadline = ContinuousClock.now + .seconds(3)
+        while view.currentFrameIndex == nil {
+            guard ContinuousClock.now < deadline else { throw PreparationFailure.timeout }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(view.image != nil)
+    }
+
+    private enum PreparationFailure: Error { case timeout }
+
     @Test func frameDurationIgnoresZeroDelayAndPrefersUnclampedTiming() {
         let zeroDelay: [CFString: Any] = [
             kCGImagePropertyWebPUnclampedDelayTime: NSNumber(value: 0),
@@ -107,6 +122,7 @@ struct AnimatedWebPTests {
         controller.view.addSubview(view)
         view.removeFromSuperview()
         controller.view.addSubview(view)
+        try await waitForPreparedFrame(view)
         let opening = try #require(view.image?.pngData())
         var didAdvance = false
         for _ in 0..<12 {
@@ -119,7 +135,7 @@ struct AnimatedWebPTests {
         #expect(didAdvance, "A requested animation must resume after window reattachment without needing a tap or another SwiftUI update")
     }
 
-    @Test @MainActor func playerDisplaysTheOpeningFrameWhenMotionIsPaused() throws {
+    @Test @MainActor func playerDisplaysTheOpeningFrameWhenMotionIsPaused() async throws {
         let bundle = Bundle(for: AnimatedWebPTestBundleAnchor.self)
         let url = try #require(bundle.url(forResource: "animated-webp-2frames", withExtension: "webp"))
         let view = WebPFrameImageView(frame: .zero)
@@ -129,6 +145,7 @@ struct AnimatedWebPTests {
             displaySize: CGSize(width: 220, height: 220)
         )
 
+        try await waitForPreparedFrame(view)
         let image = try #require(view.image)
         #expect(image.size == CGSize(width: 220, height: 220))
         #expect(view.contentMode == UIView.ContentMode.scaleAspectFit)
@@ -165,6 +182,7 @@ struct AnimatedWebPTests {
         view.configure(data: try Data(contentsOf: url), isPlaying: explicitStop,
                        displaySize: CGSize(width: 120, height: 120))
         controller.view.addSubview(view)
+        try await waitForPreparedFrame(view)
         if explicitStop { view.stop() }
         view.removeFromSuperview()
         controller.view.addSubview(view)
@@ -173,5 +191,66 @@ struct AnimatedWebPTests {
             try await Task.sleep(for: .milliseconds(25))
             #expect(view.image?.pngData() == opening, "Paused and dismantled players must stay still after reattachment")
         }
+    }
+
+    @MainActor private func mountedPlayer(in view: UIView) -> WebPFrameImageView? {
+        if let player = view as? WebPFrameImageView { return player }
+        for child in view.subviews {
+            if let player = mountedPlayer(in: child) { return player }
+        }
+        return nil
+    }
+
+    @Test @MainActor func coldPosterKeepsRequestedUIKitBoundsBeforeAnyFramePrepares() throws {
+        let cases: [(String, String, CGSize)] = [
+            ("HashFleetBrandLoop", "HashFleetLaunch", CGSize(width: 220, height: 220)),
+            ("FleetClusterArtLoop", "FleetClusterArt", CGSize(width: 72, height: 50)),
+            ("MinerCoolingArtLoop", "MinerCoolingArt", CGSize(width: 180, height: 106))
+        ]
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            for (assetName, posterName, size) in cases {
+                let asset = try #require(NSDataAsset(name: assetName))
+                let hosting = UIHostingController(rootView:
+                    AnimatedWebPImage(data: asset.data, isPlaying: false,
+                                      displaySize: size, posterName: posterName)
+                        .frame(width: size.width, height: size.height))
+                let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 430, height: 932))
+                window.overrideUserInterfaceStyle = style
+                window.rootViewController = hosting
+                window.isHidden = false
+                defer {
+                    mountedPlayer(in: hosting.view)?.stop()
+                    window.isHidden = true
+                    window.rootViewController = nil
+                }
+                hosting.view.frame = window.bounds
+                hosting.view.setNeedsLayout()
+                hosting.view.layoutIfNeeded()
+                window.layoutIfNeeded()
+                let player = try #require(mountedPlayer(in: hosting.view))
+                #expect(player.image != nil)
+                #expect(player.currentFrameIndex == nil,
+                        "Check the actual PNG phase synchronously, before a prepared frame can publish")
+                #expect(player.bounds.size == size,
+                        "The real UIKit view, not only its SwiftUI container, must respect the requested bounds")
+                #expect(player.contentMode == .scaleAspectFit)
+                print("Cold poster \(posterName), style=\(style.rawValue), requested=\(size), UIKit bounds=\(player.bounds.size), intrinsic=\(player.intrinsicContentSize)")
+            }
+        }
+    }
+
+    @Test @MainActor func approvedPosterIsVisibleImmediatelyWhileTheColdLoopPrepares() async throws {
+        let asset = try #require(NSDataAsset(name: "HashFleetBrandLoop"))
+        let store = WebPFrameStore()
+        let view = WebPFrameImageView(frame: .zero, frameStore: store)
+        defer { view.stop() }
+        view.configure(data: asset.data, isPlaying: false, displaySize: CGSize(width: 220, height: 220),
+                       posterName: "HashFleetLaunch")
+        #expect(view.image != nil, "Cold loading must keep the approved PNG visible without decoding WebP on main")
+        #expect(view.currentFrameIndex == nil)
+        try await waitForPreparedFrame(view)
+        #expect(view.currentFrameIndex == 0)
+        #expect(view.image?.size == CGSize(width: 220, height: 220))
+        #expect((await store.statistics()).mainThreadDecodes == 0)
     }
 }
