@@ -55,7 +55,7 @@ struct FleetHistoryCard: View {
         guard isMinerDetail, devices.count == 1, let device = devices.first, device.kind != .xmrig else { return nil }
         return device
     }
-    private var showsSavedSensor: Bool { sensorDevice != nil && selectedMetric != .hashrate }
+    var showsSavedSensor: Bool { sensorDevice != nil && selectedMetric != .hashrate }
 
     /// Both dashboard and miner detail charts use the surrounding neutral theme roles. The
     /// top fleet summary remains the deliberately dark panel, so these cards stay distinct.
@@ -233,72 +233,6 @@ struct FleetHistoryCard: View {
             guard !showsSavedSensor else { return }
             await loadHistoricalData(for: selectedWindow)
         }
-    }
-
-    private var chartTitle: some View {
-        Text("\(showsSavedSensor ? selectedMetric.title : "Hashrate") trend")
-            .fleetFont(numberFirst ? .subheadline : (isMinerDetail && !isEssentials ? .caption : .headline), weight: .semibold)
-            .foregroundStyle(chartInk)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    private var numberFirstMinerChartHeading: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                chartTitle.fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 0)
-                metricMenu.fixedSize(horizontal: true, vertical: false)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                chartTitle
-                metricMenu
-            }
-        }
-    }
-
-    private var metricMenu: some View {
-        Menu {
-            ForEach(MinerHistoryMetric.allCases) { metric in
-                Button {
-                    selectedMetric = metric
-                    rawSelectedDate = nil
-                } label: {
-                    if selectedMetric == metric {
-                        Label(metric.title, systemImage: "checkmark")
-                    } else {
-                        Text(metric.title)
-                    }
-                }
-                .accessibilityAddTraits(selectedMetric == metric ? .isSelected : [])
-                .accessibilityIdentifier("detail.historyMetric.\(metric.rawValue)")
-            }
-        } label: {
-            if numberFirst {
-                HStack(spacing: 4) {
-                    Text("Metric")
-                    Image(systemName: "chevron.down").imageScale(.small).accessibilityHidden(true)
-                }
-                .fleetFont(.caption, weight: .medium)
-                .foregroundStyle(chartInk)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 24)
-                .background(FleetTheme.raised, in: Capsule())
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-            } else {
-                Label("Metric: \(selectedMetric.title)", systemImage: "chevron.up.chevron.down")
-                    .fleetFont(.subheadline, weight: .medium)
-                    .foregroundStyle(chartInk)
-                    .frame(minHeight: 44)
-                    .padding(.horizontal, 10)
-                    .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 8))
-            }
-        }
-        .fleetDesignedMenu()
-        .accessibilityLabel("History metric")
-        .accessibilityValue(selectedMetric.title)
-        .accessibilityIdentifier("detail.historyMetric")
     }
 
     private var emptyState: some View {
@@ -480,24 +414,16 @@ struct FleetHistoryCard: View {
     }
 
     private func selection(for histories: [MinerHistorySeries], window: HistoryWindow) -> FleetChartSelection? {
-        guard let rawSelectedDate else {
-            return nil
-        }
+        guard let rawSelectedDate else { return nil }
         return FleetChartSelection.resolve(
-            at: rawSelectedDate,
-            in: histories,
-            tolerance: window.selectionTolerance,
-            clusterTolerance: 60
+            at: rawSelectedDate, in: histories, tolerance: window.selectionTolerance, clusterTolerance: 60
         )
     }
 
     private func validateSelection() {
         guard let raw = rawSelectedDate else { return }
-        let currentSeries = series(for: selectedWindow)
         if !FleetChartSelection.isSelectionValid(
-            at: raw,
-            in: currentSeries,
-            tolerance: selectedWindow.selectionTolerance
+            at: raw, in: series(for: selectedWindow), tolerance: selectedWindow.selectionTolerance
         ) {
             rawSelectedDate = nil
         }
@@ -507,13 +433,10 @@ struct FleetHistoryCard: View {
         FleetHistoryPresentation.meanReading(in: histories).map { FleetFormat.hashrateWithUnit($0) }
     }
 
-    func displayUnit(for window: HistoryWindow) -> HashrateUnit {
-        displayUnit(forHistories: series(for: window))
-    }
+    func displayUnit(for window: HistoryWindow) -> HashrateUnit { displayUnit(forHistories: series(for: window)) }
 
     func displayUnit(forHistories histories: [MinerHistorySeries]) -> HashrateUnit {
-        guard let maxGHs = histories.lazy.flatMap(\.points).map(\.value)
-            .filter({ $0.isFinite && $0 >= 0 }).max() else {
+        guard let maxGHs = histories.lazy.flatMap(\.points).map(\.value).filter({ $0.isFinite && $0 >= 0 }).max() else {
             return activeKind == .cpu ? .hashesPerSecond : .gigaHashesPerSecond
         }
         return FleetFormat.hashrateDisplayUnit(forGHs: maxGHs)
@@ -523,35 +446,25 @@ struct FleetHistoryCard: View {
         let now = Date()
         let interval = window == .daily ? recentRange.interval : window.interval
         return chartDevices.compactMap { device in
-            let sourceInterval = window == .daily
-                ? max(interval, FleetRecentRange.day.interval)
-                : interval
+            let sourceInterval = window == .daily ? max(interval, FleetRecentRange.day.interval) : interval
             let sourcePoints = FleetHistorySource.mergedPoints(
-                stored: databaseSeries[device.id] ?? [],
-                current: window == .daily ? snapshots[device.id]?.history ?? [] : [],
-                since: now.addingTimeInterval(-sourceInterval),
-                until: now
+                stored: databaseSeries[device.id] ?? [], current: window == .daily ? snapshots[device.id]?.history ?? [] : [],
+                since: now.addingTimeInterval(-sourceInterval), until: now
             )
             let anchor = window == .daily ? sourcePoints.last?.date ?? now : now
             let cutoff = anchor.addingTimeInterval(-interval)
             let points = sourcePoints.filter { $0.date >= cutoff && $0.date <= anchor }
             guard !points.isEmpty else { return nil }
             let duplicateName = devices.contains { $0.id != device.id && $0.name == device.name }
-            let label = duplicateName ? "\(device.name) · \(device.address)" : device.name
-            return MinerHistorySeries(id: device.id, name: label, points: points)
+            return MinerHistorySeries(id: device.id, name: duplicateName ? "\(device.name) · \(device.address)" : device.name, points: points)
         }
     }
 
     private func loadHistoricalData(for window: HistoryWindow) async {
-        guard !isDemo else {
-            normalizeRecentRange()
-            return
-        }
+        guard !isDemo else { normalizeRecentRange(); return }
         isLoadingHistory = true
         defer { if !Task.isCancelled { isLoadingHistory = false } }
         let now = Date()
-        // Load the full recent day once. The 15m and 1h controls filter this local cache
-        // rather than issuing new miner requests or discarding saved readings on relaunch.
         let results = await FleetHistorySource.load(
             devices: devices, since: now.addingTimeInterval(-window.interval), until: now, database: database ?? .shared
         )
@@ -560,4 +473,5 @@ struct FleetHistoryCard: View {
         databaseSeriesRevision += 1
         normalizeRecentRange()
     }
+
 }

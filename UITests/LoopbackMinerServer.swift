@@ -314,45 +314,7 @@ final class LoopbackMinerServer: @unchecked Sendable {
             let page = "<!doctype html><meta name='viewport' content='width=device-width'><h1>Loopback miner web interface</h1>"
             respond(connection, status: 200, body: Data(page.utf8), contentType: "text/html; charset=utf-8")
         } else if request.method == "GET", request.path == "/api/system/info" {
-            let held = lock.withLock {
-                guard holdsNextInfoRead, pendingInfoRead == nil else { return false }
-                holdsNextInfoRead = false
-                pendingInfoRead = connection
-                return true
-            }
-            guard !held else { return }
-            if let response = lock.withLock({ fixtureInfoResponse }) {
-                respond(connection, status: response.status, body: response.body)
-                return
-            }
-            let setpoints = lock.withLock { (fixtureFrequency, fixtureCoreVoltage) }
-            var info: [String: Any] = [
-                "hostname": hostname, "version": "ui-loopback-fixture", "ASICModel": "BM1370",
-                "hashRate": 1234, "power": 19.5, "temp": 51, "vrTemp": 48,
-                "fanspeed": 65, "fanrpm": 4200, "voltage": 5000, "coreVoltage": setpoints.1,
-                "frequency": setpoints.0, "sharesAccepted": 24, "sharesRejected": 0,
-                "uptimeSeconds": 1200, "bestDiff": "42M", "wifiRSSI": -45,
-                "stratumURL": "pool.fixture.invalid", "autofanspeed": 1, "manualFanSpeed": 65,
-                "temptarget": 66, "primaryPoolIndex": 0, "secondaryPoolIndex": 1, "pools": []
-            ]
-            if let cooling = lock.withLock({ fixtureCooling }) {
-                info["macAddr"] = "02:00:00:00:00:01"
-                for (key, value) in cooling { info[key] = value }
-            }
-            if let display = lock.withLock({ fixtureDisplay }) {
-                info["macAddr"] = "02:00:00:00:00:01"
-                for (key, value) in display { info[key] = value }
-            }
-            if let paused = lock.withLock({ fixturePaused }) {
-                info["macAddr"] = "02:00:00:00:00:01"
-                info["miningPaused"] = paused
-            }
-            do {
-                let body = try JSONSerialization.data(withJSONObject: info, options: [.sortedKeys])
-                respond(connection, status: 200, body: body)
-            } catch {
-                respond(connection, status: 500, body: Data("{}".utf8))
-            }
+            handleInfo(connection: connection)
         } else if request.method == "GET", request.path == "/api/system/asic" {
             let response = lock.withLock { (fixtureASICStatus, fixtureASICBody) }
             respond(connection, status: response.0, body: response.1)
@@ -374,50 +336,96 @@ final class LoopbackMinerServer: @unchecked Sendable {
                   lock.withLock({ fixtureDisplay != nil }) {
             respond(connection, status: 200, body: Data(#"{"status":"success"}"#.utf8))
         } else if request.method == "PATCH", request.path == "/api/system" {
-            if let readback = lock.withLock({ poolWriteReadback }),
-               let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
-               fields.count == 1, let pools = fields["pools"] as? [[String: Any]], pools.count == 1 {
-                lock.withLock { fixtureInfoResponse = (200, readback) }
-                respond(connection, status: 200, body: Data(#"{"status":"success"}"#.utf8))
-                return
-            }
-            if let display = lock.withLock({ fixtureDisplay }) {
-                let accepted = lock.withLock {
-                    guard pendingDisplayWrite == nil,
-                          let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Int],
-                          fields.count == 1, fields.keys.allSatisfy({ display[$0] != nil }) else { return false }
-                    pendingDisplayWrite = (connection, fields)
-                    return true
-                }
-                if !accepted { respond(connection, status: 400, body: Data(#"{"error":"Invalid fixture display payload"}"#.utf8)) }
-                return
-            }
-            if let cooling = lock.withLock({ fixtureCooling }) {
-                let accepted = lock.withLock {
-                    guard pendingCoolingWrite == nil,
-                          let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Int],
-                          !fields.isEmpty, Set(fields.keys).isSubset(of: Set(cooling.keys)) else { return false }
-                    pendingCoolingWrite = (connection, fields)
-                    return true
-                }
-                if !accepted { respond(connection, status: 400, body: Data(#"{"error":"Invalid fixture cooling payload"}"#.utf8)) }
-                return
-            }
-            if lock.withLock({ tuningWritesEnabled }) {
-                handleTuning(request, connection: connection)
-                return
-            }
-            guard let object = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
-                  let hostname = object["hostname"] as? String, !hostname.isEmpty else {
-                respond(connection, status: 400, body: Data(#"{"error":"Fixture PATCH requires hostname"}"#.utf8))
-                return
-            }
-            lock.withLock { fixtureHostname = hostname }
-            let message = #"{"status":"success","message":"Loopback hostname updated"}"#
-            respond(connection, status: 200, body: Data(message.utf8))
+            handlePatch(request, connection: connection)
         } else {
             respond(connection, status: 404, body: Data(#"{"error":"Endpoint unsupported by loopback fixture"}"#.utf8))
         }
+    }
+
+    private func handleInfo(connection: NWConnection) {
+        let held = lock.withLock {
+            guard holdsNextInfoRead, pendingInfoRead == nil else { return false }
+            holdsNextInfoRead = false
+            pendingInfoRead = connection
+            return true
+        }
+        guard !held else { return }
+        if let response = lock.withLock({ fixtureInfoResponse }) {
+            respond(connection, status: response.status, body: response.body)
+            return
+        }
+        let setpoints = lock.withLock { (fixtureFrequency, fixtureCoreVoltage) }
+        var info: [String: Any] = [
+            "hostname": hostname, "version": "ui-loopback-fixture", "ASICModel": "BM1370",
+            "hashRate": 1234, "power": 19.5, "temp": 51, "vrTemp": 48,
+            "fanspeed": 65, "fanrpm": 4200, "voltage": 5000, "coreVoltage": setpoints.1,
+            "frequency": setpoints.0, "sharesAccepted": 24, "sharesRejected": 0,
+            "uptimeSeconds": 1200, "bestDiff": "42M", "wifiRSSI": -45,
+            "stratumURL": "pool.fixture.invalid", "autofanspeed": 1, "manualFanSpeed": 65,
+            "temptarget": 66, "primaryPoolIndex": 0, "secondaryPoolIndex": 1, "pools": []
+        ]
+        if let cooling = lock.withLock({ fixtureCooling }) {
+            info["macAddr"] = "02:00:00:00:00:01"
+            for (key, value) in cooling { info[key] = value }
+        }
+        if let display = lock.withLock({ fixtureDisplay }) {
+            info["macAddr"] = "02:00:00:00:00:01"
+            for (key, value) in display { info[key] = value }
+        }
+        if let paused = lock.withLock({ fixturePaused }) {
+            info["macAddr"] = "02:00:00:00:00:01"
+            info["miningPaused"] = paused
+        }
+        do {
+            let body = try JSONSerialization.data(withJSONObject: info, options: [.sortedKeys])
+            respond(connection, status: 200, body: body)
+        } catch {
+            respond(connection, status: 500, body: Data("{}".utf8))
+        }
+    }
+
+    private func handlePatch(_ request: Request, connection: NWConnection) {
+        if let readback = lock.withLock({ poolWriteReadback }),
+           let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+           fields.count == 1, let pools = fields["pools"] as? [[String: Any]], pools.count == 1 {
+            lock.withLock { fixtureInfoResponse = (200, readback) }
+            respond(connection, status: 200, body: Data(#"{"status":"success"}"#.utf8))
+            return
+        }
+        if let display = lock.withLock({ fixtureDisplay }) {
+            let accepted = lock.withLock {
+                guard pendingDisplayWrite == nil,
+                      let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Int],
+                      fields.count == 1, fields.keys.allSatisfy({ display[$0] != nil }) else { return false }
+                pendingDisplayWrite = (connection, fields)
+                return true
+            }
+            if !accepted { respond(connection, status: 400, body: Data(#"{"error":"Invalid fixture display payload"}"#.utf8)) }
+            return
+        }
+        if let cooling = lock.withLock({ fixtureCooling }) {
+            let accepted = lock.withLock {
+                guard pendingCoolingWrite == nil,
+                      let fields = try? JSONSerialization.jsonObject(with: request.body) as? [String: Int],
+                      !fields.isEmpty, Set(fields.keys).isSubset(of: Set(cooling.keys)) else { return false }
+                pendingCoolingWrite = (connection, fields)
+                return true
+            }
+            if !accepted { respond(connection, status: 400, body: Data(#"{"error":"Invalid fixture cooling payload"}"#.utf8)) }
+            return
+        }
+        if lock.withLock({ tuningWritesEnabled }) {
+            handleTuning(request, connection: connection)
+            return
+        }
+        guard let object = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+              let hostname = object["hostname"] as? String, !hostname.isEmpty else {
+            respond(connection, status: 400, body: Data(#"{"error":"Fixture PATCH requires hostname"}"#.utf8))
+            return
+        }
+        lock.withLock { fixtureHostname = hostname }
+        let message = #"{"status":"success","message":"Loopback hostname updated"}"#
+        respond(connection, status: 200, body: Data(message.utf8))
     }
 
     private func handleTuning(_ request: Request, connection: NWConnection) {

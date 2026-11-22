@@ -357,7 +357,7 @@ struct FleetAXChartDescriptorProvider: AXChartDescriptorRepresentable {
     let series: [MinerHistorySeries]
     let windowHeading: String
     let isDemo: Bool
-    var trendSummary: String? = nil
+    var trendSummary: String?
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let allPoints = series.flatMap(\.points).filter { $0.value.isFinite && $0.value >= 0 }

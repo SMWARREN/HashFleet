@@ -564,7 +564,6 @@ extension FleetHistoryCard {
         .padding(.all, numberFirst ? 10 : nil)
         .frame(minWidth: numberFirst ? 260 : 230)
     }
-
     private var previewHistoryDisplayChoices: some View {
         HStack(spacing: 4) {
             ForEach(FleetHistoryDisplay.allCases, id: \.self) { mode in
@@ -591,11 +590,9 @@ extension FleetHistoryCard {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Chart view")
     }
-
     func chartSegments(for window: HistoryWindow) -> [FleetHistorySegment]? {
         pageData(for: window).segments
     }
-
     func series(for window: HistoryWindow) -> [MinerHistorySeries] {
         pageData(for: window).histories
     }

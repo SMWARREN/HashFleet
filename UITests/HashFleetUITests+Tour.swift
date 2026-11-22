@@ -29,8 +29,7 @@ extension HashFleetUITests {
             XCTAssertTrue(target.waitForExistence(timeout: 10), "Missing real target for \(id)")
             XCTAssertGreaterThan(target.frame.height, 10)
             if id == "pools" { recordScreenshot("Walkthrough points to Primary and Fallback", app: app) }
-            if tap { target.tap() }
-            else { app.buttons[id == "dashboardView" ? "tour.done" : "tour.next"].tap() }
+            if tap { target.tap() } else { app.buttons[id == "dashboardView" ? "tour.done" : "tour.next"].tap() }
         }
         XCTAssertTrue(tourView(in: app).waitForNonExistence(timeout: 5))
         XCTAssertTrue(entry.waitForExistence(timeout: 5) && entry.isHittable)

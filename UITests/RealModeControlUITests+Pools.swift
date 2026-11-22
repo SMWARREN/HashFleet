@@ -186,7 +186,10 @@ extension RealModeControlUITests {
             payload["stratumURL"] = "primary.example.invalid"
             payload["fallbackStratumURL"] = "backup.example.invalid"
         }
-        return String(decoding: try JSONSerialization.data(withJSONObject: payload), as: UTF8.self)
+        guard let json = String(bytes: try JSONSerialization.data(withJSONObject: payload), encoding: .utf8) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        return json
     }
 
     private func poolRecord(id: Int, host: String, port: Int) -> [String: Any] {

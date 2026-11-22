@@ -430,7 +430,10 @@ struct AddMinerView: View {
             isFindingThisMac = false
         }
     }
+}
 
+// Discovery actions share the sheet’s private draft and validation state.
+extension AddMinerView {
     /// Adds every discovered miner not already in the fleet. Settings are never changed.
     func addAllDiscovered() {
         guard localNetwork.isGranted, !discovery.isScanning, !discovery.candidates.isEmpty else { return }

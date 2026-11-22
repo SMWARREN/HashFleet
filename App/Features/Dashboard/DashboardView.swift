@@ -2,44 +2,6 @@ import SwiftUI
 import HashFleetCore
 import LucideSwift
 
-enum DashboardPageDestination: Equatable {
-    case overview
-    case miner(UUID)
-    case settings
-    case about
-    case support
-    case featureTour
-    case energy
-    case network
-    case reports
-    case backup
-    case achievements
-}
-
-enum NumberFirstPreview {
-    #if HASHFLEET_LIVE_REVIEW && os(iOS)
-    static let usesLivePhoneLayouts = true
-    #else
-    static let usesLivePhoneLayouts = false
-    #endif
-
-    #if DEBUG && os(iOS) && targetEnvironment(simulator)
-    private static let arguments = Set(ProcessInfo.processInfo.arguments)
-    static let overview = arguments.isSuperset(of: ["--ui-testing", "--demo", "--ui-test-offline-demo", "--preview-number-first"])
-        && !arguments.contains("--live-public-data")
-    static let minerDetail = overview && arguments.contains("--preview-number-first-detail")
-    static let cooling = minerDetail && arguments.contains("--preview-number-first-cooling")
-    static let settingsHub = minerDetail && arguments.contains("--preview-number-first-settings-hub")
-    static let tuning = minerDetail && arguments.contains("--preview-number-first-tuning")
-    #else
-    static let overview = false
-    static let minerDetail = false
-    static let cooling = false
-    static let settingsHub = false
-    static let tuning = false
-    #endif
-}
-
 struct DashboardView: View {
     @Environment(\.fleetGuidedDemo) private var guidedDemo
     @Environment(\.fleetGuidedEssentials) private var guidedEssentials

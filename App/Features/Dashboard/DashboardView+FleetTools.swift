@@ -1,5 +1,19 @@
 import SwiftUI
 
+enum DashboardPageDestination: Equatable {
+    case overview
+    case miner(UUID)
+    case settings
+    case about
+    case support
+    case featureTour
+    case energy
+    case network
+    case reports
+    case backup
+    case achievements
+}
+
 extension DashboardView {
     /// iPhone and iPad shortcut grid. Built as its own `View` type: when it was an inline
     /// `some View` property, the nested generic type of five modified buttons was resolved from

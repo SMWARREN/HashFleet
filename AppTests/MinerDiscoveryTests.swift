@@ -213,8 +213,10 @@ struct MinerDiscoveryFallbackTests {
         }
         try #require(started.timeouts(for: host) == [1, 2.5])
         task.cancel()
-        do { _ = try await task.value; Issue.record("Expected cancellation") }
-        catch is CancellationError { }
+        do {
+            _ = try await task.value
+            Issue.record("Expected cancellation")
+        } catch is CancellationError { }
         #expect(started.count(for: host) == 2)
     }
 

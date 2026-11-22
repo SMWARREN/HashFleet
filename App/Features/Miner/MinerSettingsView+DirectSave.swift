@@ -37,7 +37,7 @@ enum MinerDisplaySetting: String {
 struct MinerSettingsSaveAlert {
     let title: String
     let message: String
-    var restartIdentity: MinerInlineActionState.Identity? = nil
+    var restartIdentity: MinerInlineActionState.Identity?
 }
 
 extension MinerSettingsView {
