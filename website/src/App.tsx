@@ -44,7 +44,16 @@ function NativeIdentityMark() {
 
 function Dialog({ name, onClose }: Readonly<{ name: Exclude<DialogName, null>, onClose: () => void }>) {
   const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => { if (ref.current && !ref.current.open) ref.current.showModal() }, [])
+  useEffect(() => {
+    const dialog = ref.current
+    if (!dialog) return
+    if (!dialog.open) dialog.showModal()
+    const handleBackdrop = (event: MouseEvent) => {
+      if (event.target === dialog) close()
+    }
+    dialog.addEventListener('click', handleBackdrop)
+    return () => dialog.removeEventListener('click', handleBackdrop)
+  }, [])
   function close() {
     if (ref.current?.open) ref.current.close()
     else onClose()
@@ -61,7 +70,7 @@ function Dialog({ name, onClose }: Readonly<{ name: Exclude<DialogName, null>, o
       next?.focus()
     }
   }
-  return <dialog ref={ref} className={`site-dialog${name === 'download' ? ' site-dialog--download' : ''}`} onClose={onClose} onKeyDown={containTabFocus} onClick={event => { if (event.target === event.currentTarget) close() }} aria-labelledby="dialog-title">
+  return <dialog ref={ref} className={`site-dialog${name === 'download' ? ' site-dialog--download' : ''}`} onClose={onClose} onKeyDown={containTabFocus} aria-labelledby="dialog-title">
     <div className="dialog-content"><button className="dialog-close icon-button" onClick={close} aria-label="Close dialog" autoFocus><Icon name="close" /></button>
       {name === 'download' ? <DownloadOptions links={releaseLinks} /> : <>
         <img className="dialog-brand" src="/images/brand.png" alt="" width="64" height="64" />

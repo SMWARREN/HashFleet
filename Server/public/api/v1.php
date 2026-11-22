@@ -16,8 +16,8 @@ try {
     if (!is_file($private . '/config.php')) {
         throw new FleetAPIException('Unconfigured service');
     }
-    // Keep require's returned config array; require_once returns true on repeat inclusion.
-    $config = require $private . '/config.php';
+    // require_once returns the configuration array on script execution.
+    $config = require_once $private . '/config.php';
     require_once $private . '/Service.php';
     $remote = $_SERVER['REMOTE_ADDR'] ?? '';
     $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';

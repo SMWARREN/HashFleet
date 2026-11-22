@@ -376,34 +376,41 @@ final class FleetDispatchWorker {
         $now = $this->store->now();
         $attempted = 0;
         $this->expireAndQueueDue($now);
-        for ($iteration = 0; $iteration < max(0, min(100, $maximum)); $iteration++) {
+        $limit = max(0, min(100, $maximum));
+        for ($iteration = 0; $iteration < $limit; $iteration++) {
             $job = $this->claimNext($now);
             if ($job === null) {
                 break;
             }
-            if (!$job['installation_enabled'] || !$job['miner_enabled'] || !$job['token_valid']
-                || $job['token_generation'] !== $job['current_generation']) {
-                $this->finish($job, 'cancelled', $now);
-                continue;
-            }
-            // Recheck opt-out, catalog membership, generation, and claim immediately before provider I/O.
-            if (!$this->eligible($job)) {
-                continue;
-            }
-            // Batch-capable installations get one push for every miner due now, so APNs
-            // offline coalescing (one stored alert per app) cannot hide all but one miner.
-            $group = $job['batch'] ? [$job, ...$this->claimSiblings($job, $now)] : [$job];
-            $response = $this->send($job, $now, $group);
-            $attempted++;
-            foreach ($group as $index => $member) {
-                $outcome = $this->recordResponse($member, $response, $now, $index === 0);
-                if ($outcome === 'invalid_token') {
-                    break;
-                }
+            if ($this->processDueJob($job, $now)) {
+                $attempted++;
             }
         }
         $this->purge();
         return $attempted;
+    }
+
+    private function processDueJob(array $job, int $now): bool {
+        if (!$job['installation_enabled'] || !$job['miner_enabled'] || !$job['token_valid']
+            || $job['token_generation'] !== $job['current_generation']) {
+            $this->finish($job, 'cancelled', $now);
+            return false;
+        }
+        // Recheck opt-out, catalog membership, generation, and claim immediately before provider I/O.
+        if (!$this->eligible($job)) {
+            return false;
+        }
+        // Batch-capable installations get one push for every miner due now, so APNs
+        // offline coalescing (one stored alert per app) cannot hide all but one miner.
+        $group = $job['batch'] ? [$job, ...$this->claimSiblings($job, $now)] : [$job];
+        $response = $this->send($job, $now, $group);
+        foreach ($group as $index => $member) {
+            $outcome = $this->recordResponse($member, $response, $now, $index === 0);
+            if ($outcome === 'invalid_token') {
+                break;
+            }
+        }
+        return true;
     }
 
     private function expireAndQueueDue(int $now): void {
@@ -504,21 +511,21 @@ final class FleetDispatchWorker {
         $reason = preg_replace('/[^A-Za-z0-9]/', '', substr((string)($response['reason'] ?? ''), 0, 64));
         if ($status === 200) {
             $this->finish($job, 'sent', $now);
-            return 'sent';
-        }
-        if ($status === 410 || ($status === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
+            $outcome = 'sent';
+        } elseif ($status === 410 || ($status === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
             $this->invalidateToken($job, $now, $status === 410 ? '410' : '400:' . $reason);
-            return 'invalid_token';
-        }
-        if (($status === 0 || $status === 429 || $status >= 500) && $job['attempts'] < 5) {
+            $outcome = 'invalid_token';
+        } elseif (($status === 0 || $status === 429 || $status >= 500) && $job['attempts'] < 5) {
             $this->retry($job, $response, $status, $now, $primary);
-            return 'retry';
+            $outcome = 'retry';
+        } else {
+            $this->finish($job, 'failed', $now);
+            if ($primary) {
+                $this->audit('provider_error', $reason === '' ? (string)$status : $status . ':' . $reason);
+            }
+            $outcome = 'failed';
         }
-        $this->finish($job, 'failed', $now);
-        if ($primary) {
-            $this->audit('provider_error', $reason === '' ? (string)$status : $status . ':' . $reason);
-        }
-        return 'failed';
+        return $outcome;
     }
 
     private function invalidateToken(array $job, int $now, string $detail): void {

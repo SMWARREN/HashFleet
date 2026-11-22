@@ -19,82 +19,138 @@ from swift_sonar_kit.reports import swiftlint_report
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-    }
-    metric_keys = [
-        "alert_status",
-        "bugs",
-        "vulnerabilities",
-        "code_smells",
-        "security_hotspots",
-        "coverage",
-        "lines_to_cover",
-        "uncovered_lines",
-        "line_coverage",
-        "branch_coverage",
-        "duplicated_lines",
-        "duplicated_blocks",
-        "duplicated_lines_density",
-        "duplicated_files",
-        "ncloc",
-        "complexity",
-        "cognitive_complexity",
-        "reliability_rating",
-        "security_rating",
-        "sqale_rating",
-    ]
-    query = urllib.parse.urlencode({
-        "component": project_key,
-        "metricKeys": ",".join(metric_keys),
-    })
-    measures_url = f"{url}/api/measures/component?{query}"
-    gate_url = f"{url}/api/qualitygates/project_status?{urllib.parse.urlencode({'projectKey': project_key})}"
+TABLE_DIVIDER = "| :--- | :--- |"
 
-    measures: dict[str, str] = {}
+
+def _gate_display(status: str) -> tuple[str, str]:
+    if status == "OK":
+        return "🟢", "PASSED"
+    if status == "ERROR":
+        return "🔴", "FAILED"
+    return "⚪", status
+
+
+def fetch_measures(url: str, token: str, project_key: str) -> dict[str, str]:
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    metric_keys = [
+        "alert_status", "bugs", "vulnerabilities", "code_smells", "security_hotspots",
+        "coverage", "lines_to_cover", "uncovered_lines", "line_coverage", "branch_coverage",
+        "duplicated_lines", "duplicated_blocks", "duplicated_lines_density", "duplicated_files",
+        "ncloc", "complexity", "cognitive_complexity",
+        "reliability_rating", "security_rating", "sqale_rating",
+    ]
+    query = urllib.parse.urlencode({"component": project_key, "metricKeys": ",".join(metric_keys)})
+    measures_url = f"{url}/api/measures/component?{query}"
     for _ in range(5):
         try:
             req = urllib.request.Request(measures_url, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                for m in data.get("component", {}).get("measures", []):
-                    measures[m["metric"]] = m.get("value", "0")
+                measures = {m["metric"]: m.get("value", "0") for m in data.get("component", {}).get("measures", [])}
                 if measures:
-                    break
+                    return measures
         except Exception:
             time.sleep(2)
+    return {}
 
-    gate_status = "UNKNOWN"
-    conditions = []
+
+def fetch_gate_status(url: str, token: str, project_key: str) -> tuple[str, list[dict]]:
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    gate_url = f"{url}/api/qualitygates/project_status?{urllib.parse.urlencode({'projectKey': project_key})}"
     try:
         req = urllib.request.Request(gate_url, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            gate_status = data.get("projectStatus", {}).get("status", "UNKNOWN")
+            status = data.get("projectStatus", {}).get("status", "UNKNOWN")
             conditions = data.get("projectStatus", {}).get("conditions", [])
+            return status, conditions
     except Exception as e:
         print(f"Warning: could not fetch Quality Gate status: {e}", file=sys.stderr)
+        return "UNKNOWN", []
 
+
+def fetch_issues(url: str, token: str, project_key: str) -> list[dict]:
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     issues_url = f"{url}/api/issues/search?{urllib.parse.urlencode({'componentKeys': project_key, 'resolved': 'false', 'ps': 100})}"
-    issues_list = []
     try:
         req = urllib.request.Request(issues_url, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            issues_list = data.get("issues", [])
+            return data.get("issues", [])
     except Exception as e:
         print(f"Warning: could not fetch SonarQube issues: {e}", file=sys.stderr)
+        return []
 
-    status_icon = "🟢" if gate_status == "OK" else ("🔴" if gate_status == "ERROR" else "⚪")
-    qg_label = "PASSED" if gate_status == "OK" else ("FAILED" if gate_status == "ERROR" else gate_status)
+
+def write_step_summary(measures: dict[str, str], gate_status: str, conditions: list[dict]) -> None:
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    status_icon, qg_label = _gate_display(gate_status)
+
+    def fmt(key: str, suffix: str = "", default: str = "N/A") -> str:
+        val = measures.get(key)
+        return f"{val}{suffix}" if val is not None else default
+
+    md = [
+        f"## {status_icon} SonarQube Analysis Results",
+        "",
+        f"**Quality Gate Status:** **{qg_label}**",
+        "",
+        "### 📊 Code Coverage",
+        "| Metric | Value |",
+        TABLE_DIVIDER,
+        f"| **Overall Coverage** | **{fmt('coverage', '%')}** |",
+        f"| **Line Coverage** | {fmt('line_coverage', '%')} |",
+        f"| **Branch Coverage** | {fmt('branch_coverage', '%')} |",
+        f"| **Lines to Cover** | {fmt('lines_to_cover')} |",
+        f"| **Uncovered Lines** | {fmt('uncovered_lines')} |",
+        "",
+        "### 🧬 Duplications",
+        "| Metric | Value |",
+        TABLE_DIVIDER,
+        f"| **Duplicated Lines** | **{fmt('duplicated_lines')}** ({fmt('duplicated_lines_density', '%')}) |",
+        f"| **Duplicated Blocks** | {fmt('duplicated_blocks')} |",
+        f"| **Duplicated Files** | {fmt('duplicated_files')} |",
+        "",
+        "### 🛡️ Issues & Maintainability",
+        "| Metric | Count |",
+        TABLE_DIVIDER,
+        f"| **Bugs** | {fmt('bugs', default='0')} |",
+        f"| **Vulnerabilities** | {fmt('vulnerabilities', default='0')} |",
+        f"| **Code Smells** | {fmt('code_smells', default='0')} |",
+        f"| **Security Hotspots** | {fmt('security_hotspots', default='0')} |",
+        f"| **Lines of Code (NCLOC)** | {fmt('ncloc')} |",
+        f"| **Complexity** | {fmt('complexity')} |",
+        "",
+    ]
+    if conditions:
+        md.extend([
+            "### 📋 Quality Gate Conditions",
+            "| Metric | Status | Operator | Value | Threshold |",
+            "| :--- | :--- | :--- | :--- | :--- |",
+        ])
+        for c in conditions:
+            c_status = "🟢" if c.get("status") == "OK" else "🔴"
+            md.append(f"| `{c.get('metricKey')}` | {c_status} {c.get('status')} | `{c.get('comparator')}` | `{c.get('actualValue', 'N/A')}` | `{c.get('errorThreshold', 'N/A')}` |")
+        md.append("")
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write("\n".join(md) + "\n")
+    except Exception as e:
+        print(f"Warning: could not write GITHUB_STEP_SUMMARY: {e}", file=sys.stderr)
+
+
+def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
+    measures = fetch_measures(url, token, project_key)
+    gate_status, conditions = fetch_gate_status(url, token, project_key)
+    issues_list = fetch_issues(url, token, project_key)
+
+    status_icon, qg_label = _gate_display(gate_status)
 
     def _fmt(key: str, suffix: str = "", default: str = "N/A") -> str:
         val = measures.get(key)
-        if val is None:
-            return default
-        return f"{val}{suffix}"
+        return f"{val}{suffix}" if val is not None else default
 
     # 1. Print formatted breakdown directly to GitHub Actions console log
     lines = [
@@ -135,55 +191,7 @@ def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
     print("\n".join(lines))
 
     # 2. Append markdown summary to GitHub Step Summary if running in Actions
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary_path:
-        md = [
-            f"## {status_icon} SonarQube Analysis Results",
-            "",
-            f"**Quality Gate Status:** **{qg_label}**",
-            "",
-            "### 📊 Code Coverage",
-            "| Metric | Value |",
-            "| :--- | :--- |",
-            f"| **Overall Coverage** | **{_fmt('coverage', '%')}** |",
-            f"| **Line Coverage** | {_fmt('line_coverage', '%')} |",
-            f"| **Branch Coverage** | {_fmt('branch_coverage', '%')} |",
-            f"| **Lines to Cover** | {_fmt('lines_to_cover')} |",
-            f"| **Uncovered Lines** | {_fmt('uncovered_lines')} |",
-            "",
-            "### 🧬 Duplications",
-            "| Metric | Value |",
-            "| :--- | :--- |",
-            f"| **Duplicated Lines** | **{_fmt('duplicated_lines')}** ({_fmt('duplicated_lines_density', '%')}) |",
-            f"| **Duplicated Blocks** | {_fmt('duplicated_blocks')} |",
-            f"| **Duplicated Files** | {_fmt('duplicated_files')} |",
-            "",
-            "### 🛡️ Issues & Maintainability",
-            "| Metric | Count |",
-            "| :--- | :--- |",
-            f"| **Bugs** | {_fmt('bugs', default='0')} |",
-            f"| **Vulnerabilities** | {_fmt('vulnerabilities', default='0')} |",
-            f"| **Code Smells** | {_fmt('code_smells', default='0')} |",
-            f"| **Security Hotspots** | {_fmt('security_hotspots', default='0')} |",
-            f"| **Lines of Code (NCLOC)** | {_fmt('ncloc')} |",
-            f"| **Complexity** | {_fmt('complexity')} |",
-            "",
-        ]
-        if conditions:
-            md.extend([
-                "### 📋 Quality Gate Conditions",
-                "| Metric | Status | Operator | Value | Threshold |",
-                "| :--- | :--- | :--- | :--- | :--- |",
-            ])
-            for c in conditions:
-                c_status = "🟢" if c.get("status") == "OK" else "🔴"
-                md.append(f"| `{c.get('metricKey')}` | {c_status} {c.get('status')} | `{c.get('comparator')}` | `{c.get('actualValue', 'N/A')}` | `{c.get('errorThreshold', 'N/A')}` |")
-            md.append("")
-        try:
-            with open(summary_path, "a", encoding="utf-8") as f:
-                f.write("\n".join(md) + "\n")
-        except Exception as e:
-            print(f"Warning: could not write GITHUB_STEP_SUMMARY: {e}", file=sys.stderr)
+    write_step_summary(measures, gate_status, conditions)
 
 
 def main() -> int:
@@ -228,10 +236,19 @@ def main() -> int:
         args.append(f"-Dsonar.apple.resultBundlePath={xcresult.relative_to(ROOT)}")
         print(f"Adding native result bundle: {xcresult.relative_to(ROOT)}")
 
+    cov_reports = []
     swift_cov = coverage_dir / "swift-package-coverage.xml"
     if swift_cov.exists():
-        args.append(f"-Dsonar.coverageReportPaths={swift_cov.relative_to(ROOT)}")
+        cov_reports.append(str(swift_cov.relative_to(ROOT)))
         print(f"Adding Swift package coverage: {swift_cov.relative_to(ROOT)}")
+
+    mac_cov = coverage_dir / "mac-coverage.xml"
+    if mac_cov.exists():
+        cov_reports.append(str(mac_cov.relative_to(ROOT)))
+        print(f"Adding Mac app coverage: {mac_cov.relative_to(ROOT)}")
+
+    if cov_reports:
+        args.append(f"-Dsonar.coverageReportPaths={','.join(cov_reports)}")
 
     python_cov = coverage_dir / "python-coverage.xml"
     if python_cov.exists():

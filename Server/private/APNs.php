@@ -150,11 +150,11 @@ final class FleetAPNs {
                 'apns-collapse-id: ' . hash('sha256', $job['collapse'] ?? ($job['installation'] . ':' . $job['miner'])),
             ],
             // cURL passes the handle first even when only the second argument is needed.
-            CURLOPT_HEADERFUNCTION => static function ($handle, string $header) use (&$retryAfter, $now): int {
+            CURLOPT_HEADERFUNCTION => static function ($_handle, string $header) use (&$retryAfter, $now): int {
                 $retryAfter = self::retryAfterHeader($header, $now, $retryAfter);
                 return strlen($header);
             },
-            CURLOPT_WRITEFUNCTION => static function ($handle, string $data) use (&$response): int {
+            CURLOPT_WRITEFUNCTION => static function ($_handle, string $data) use (&$response): int {
                 if (strlen($response) + strlen($data) > 8192) {
                     return 0;
                 }

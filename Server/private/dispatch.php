@@ -7,8 +7,8 @@ umask(0077);
 $private = getenv('HASHFLEET_PRIVATE') ?: __DIR__;
 $lock = null;
 try {
-    // Keep require's returned config array; require_once returns true on repeat inclusion.
-    $config = require $private . '/config.php';
+    // require_once returns the configuration array on script execution.
+    $config = require_once $private . '/config.php';
     require_once $private . '/Service.php';
     $lock = fopen($private . '/dispatcher.lock', 'c');
     if (!$lock) {
