@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 TABLE_DIVIDER = "| :--- | :--- |"
+JSON_MIME = "application/json"
 
 
 def _gate_display(status: str) -> tuple[str, str]:
@@ -31,7 +32,7 @@ def _gate_display(status: str) -> tuple[str, str]:
 
 
 def fetch_measures(url: str, token: str, project_key: str) -> dict[str, str]:
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    headers = {"Authorization": f"Bearer {token}", "Accept": JSON_MIME}
     metric_keys = [
         "alert_status", "bugs", "vulnerabilities", "code_smells", "security_hotspots",
         "coverage", "lines_to_cover", "uncovered_lines", "line_coverage", "branch_coverage",
@@ -55,7 +56,7 @@ def fetch_measures(url: str, token: str, project_key: str) -> dict[str, str]:
 
 
 def fetch_gate_status(url: str, token: str, project_key: str) -> tuple[str, list[dict]]:
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    headers = {"Authorization": f"Bearer {token}", "Accept": JSON_MIME}
     gate_url = f"{url}/api/qualitygates/project_status?{urllib.parse.urlencode({'projectKey': project_key})}"
     try:
         req = urllib.request.Request(gate_url, headers=headers)
@@ -70,7 +71,7 @@ def fetch_gate_status(url: str, token: str, project_key: str) -> tuple[str, list
 
 
 def fetch_issues(url: str, token: str, project_key: str) -> list[dict]:
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    headers = {"Authorization": f"Bearer {token}", "Accept": JSON_MIME}
     issues_url = f"{url}/api/issues/search?{urllib.parse.urlencode({'componentKeys': project_key, 'resolved': 'false', 'ps': 100})}"
     try:
         req = urllib.request.Request(issues_url, headers=headers)

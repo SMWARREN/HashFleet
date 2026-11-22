@@ -149,12 +149,14 @@ final class FleetAPNs {
                 'apns-expiration: ' . ($now + 300),
                 'apns-collapse-id: ' . hash('sha256', $job['collapse'] ?? ($job['installation'] . ':' . $job['miner'])),
             ],
-            // cURL passes the handle first even when only the second argument is needed.
-            CURLOPT_HEADERFUNCTION => static function ($_handle, string $header) use (&$retryAfter, $now): int {
+            // cURL passes ($ch, $header) and ($ch, $data); variadic receives both without an unused parameter.
+            CURLOPT_HEADERFUNCTION => static function (...$args) use (&$retryAfter, $now): int {
+                $header = (string)($args[1] ?? '');
                 $retryAfter = self::retryAfterHeader($header, $now, $retryAfter);
                 return strlen($header);
             },
-            CURLOPT_WRITEFUNCTION => static function ($_handle, string $data) use (&$response): int {
+            CURLOPT_WRITEFUNCTION => static function (...$args) use (&$response): int {
+                $data = (string)($args[1] ?? '');
                 if (strlen($response) + strlen($data) > 8192) {
                     return 0;
                 }
