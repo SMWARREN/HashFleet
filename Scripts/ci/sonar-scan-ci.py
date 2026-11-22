@@ -8,12 +8,166 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
+import urllib.parse
+import urllib.request
 
 from swift_sonar_kit.bootstrap import ensure_environment
 from swift_sonar_kit.local_server import ensure_local_server
 from swift_sonar_kit.reports import swiftlint_report
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    metric_keys = [
+        "alert_status",
+        "bugs",
+        "vulnerabilities",
+        "code_smells",
+        "security_hotspots",
+        "coverage",
+        "lines_to_cover",
+        "uncovered_lines",
+        "line_coverage",
+        "branch_coverage",
+        "duplicated_lines",
+        "duplicated_blocks",
+        "duplicated_lines_density",
+        "duplicated_files",
+        "ncloc",
+        "complexity",
+        "cognitive_complexity",
+        "reliability_rating",
+        "security_rating",
+        "sqale_rating",
+    ]
+    query = urllib.parse.urlencode({
+        "component": project_key,
+        "metricKeys": ",".join(metric_keys),
+    })
+    measures_url = f"{url}/api/measures/component?{query}"
+    gate_url = f"{url}/api/qualitygates/project_status?{urllib.parse.urlencode({'projectKey': project_key})}"
+
+    measures: dict[str, str] = {}
+    for _ in range(5):
+        try:
+            req = urllib.request.Request(measures_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for m in data.get("component", {}).get("measures", []):
+                    measures[m["metric"]] = m.get("value", "0")
+                if measures:
+                    break
+        except Exception:
+            time.sleep(2)
+
+    gate_status = "UNKNOWN"
+    conditions = []
+    try:
+        req = urllib.request.Request(gate_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            gate_status = data.get("projectStatus", {}).get("status", "UNKNOWN")
+            conditions = data.get("projectStatus", {}).get("conditions", [])
+    except Exception as e:
+        print(f"Warning: could not fetch Quality Gate status: {e}", file=sys.stderr)
+
+    status_icon = "🟢" if gate_status == "OK" else ("🔴" if gate_status == "ERROR" else "⚪")
+    qg_label = "PASSED" if gate_status == "OK" else ("FAILED" if gate_status == "ERROR" else gate_status)
+
+    def _fmt(key: str, suffix: str = "", default: str = "N/A") -> str:
+        val = measures.get(key)
+        if val is None:
+            return default
+        return f"{val}{suffix}"
+
+    # 1. Print formatted breakdown directly to GitHub Actions console log
+    lines = [
+        "",
+        "=" * 72,
+        f"               SONARQUBE ANALYSIS RESULTS ({project_key})",
+        "=" * 72,
+        f"Quality Gate Status:     {status_icon} {qg_label}",
+        f"Lines of Code (NCLOC):   {_fmt('ncloc')}",
+        f"Complexity:              {_fmt('complexity')}",
+        "-" * 72,
+        "CODE COVERAGE:",
+        f"  Overall Coverage:      {_fmt('coverage', '%')}",
+        f"  Line Coverage:         {_fmt('line_coverage', '%')}",
+        f"  Branch Coverage:       {_fmt('branch_coverage', '%')}",
+        f"  Lines to Cover:        {_fmt('lines_to_cover')}",
+        f"  Uncovered Lines:       {_fmt('uncovered_lines')}",
+        "-" * 72,
+        "DUPLICATIONS:",
+        f"  Duplicated Lines:      {_fmt('duplicated_lines')} ({_fmt('duplicated_lines_density', '%')})",
+        f"  Duplicated Blocks:     {_fmt('duplicated_blocks')}",
+        f"  Duplicated Files:      {_fmt('duplicated_files')}",
+        "-" * 72,
+        "ISSUES & SECURITY:",
+        f"  Bugs:                  {_fmt('bugs', default='0')}",
+        f"  Vulnerabilities:       {_fmt('vulnerabilities', default='0')}",
+        f"  Code Smells:           {_fmt('code_smells', default='0')}",
+        f"  Security Hotspots:     {_fmt('security_hotspots', default='0')}",
+        "=" * 72,
+        "",
+    ]
+    print("\n".join(lines))
+
+    # 2. Append markdown summary to GitHub Step Summary if running in Actions
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        md = [
+            f"## {status_icon} SonarQube Analysis Results",
+            "",
+            f"**Quality Gate Status:** **{qg_label}**",
+            "",
+            "### 📊 Code Coverage",
+            "| Metric | Value |",
+            "| :--- | :--- |",
+            f"| **Overall Coverage** | **{_fmt('coverage', '%')}** |",
+            f"| **Line Coverage** | {_fmt('line_coverage', '%')} |",
+            f"| **Branch Coverage** | {_fmt('branch_coverage', '%')} |",
+            f"| **Lines to Cover** | {_fmt('lines_to_cover')} |",
+            f"| **Uncovered Lines** | {_fmt('uncovered_lines')} |",
+            "",
+            "### 🧬 Duplications",
+            "| Metric | Value |",
+            "| :--- | :--- |",
+            f"| **Duplicated Lines** | **{_fmt('duplicated_lines')}** ({_fmt('duplicated_lines_density', '%')}) |",
+            f"| **Duplicated Blocks** | {_fmt('duplicated_blocks')} |",
+            f"| **Duplicated Files** | {_fmt('duplicated_files')} |",
+            "",
+            "### 🛡️ Issues & Maintainability",
+            "| Metric | Count |",
+            "| :--- | :--- |",
+            f"| **Bugs** | {_fmt('bugs', default='0')} |",
+            f"| **Vulnerabilities** | {_fmt('vulnerabilities', default='0')} |",
+            f"| **Code Smells** | {_fmt('code_smells', default='0')} |",
+            f"| **Security Hotspots** | {_fmt('security_hotspots', default='0')} |",
+            f"| **Lines of Code (NCLOC)** | {_fmt('ncloc')} |",
+            f"| **Complexity** | {_fmt('complexity')} |",
+            "",
+        ]
+        if conditions:
+            md.extend([
+                "### 📋 Quality Gate Conditions",
+                "| Metric | Status | Operator | Value | Threshold |",
+                "| :--- | :--- | :--- | :--- | :--- |",
+            ])
+            for c in conditions:
+                c_status = "🟢" if c.get("status") == "OK" else "🔴"
+                md.append(f"| `{c.get('metricKey')}` | {c_status} {c.get('status')} | `{c.get('comparator')}` | `{c.get('actualValue', 'N/A')}` | `{c.get('errorThreshold', 'N/A')}` |")
+            md.append("")
+        try:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write("\n".join(md) + "\n")
+        except Exception as e:
+            print(f"Warning: could not write GITHUB_STEP_SUMMARY: {e}", file=sys.stderr)
 
 
 def main() -> int:
@@ -79,6 +233,10 @@ def main() -> int:
     # 5. Run scanner
     print("Starting SonarScanner analysis...")
     process = subprocess.run(args, cwd=ROOT)
+
+    # 6. Fetch and print metrics from SonarQube API
+    fetch_and_report_metrics(url, token, "hashfleet")
+
     return process.returncode
 
 
