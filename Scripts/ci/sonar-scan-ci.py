@@ -77,6 +77,16 @@ def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
     except Exception as e:
         print(f"Warning: could not fetch Quality Gate status: {e}", file=sys.stderr)
 
+    issues_url = f"{url}/api/issues/search?{urllib.parse.urlencode({'componentKeys': project_key, 'resolved': 'false', 'ps': 100})}"
+    issues_list = []
+    try:
+        req = urllib.request.Request(issues_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            issues_list = data.get("issues", [])
+    except Exception as e:
+        print(f"Warning: could not fetch SonarQube issues: {e}", file=sys.stderr)
+
     status_icon = "🟢" if gate_status == "OK" else ("🔴" if gate_status == "ERROR" else "⚪")
     qg_label = "PASSED" if gate_status == "OK" else ("FAILED" if gate_status == "ERROR" else gate_status)
 
@@ -114,8 +124,14 @@ def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
         f"  Code Smells:           {_fmt('code_smells', default='0')}",
         f"  Security Hotspots:     {_fmt('security_hotspots', default='0')}",
         "=" * 72,
-        "",
     ]
+    if issues_list:
+        lines.append("\nDETECTED ISSUES:")
+        for iss in issues_list:
+            comp = iss.get("component", "").replace(f"{project_key}:", "")
+            lines.append(f"  [{iss.get('type')}] {iss.get('severity')} - {comp}:{iss.get('line', '?')} - {iss.get('message')}")
+        lines.append("=" * 72)
+    lines.append("")
     print("\n".join(lines))
 
     # 2. Append markdown summary to GitHub Step Summary if running in Actions
