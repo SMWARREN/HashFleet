@@ -78,6 +78,12 @@ jobs:
           export HASHFLEET_TEST_PHP="$(command -v php)"
           test -n "$HASHFLEET_TEST_PHP"
           python3 -B Server/tests/deployment_test.py
+      - name: Upload website LCOV coverage
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: website-coverage
+          path: ${{ runner.temp }}/hashfleet-website-coverage/lcov.info
+          if-no-files-found: ignore
 
   swiftlint:
     name: SwiftLint
@@ -105,8 +111,17 @@ jobs:
           test "$("$TOOL_DIR/bin/swiftlint" version)" = 0.65.1
       - name: Enforce existing SwiftLint configuration
         run: |
+          mkdir -p "$RUNNER_TEMP/coverage"
           "$RUNNER_TEMP/hashfleet-swiftlint/bin/swiftlint" lint \
             --config .swiftlint.yml --strict --no-cache --reporter github-actions-logging
+          "$RUNNER_TEMP/hashfleet-swiftlint/bin/swiftlint" lint \
+            --config .swiftlint.yml --strict --no-cache --reporter json > "$RUNNER_TEMP/coverage/swiftlint.json"
+      - name: Upload SwiftLint findings
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: swiftlint-findings
+          path: ${{ runner.temp }}/coverage/swiftlint.json
+          if-no-files-found: ignore
 
   swift-package:
     name: Swift package tests and CLI build
@@ -119,15 +134,30 @@ jobs:
           persist-credentials: false
       - name: Toolchain
         run: swift --version && xcodebuild -version
-      - name: Test HashFleetCore and HashFleetWatchCore
-        run: swift test
+      - name: Test HashFleetCore and HashFleetWatchCore with coverage
+        run: |
+          swift test --enable-code-coverage
+          mkdir -p "$RUNNER_TEMP/coverage"
+          bin="$(swift build --show-bin-path)"
+          profile="$(find .build -name "default.profdata" | head -n 1)"
+          binary="$(find "$bin" -name "HashFleetCorePackageTests" -o -name "HashFleetCoreTests" | head -n 1)"
+          if [ -n "$profile" ] && [ -n "$binary" ]; then
+            xcrun llvm-cov export --format=lcov -instr-profile "$profile" "$binary" > "$RUNNER_TEMP/coverage/package.lcov"
+            python3 Tools/swiftpm_coverage.py "$RUNNER_TEMP/coverage/package.lcov" "$RUNNER_TEMP/coverage/swift-package-coverage.xml" --root "$GITHUB_WORKSPACE"
+          fi
       - name: Build the hashfleet CLI and run its offline help
         run: |
           swift build --product hashfleet
           "$(swift build --show-bin-path)/hashfleet" --help >/dev/null
+      - name: Upload Swift package coverage
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: swift-package-coverage
+          path: ${{ runner.temp }}/coverage/swift-package-coverage.xml
+          if-no-files-found: ignore
 
   mac-app-build:
-    name: Unsigned macOS app build
+    name: Unsigned macOS app build and test
     if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: xcode-27
     timeout-minutes: 40
@@ -137,17 +167,26 @@ jobs:
           persist-credentials: false
       - name: Toolchain
         run: xcodebuild -version
-      - name: Build HashFleetMac without signing
+      - name: Build and test HashFleetMac without signing
         run: |
+          mkdir -p "$RUNNER_TEMP/coverage"
           xcodebuild \
             -project HashFleet.xcodeproj \
             -scheme HashFleetMac \
             -configuration Debug \
-            -destination 'generic/platform=macOS' \
+            -destination 'platform=macOS' \
             -derivedDataPath "$RUNNER_TEMP/derived-mac" \
+            -resultBundlePath "$RUNNER_TEMP/coverage/mac.xcresult" \
+            -enableCodeCoverage YES \
             -onlyUsePackageVersionsFromResolvedFile \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            test
+      - name: Upload Mac test and coverage bundle
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: mac-test-bundle
+          path: ${{ runner.temp }}/coverage/mac.xcresult
+          if-no-files-found: ignore
 
   ios-app-build:
     name: Unsigned iOS simulator app build
@@ -175,6 +214,7 @@ jobs:
   sonar:
     name: SonarQube analysis
     if: ${{ github.event_name != 'workflow_dispatch' }}
+    needs: [repo-checks, website, swiftlint, swift-package, mac-app-build]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -189,9 +229,14 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install git+https://github.com/SMWARREN/swift-sonar-kit.git
-      - name: Run SonarQube analysis in Docker
+      - name: Download coverage and test artifacts
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          path: build/coverage
+          merge-multiple: true
+      - name: Run SonarQube analysis in Docker with coverage
         run: |
-          swift-sonar run "$GITHUB_WORKSPACE" --no-browser
+          python3 Scripts/ci/sonar-scan-ci.py
 
   # Stable aggregate for branch protection. It fails on any failed, cancelled or skipped
   # prerequisite, so the individual job names above can change without editing repository settings.
