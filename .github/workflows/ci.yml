@@ -237,8 +237,11 @@ jobs:
           merge-multiple: true
       - name: Run Python unit tests with coverage
         run: |
-          python3 -m coverage run --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest discover -s Tools -p 'test_*.py'
-          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest discover -s Scripts/release -p 'test_*.py'
+          python3 -m coverage run --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest discover -s Scripts/release -p 'test_*.py'
+          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' Scripts/tests/test_package_hashfleet_mac.py
+          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' Scripts/tests/test_native_add_miner_completion.py
+          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' website/Tools/test_capture_dashboard.py
+          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest Tools.test_sonar_scope Tools.test_xccov_to_generic
           python3 -m coverage xml -o build/coverage/python-coverage.xml
       - name: Run SonarQube analysis in Docker with coverage
         run: |
