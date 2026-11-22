@@ -1,9 +1,54 @@
 import SwiftUI
 import HashFleetCore
 
+extension ChainObservation {
+    static func blockValueUSD(reward: Double?, priceUSD: Double?, priceFresh: Bool) -> Double? {
+        guard priceFresh, let reward, reward.isFinite, reward >= 0,
+            let priceUSD, priceUSD.isFinite, priceUSD > 0 else { return nil }
+        let value = reward * priceUSD
+        return value.isFinite && (reward == 0 || value > 0) ? value : nil
+    }
+
+    /// Tip APIs identify the last block; a pool's reported height may instead be the candidate.
+    /// At a reward boundary, an ambiguous height can't establish the next block's subsidy.
+    static func blockReward<Value>(
+        for coin: MiningPoolCoin, observation: MiningDataResult<Value>?, now: Date,
+        poolHeight: Bool = false, height: (Value) -> Int?
+    ) -> Double? {
+        guard isFresh(observation, now: now),
+            let reported = observation?.value.flatMap(height),
+            let next = nextHeight(reported),
+            let reward = blockSubsidy(for: coin, height: next),
+            !poolHeight || blockSubsidy(for: coin, height: reported) == reward
+        else { return nil }
+        return reward
+    }
+
+    private static func blockSubsidy(for coin: MiningPoolCoin, height: Int) -> Double? {
+        switch coin {
+        case .btc, .bch, .bc2, .bch2:
+            return SoloMiningMath.blockSubsidyBTC(atHeight: height)
+        case .xec:
+            // A displayed XEC is 100 base units, versus 100 million per BTC.
+            return SoloMiningMath.blockSubsidyBTC(atHeight: height).map { $0 * 1_000_000 }
+        case .dgb:
+            // Mainnet's DigiSpeed schedule. No historical, pre-fork reward is inferred.
+            let forkHeight = 1_430_000
+            guard height >= forkHeight else { return nil }
+            let periods = (height - forkHeight) / 175_200
+            let unitsPerCoin: UInt64 = 100_000_000
+            var units = 2_157 * unitsPerCoin / 2
+            for _ in 0..<periods {
+                units = units * 98_884 / 100_000
+                if units < unitsPerCoin { return 0 }
+            }
+            return Double(units) / Double(unitsPerCoin)
+        }
+    }
+}
+
 /// Per-coin network data resolution for FleetChainCard, split out for file/type length.
-/// Behavior is unchanged: each coin's data comes from its dedicated public source, with
-/// SoloFury pool-reported fallback applied uniformly in `networkData(for:now:)`.
+/// Odds retain their dedicated public sources and existing SoloFury fallback.
 extension FleetChainCard {
     struct ChainNetworkData {
         let usd: Double?
@@ -28,8 +73,23 @@ extension FleetChainCard {
             rate: group.map { $0.rateHPS } ?? ChainObservation.freshFleetRateHPS(devices: fleet.devices, snapshots: fleet.snapshots, now: now, isDemo: fleet.isDemo),
             source: data.source,
             miners: group?.miners ?? 0,
+            reward: compactPreview ? blockReward(for: coin, now: now) : nil,
             oddsOverride: data.problem
         )
+    }
+
+    private func blockReward(for coin: MiningPoolCoin, now: Date) -> Double? {
+        switch coin {
+        case .btc:
+            return ChainObservation.blockReward(for: coin, observation: insights.network?.tipHeight, now: now,
+                                                height: { $0 })
+        case .bch, .xec, .dgb:
+            let stats = coin == .bch ? insights.cash : (coin == .xec ? insights.xec : insights.dgb)
+            return ChainObservation.blockReward(for: coin, observation: stats, now: now, height: \.tipHeight)
+        case .bc2, .bch2:
+            return ChainObservation.blockReward(for: coin, observation: insights.poolNetworks[coin], now: now,
+                                                poolHeight: true, height: \.blockHeight)
+        }
     }
 
     func networkData(for coin: MiningPoolCoin, now: Date) -> ChainNetworkData {
@@ -86,12 +146,17 @@ extension FleetChainCard {
     }
 
     func xecNetworkData(now: Date) -> ChainNetworkData {
-        ChainNetworkData(
-            usd: insights.coinMarkets[.xec]?.currentPriceUSD,
+        // The offline preview already has an XEC quote in its sample stats. The live
+        // path continues to use its independently timestamped CoinGecko observation.
+        let sample = compactPreview && fleet.isDemo ? insights.xec : nil
+        let sampleUSD = sample?.value?.usd
+        return ChainNetworkData(
+            usd: sampleUSD ?? insights.coinMarkets[.xec]?.currentPriceUSD,
             difficulty: insights.xec?.value?.difficulty,
             height: insights.xec?.value?.tipHeight,
             fresh: ChainObservation.isFresh(insights.xec, now: now),
-            priceFresh: ChainObservation.isFresh(insights.coinMarketsResult, now: now),
+            priceFresh: sampleUSD != nil ? ChainObservation.isFresh(sample, now: now)
+                : ChainObservation.isFresh(insights.coinMarketsResult, now: now),
             source: MiningInsightsEndpoint.xecStats.sourceName,
             problem: ChainObservation.networkProblem(insights.xec,
                 difficulty: insights.xec?.value?.difficulty, now: now)

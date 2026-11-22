@@ -104,6 +104,49 @@ extension HashFleetUITests {
         recordScreenshot("Thermal alerts real-fleet guard", app: app)
     }
 
+    func testAlertKeyboardsKeepBothThresholdDraftsWithoutSaving() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let server = try LoopbackMinerServer()
+        let port = try XCTUnwrap(try server.start().split(separator: ":").last)
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-test-loopback-review-port=\(port)"]
+        app.launch()
+        defer { app.terminate(); server.stop() }
+        openFleetSettings(in: app)
+        for (prefix, title) in [("temperatureAlerts", "Temperature"), ("powerAlerts", "Power")] {
+            let settingsRow = app.buttons["monitoring.\(prefix)"]
+            reveal(settingsRow, in: app)
+            settingsRow.tap()
+            let miners = app.navigationBars["\(title) alerts"]
+            XCTAssertTrue(miners.waitForExistence(timeout: 5))
+            let firstMiner = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "\(prefix).miner.")).firstMatch
+            XCTAssertTrue(firstMiner.waitForExistence(timeout: 5))
+            firstMiner.tap()
+            let navigation = app.navigationBars["\(title) alert"]
+            XCTAssertTrue(navigation.waitForExistence(timeout: 5))
+            let threshold = app.textFields["\(prefix).threshold"]
+            reveal(threshold, in: app)
+            threshold.tap()
+            assertFleetEditingFieldAboveKeyboard(threshold, in: app, navigation: navigation)
+            let original = try XCTUnwrap(threshold.value as? String)
+            threshold.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            threshold.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count) + "73")
+            let done = navigation.buttons["\(prefix).keyboardDone"]
+            XCTAssertTrue(done.isHittable)
+            done.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+            XCTAssertEqual(threshold.value as? String, "73")
+            let unsaved = app.staticTexts["Changes are not applied until you save."]
+            reveal(unsaved, in: app)
+            XCTAssertTrue(unsaved.exists)
+            navigation.buttons["BackButton"].tap()
+            XCTAssertTrue(miners.waitForExistence(timeout: 5))
+            miners.buttons["BackButton"].tap()
+        }
+        XCTAssertTrue(server.writes.isEmpty)
+    }
+
     func testFleetToolsEnergyPageUsesExplicitEstimateCopy() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--demo"]

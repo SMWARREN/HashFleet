@@ -4,6 +4,7 @@ import SwiftUI
 /// together; Advanced retains the full payload card. Neither presentation owns a write path.
 struct MinerTuningReview: View {
     let mode: MinerTuningControlMode
+    let compactAdvanced: Bool
     let summary: String
     let stagedJSON: String?
     @Binding var riskAcknowledged: Bool
@@ -34,11 +35,13 @@ struct MinerTuningReview: View {
             if mode == .easy {
                 easyReview
             } else {
-                Label("One settings update", systemImage: "curlybraces.square.fill")
+                Label(compactAdvanced ? "Review changes" : "One settings update", systemImage: "curlybraces.square.fill")
                     .fleetFont(.headline)
-                Text("The exact JSON stays here. One review flow covers the tuning change without a second screen.")
-                    .fleetFont(.caption)
-                    .foregroundStyle(FleetTheme.secondary)
+                if !compactAdvanced {
+                    Text("The exact JSON stays here. One review flow covers the tuning change without a second screen.")
+                        .fleetFont(.caption)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
                 MinerTuningPayloadView(stagedJSON: stagedJSON)
             }
             feedback
@@ -50,10 +53,10 @@ struct MinerTuningReview: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 32)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
             .disabled(!canApply)
             .accessibilityIdentifier("tuningSession.apply")
-            if mode == .advanced {
+            if mode == .advanced && !compactAdvanced {
                 Text(isDemo ? "Demo mode shows the payload but never writes."
                      : "One confirmation sends the payload, refreshes current readings and records the result below.")
                     .fleetFont(.caption)

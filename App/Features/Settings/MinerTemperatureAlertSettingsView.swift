@@ -5,6 +5,8 @@ struct MinerTemperatureAlertSettingsView: View {
     let device: MinerDevice
     @State private var model: MinerTemperatureAlertSettingsModel
     @Environment(\.openURL) private var openURL
+    @FocusState private var editingThreshold: Bool
+    private let thresholdAnchor = "temperatureAlerts.threshold"
 
     init(device: MinerDevice, preferences: FleetTemperatureAlertPreferences) {
         self.device = device
@@ -17,11 +19,13 @@ struct MinerTemperatureAlertSettingsView: View {
             behaviorSection
             deliverySection
         }
+        .fleetRevealEditingField(editingThreshold ? thresholdAnchor : nil)
         .scrollContentBackground(.hidden)
         .background(FleetTheme.canvas)
         .tint(FleetTheme.accent)
         .navigationTitle("Temperature alert")
         .navigationBarTitleDisplayMode(.inline)
+        .fleetEditingDone(editingThreshold, identifier: "temperatureAlerts.keyboardDone") { editingThreshold = false }
         .accessibilityIdentifier("temperatureAlerts.minerPage")
     }
 
@@ -42,10 +46,12 @@ struct MinerTemperatureAlertSettingsView: View {
             FleetSettingsRow {
             TextField("Alert threshold (°C)", text: $model.thresholdText)
                 .keyboardType(.decimalPad)
+                .focused($editingThreshold)
                 .disabled(model.isSaving)
                 .accessibilityLabel("Alert threshold in degrees Celsius")
-                .accessibilityIdentifier("temperatureAlerts.threshold")
+                .accessibilityIdentifier(thresholdAnchor)
             }
+            .id(thresholdAnchor)
             if model.proposedPolicy == nil {
                 Text(MinerTemperatureAlertPolicy.ValidationError.invalidThreshold.localizedDescription)
                     .fleetFont(.footnote)
@@ -53,6 +59,7 @@ struct MinerTemperatureAlertSettingsView: View {
                     .accessibilityIdentifier("temperatureAlerts.validation")
             }
             FleetSettingsRow { Button("Save alert settings") {
+                editingThreshold = false
                 Task { await model.save() }
             }
             .disabled(model.isSaving || model.proposedPolicy == nil || !model.hasChanges)

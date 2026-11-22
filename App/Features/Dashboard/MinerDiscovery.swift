@@ -75,7 +75,7 @@ final class MinerDiscoveryCoordinator {
                         guard isScanning, scanID == id else { return }
                         // Progressive disclosure: miners appear as soon as their batch
                         // finishes instead of all at once after the whole /24.
-                        probedHosts = probed
+                        probedHosts = max(probedHosts, probed)
                         if !batch.isEmpty {
                             candidates = MinerDiscoveryService.sorted(candidates + batch)
                         }
@@ -106,8 +106,7 @@ final class MinerDiscoveryCoordinator {
         task?.cancel()
         task = nil
         if isScanning {
-            // Cancelling keeps whatever was already found: a user who stops an 8-second
-            // scan must not lose the miners it had already surfaced.
+            // Cancelling keeps whatever was already found, including during the retry pass.
             state = candidates.isEmpty ? .idle : .results
         }
     }
@@ -183,42 +182,86 @@ struct MinerDiscoveryService: Sendable {
     enum ScanError: Error { case networkUnavailable }
     private static let batchSize = 32
     private static let requestTimeout: TimeInterval = 1
-    private static let resourceTimeout: TimeInterval = 8
+    private static let fallbackTimeout: TimeInterval = 2.5
+    typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+
+    private enum ProbeResult: Sendable {
+        case found(MinerDiscoveryCandidate)
+        case retry(String)
+        case noMatch
+    }
 
     static func scan(
         plan: MinerDiscoveryScanPlan,
-        onProgress: (@Sendable ([MinerDiscoveryCandidate], Int) -> Void)? = nil
+        onProgress: (@Sendable ([MinerDiscoveryCandidate], Int) -> Void)? = nil,
+        transport injectedTransport: Transport? = nil
     ) async throws -> [MinerDiscoveryCandidate] {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = requestTimeout
-        configuration.timeoutIntervalForResource = resourceTimeout
-        configuration.waitsForConnectivity = false
-        configuration.httpAdditionalHeaders = ["Accept": "application/json"]
-        let session = URLSession(configuration: configuration)
-        defer { session.invalidateAndCancel() }
+        let initialSession = makeSession(timeout: requestTimeout)
+        defer { initialSession.invalidateAndCancel() }
+        let initialTransport: Transport = injectedTransport ?? { request in try await initialSession.data(for: request) }
 
         var candidates: [MinerDiscoveryCandidate] = []
+        var retryHosts: [String] = []
         var probedCount = 0
-        for offset in stride(from: 0, to: plan.hosts.count, by: batchSize) {
-            try Task.checkCancellation()
-            let batch = Array(plan.hosts[offset..<min(offset + batchSize, plan.hosts.count)])
-            let results = try await withThrowingTaskGroup(of: MinerDiscoveryCandidate?.self) { group in
-                for host in batch {
-                    group.addTask {
-                        try await probe(host: host, session: session)
-                    }
-                }
-                var values: [MinerDiscoveryCandidate] = []
-                for try await candidate in group {
-                    if let candidate { values.append(candidate) }
-                }
-                return values
-            }
-            candidates.append(contentsOf: results)
+        for batch in batches(plan.hosts) {
+            let results = try await probeBatch(batch, transport: initialTransport, timeout: requestTimeout)
+            candidates.append(contentsOf: results.found)
+            retryHosts.append(contentsOf: results.retry)
             probedCount += batch.count
-            onProgress?(results, probedCount)
+            onProgress?(results.found, probedCount)
         }
+        if !retryHosts.isEmpty {
+            // Give every transient miss one retry. A budget spent on early empty addresses
+            // can otherwise leave later hosts with the same one-shot behavior as before.
+            let retrySession = makeSession(timeout: fallbackTimeout)
+            defer { retrySession.invalidateAndCancel() }
+            let retryTransport: Transport = injectedTransport ?? { request in try await retrySession.data(for: request) }
+            for batch in batches(retryHosts) {
+                let results = try await probeBatch(batch, transport: retryTransport, timeout: fallbackTimeout)
+                candidates.append(contentsOf: results.found)
+                if !results.found.isEmpty { onProgress?(results.found, probedCount) }
+            }
+        }
+        try Task.checkCancellation()
         return sorted(candidates)
+    }
+
+    private static func makeSession(timeout: TimeInterval) -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = timeout
+        // The whole probe has a budget, not just the time between response bytes.
+        configuration.timeoutIntervalForResource = timeout
+        configuration.waitsForConnectivity = false
+        configuration.httpAdditionalHeaders = ["Accept": "application/json"]
+        return URLSession(configuration: configuration)
+    }
+
+    private static func batches(_ hosts: [String]) -> some Sequence<ArraySlice<String>> {
+        stride(from: 0, to: hosts.count, by: batchSize).lazy.map { offset in
+            hosts[offset..<min(offset + batchSize, hosts.count)]
+        }
+    }
+
+    private static func probeBatch(
+        _ hosts: ArraySlice<String>, transport: @escaping Transport, timeout: TimeInterval
+    ) async throws -> (found: [MinerDiscoveryCandidate], retry: [String]) {
+        try Task.checkCancellation()
+        return try await withThrowingTaskGroup(of: ProbeResult.self) { group in
+            for host in hosts {
+                group.addTask { try await probe(host: host, transport: transport, timeout: timeout) }
+            }
+            var found: [MinerDiscoveryCandidate] = []
+            var retry: [String] = []
+            for try await result in group {
+                switch result {
+                case .found(let candidate): found.append(candidate)
+                case .retry(let host): retry.append(host)
+                case .noMatch: break
+                }
+            }
+            try Task.checkCancellation()
+            return (found, retry)
+        }
     }
 
     /// Stable ordering for discovery results: numerically by IPv4 address, then by name.
@@ -263,27 +306,27 @@ struct MinerDiscoveryService: Sendable {
         return MinerDiscoveryCandidate(address: host, name: name, model: model)
     }
 
-    private static func probe(host: String, session: URLSession) async throws -> MinerDiscoveryCandidate? {
+    private static func probe(host: String, transport: Transport, timeout: TimeInterval) async throws -> ProbeResult {
         try Task.checkCancellation()
-        guard let url = URL(string: "http://\(host)/api/system/info") else { return nil }
+        guard let url = URL(string: "http://\(host)/api/system/info") else { return .noMatch }
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalCacheData,
-            timeoutInterval: requestTimeout
+            timeoutInterval: timeout
         )
         request.httpMethod = "GET"
         request.httpShouldHandleCookies = false
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
-            let (body, response) = try await session.data(for: request)
+            let (body, response) = try await transport(request)
             try Task.checkCancellation()
-            guard let http = response as? HTTPURLResponse else { return nil }
-            return candidate(
+            guard let http = response as? HTTPURLResponse, let match = candidate(
                 host: host,
                 statusCode: http.statusCode,
                 contentType: http.value(forHTTPHeaderField: "Content-Type"),
                 body: body
-            )
+            ) else { return .noMatch }
+            return .found(match)
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
@@ -291,8 +334,10 @@ struct MinerDiscoveryService: Sendable {
         } catch let error as URLError where [.notConnectedToInternet, .dataNotAllowed].contains(error.code) {
             // A blocked network is not a successful scan that found zero miners.
             throw ScanError.networkUnavailable
+        } catch let error as URLError where [.timedOut, .cannotConnectToHost, .networkConnectionLost].contains(error.code) {
+            return .retry(host)
         } catch {
-            return nil
+            return .noMatch
         }
     }
 }

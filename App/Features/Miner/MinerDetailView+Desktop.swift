@@ -10,11 +10,10 @@ extension MinerDetailView {
                 isDemo: store.isDemo,
                 initialDisplay: .miners,
                 isMinerDetail: true,
-                uptime: isXMRig ? nil : MinerUptimeHeatmap(
-                    deviceID: currentDevice.id,
-                    isDemo: store.isDemo,
-                    recentHistory: store.snapshot(for: currentDevice.id)?.history ?? []
-                )
+                uptime: isXMRig || dashboardMode == .essentials || usesNumberFirstDetail ? nil : uptimeHeatmap,
+                dashboardMode: dashboardMode,
+                numberFirst: usesNumberFirstDetail,
+                prefersHistoryPopover: usesNumberFirstDetail && dynamicTypeSize.isAccessibilitySize
             )
             if FleetMetricTotal.reading(info, keys: FleetTotals.hashrateKeys) == nil {
                 let readings = (store.snapshot(for: currentDevice.id)?.history ?? [])
@@ -29,6 +28,11 @@ extension MinerDetailView {
             }
         }
         .accessibilityIdentifier("detail.history")
+    }
+
+    var uptimeHeatmap: MinerUptimeHeatmap {
+        MinerUptimeHeatmap(deviceID: currentDevice.id, isDemo: store.isDemo,
+                           recentHistory: store.snapshot(for: currentDevice.id)?.history ?? [])
     }
 
     /// Primary readings keep the full page width. Only related secondary cards

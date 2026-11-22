@@ -92,6 +92,7 @@ final class MinerOperationModel {
         body: Data?,
         query: [URLQueryItem],
         isDemo: Bool,
+        validatePreflight: (@MainActor (MinerInfo) throws -> Void)? = nil,
         writeAuthorized: @MainActor () -> Bool = { false }
     ) async {
         guard !isRunning else { return }
@@ -119,6 +120,7 @@ final class MinerOperationModel {
             if MinerRequestSafety.isWrite(endpoint) {
                 let preflight = try await client.info()
                 try Task.checkCancellation()
+                try validatePreflight?(preflight)
                 if let message = MinerTuningHardwarePolicy.restriction(
                     device: device,
                     voltage: MinerRequestSafety.coreVoltage(in: body),

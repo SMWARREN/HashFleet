@@ -1,23 +1,58 @@
 import SwiftUI
 import HashFleetCore
 
+enum NumberFirstPreview {
+    #if HASHFLEET_LIVE_REVIEW && os(iOS)
+    static let usesLivePhoneLayouts = true
+    #else
+    static let usesLivePhoneLayouts = false
+    #endif
+
+    #if DEBUG && os(iOS) && targetEnvironment(simulator)
+    private static let arguments = Set(ProcessInfo.processInfo.arguments)
+    static let overview = arguments.isSuperset(of: ["--ui-testing", "--demo", "--ui-test-offline-demo", "--preview-number-first"])
+        && !arguments.contains("--live-public-data")
+    static let minerDetail = overview && arguments.contains("--preview-number-first-detail")
+    static let cooling = minerDetail && arguments.contains("--preview-number-first-cooling")
+    static let settingsHub = minerDetail && arguments.contains("--preview-number-first-settings-hub")
+    static let tuning = minerDetail && arguments.contains("--preview-number-first-tuning")
+    #else
+    static let overview = false
+    static let minerDetail = false
+    static let cooling = false
+    static let settingsHub = false
+    static let tuning = false
+    #endif
+}
+
 /// Demo mode presentation on the dashboard: simulated readings notice banner and sample pool icon gallery.
 extension DashboardView {
     internal var demoNotice: some View {
         let layout =
-            dynamicTypeSize.isAccessibilitySize
+            overviewTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: usesNumberFirstOverview ? 8 : 12))
         return layout {
-            Label(
-                store.isPoolIconDemo ? "Pool icon demo · mock data" : "Demo · simulated readings",
-                systemImage: "sparkles"
-            )
-            .fleetFont(.caption, weight: .semibold)
+            VStack(alignment: .leading, spacing: 3) {
+                Label(
+                    store.isPoolIconDemo ? "Pool icon demo · mock data" : "Demo · simulated readings",
+                    systemImage: "sparkles"
+                )
+                .fleetFont(usesNumberFirstOverview ? .caption : .footnote, weight: .semibold)
+                if !usesNumberFirstOverview {
+                    Text("No changes are sent to your hardware.")
+                        .fleetFont(.footnote)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("dashboard.bitsy")
             Button("Exit demo", action: store.clearDemo)
-                .fleetFont(.caption, weight: .semibold)
-                .frame(minHeight: 44)
+                .fleetFont(usesNumberFirstOverview ? .caption : .footnote, weight: .semibold)
+                .foregroundStyle(usesNumberFirstOverview ? FleetTheme.secondary : FleetTheme.accent)
+                .frame(minWidth: 48, minHeight: usesNumberFirstOverview ? 44 : 48)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("dashboard.exitDemo")
         }
         .foregroundStyle(FleetTheme.accent)

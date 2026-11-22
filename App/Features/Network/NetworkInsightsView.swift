@@ -140,7 +140,7 @@ struct NetworkInsightsView: View {
                     )
                 }.frame(maxWidth: .infinity, minHeight: 40)
             }
-            .buttonStyle(.borderedProminent).foregroundStyle(FleetTheme.buttonInk)
+            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
             .disabled(
                 !fleet.preferences.externalDataEnabled || insights.isLoading || now < insights.refreshAvailableAt
             )

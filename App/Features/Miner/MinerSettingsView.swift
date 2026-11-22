@@ -73,16 +73,47 @@ struct MinerSettingsView: View {
     @State var quickDraft: MinerSettingsDraft?
     @State var error: String?
     @State var isSaving = false
+    @State var savingDisplaySetting: MinerDisplaySetting?
+    @State var displayFeedbackSetting: MinerDisplaySetting?
+    @State var isRestartingDisplay = false
     @State var saveMessage: String?
-    @State var saveAlert: MinerCompletionAlert?
+    @State var saveAlert: MinerSettingsSaveAlert?
+    @State var previewRestartApplied = false
+    @State var liveRestart = MinerInlineActionState()
     @State var loaded = false
+    enum EditingField { case hostname, temperature, fanSpeed, minFanSpeed, displayTimeout, poolURL, poolPort, poolUser, poolPassword }
+    @FocusState private var editingField: EditingField?
+    var editingFocus: FocusState<EditingField?>.Binding { $editingField }
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.fleetGuidedDemo) private var guidedDemo
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @ScaledMetric(relativeTo: .subheadline) var settingsIconColumnWidth: CGFloat = 22
     @ScaledMetric(relativeTo: .subheadline) var compactNumericFieldWidth: CGFloat = 58
     @ScaledMetric(relativeTo: .subheadline) var regularNumericFieldWidth: CGFloat = 76
 
     var info: MinerInfo? { store.snapshot(for: device.id)?.info }
+
+    var usesCoolingPreview: Bool {
+        #if os(iOS)
+        (store.isDemo ? NumberFirstPreview.cooling : NumberFirstPreview.usesLivePhoneLayouts)
+            && horizontalSizeClass == .compact && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        #else
+        false
+        #endif
+    }
+
+    var usesCompactSettingsHubPreview: Bool {
+        #if os(iOS)
+        (store.isDemo ? NumberFirstPreview.settingsHub : NumberFirstPreview.usesLivePhoneLayouts)
+            && horizontalSizeClass == .compact && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        #else
+        false
+        #endif
+    }
+
     var offlineReadOnly: Bool {
         !store.isDemo && !MinerWriteAvailability.allows(store.snapshot(for: device.id))
     }
@@ -136,6 +167,10 @@ struct MinerSettingsView: View {
         }
     }
 
+    var usesEssentialsPools: Bool {
+        usesCompactSettingsHubPreview && !store.isDemo && store.preferences.dashboardMode == .essentials
+    }
+
     /// Keep the category route's concrete type shallow on iOS 26. The Pools page
     /// contains several nested generic forms, and leaving the switch as a
     /// `@ViewBuilder` makes SwiftUI eagerly resolve the full route tree while
@@ -145,7 +180,12 @@ struct MinerSettingsView: View {
         case .general: AnyView(generalPage)
         case .cooling: AnyView(coolingPage)
         case .display: AnyView(displayPage)
-        case .pools: AnyView(poolsPage)
+        case .pools:
+            if usesEssentialsPools {
+                AnyView(MinerEssentialsPoolsView(device: device, store: store))
+            } else {
+                AnyView(poolsPage)
+            }
         case .tuning: AnyView(tuningPage)
         case .advanced: AnyView(advancedPage)
         }
@@ -155,23 +195,47 @@ struct MinerSettingsView: View {
         TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
             timedContent
         }
+        .alert(
+            saveAlert?.title ?? "Miner settings",
+            isPresented: Binding(get: { saveAlert != nil }, set: { if !$0 { saveAlert = nil } }),
+            presenting: saveAlert
+        ) { alert in
+            if let identity = alert.restartIdentity {
+                Button("Restart Miner", role: .destructive) {
+                    saveAlert = nil
+                    restartAfterDisplaySave(identity)
+                }
+                Button("Later", role: .cancel) { saveAlert = nil }
+            } else {
+                Button("OK", role: .cancel) { saveAlert = nil }
+            }
+        } message: { alert in
+            Text(alert.message)
+        }
     }
 
     private var timedContent: some View {
-        Group {
+        let pageTitle = switch initialCategory {
+        case .cooling where usesCoolingPreview: "Cooling"
+        case .display: "Display"
+        default: "Miner settings"
+        }
+        return Group {
             if let initialCategory {
                 categoryDestination(initialCategory)
+            } else if usesCompactSettingsHubPreview, let info {
+                AnyView(compactSettingsHub(NumberFirstPreview.minerAvailability(info, device: device, store: store)))
             } else {
                 AnyView(settingsHubContent)
             }
         }
-            .navigationTitle("Miner settings")
+            .navigationTitle(pageTitle)
             .fleetPerformanceScreen("Miner settings")
             .navigationBarTitleDisplayMode(.inline)
             .background(FleetTheme.canvas).tint(FleetTheme.accent)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    MinerNavigationTitle(pageTitle: "Miner settings")
+                    MinerNavigationTitle(pageTitle: pageTitle)
                 }
             }
             .environment(\.minerNavigationIdentity, navigationIdentity)
@@ -179,13 +243,6 @@ struct MinerSettingsView: View {
                 load()
             }
             .navigationDestination(item: $quickDraft) { request in AnyView(draftDestination(request)) }
-            .alert(item: $saveAlert) { alert in
-                Alert(
-                    title: Text(alert.title),
-                    message: Text(alert.message),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
             .onChange(of: info) { _, _ in if !loaded { load() } }
             .onChange(of: offlineReadOnly) { wasOffline, isOffline in
                 if wasOffline && !isOffline {
@@ -263,6 +320,9 @@ struct MinerSettingsView: View {
             }
             .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
         }
+        .fleetEditingScroll()
+        .fleetRevealEditingField(editingField)
+        .fleetEditingDone(editingField != nil, identifier: "settings.keyboardDone") { editingField = nil }
         .scrollIndicators(.hidden)
     }
 

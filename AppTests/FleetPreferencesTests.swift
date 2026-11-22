@@ -7,6 +7,82 @@ import HashFleetCore
 
 @Suite(.serialized) @MainActor
 struct FleetPreferencesTests {
+    @Test func firstRunDefaultsToEssentialsAndCanChooseEitherView() throws {
+        let (defaults, suite) = try makeSuite()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let initial = FleetPreferences(defaults: defaults)
+        #expect(initial.dashboardMode == .essentials)
+        #expect(initial.shouldOfferDashboardChoice)
+        let reopened = FleetPreferences(defaults: defaults)
+        #expect(reopened.shouldOfferDashboardChoice)
+        reopened.dashboardMode = .full
+        #expect(!reopened.shouldOfferDashboardChoice)
+        #expect(FleetPreferences(defaults: defaults).dashboardMode == .full)
+        #expect(!FleetPreferences(defaults: defaults).shouldShowFeatureTour)
+        #expect(!reopened.hasSeenFeatureTour)
+        #expect(!reopened.suppressFeatureTour)
+        reopened.dashboardMode = .essentials
+        #expect(FleetPreferences(defaults: defaults).dashboardMode == .essentials)
+        #expect(!FleetPreferences(defaults: defaults).shouldOfferDashboardChoice)
+    }
+
+    @Test func existingEmptyInstallKeepsFullViewAndOtherPreferences() throws {
+        let (defaults, suite) = try makeSuite()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: FleetPreferences.Keys.systemAppearanceMigration)
+        defaults.set("light", forKey: FleetPreferences.Keys.appearance)
+        defaults.set(false, forKey: FleetPreferences.Keys.realtimeMonitoring)
+        let upgraded = FleetStore(defaults: defaults)
+        #expect(upgraded.devices.isEmpty)
+        #expect(upgraded.preferences.dashboardMode == .full)
+        #expect(!upgraded.preferences.shouldOfferDashboardChoice)
+        upgraded.preferences.continueWithCurrentDashboard()
+        #expect(upgraded.preferences.dashboardMode == .full)
+        #expect(upgraded.preferences.shouldShowFeatureTour)
+        #expect(upgraded.preferences.appearance == .light)
+        #expect(!upgraded.preferences.realtimeMonitoring)
+    }
+
+    @Test func aStoredEmptyFleetIsNotTreatedAsNewAndInvalidModeKeepsFullView() throws {
+        let (defaults, suite) = try makeSuite()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let savedFleet = Data("[]".utf8)
+        defaults.set(savedFleet, forKey: FleetStore.storageKey)
+        let upgraded = FleetStore(defaults: defaults)
+        #expect(upgraded.preferences.dashboardMode == .full)
+        #expect(!upgraded.preferences.shouldOfferDashboardChoice)
+        defaults.set("unknown-future-mode", forKey: FleetPreferences.Keys.dashboardMode)
+        upgraded.preferences.reloadFromDefaults()
+        #expect(upgraded.preferences.dashboardMode == .full)
+        #expect(!upgraded.preferences.shouldOfferDashboardChoice)
+        #expect(defaults.data(forKey: FleetStore.storageKey) == savedFleet)
+    }
+
+    @Test func legacyPreferencesAloneKeepFullView() throws {
+        let (defaults, suite) = try makeSuite()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: FleetPreferences.Keys.tourSeen)
+        let upgraded = FleetPreferences(defaults: defaults)
+        #expect(upgraded.dashboardMode == .full)
+        #expect(!upgraded.shouldOfferDashboardChoice)
+        #expect(upgraded.hasSeenFeatureTour)
+    }
+
+    @Test func continuingWithoutChoosingPersistentlyUsesEssentialsAndSurvivesDemo() throws {
+        let (defaults, suite) = try makeSuite()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = FleetStore(defaults: defaults)
+        store.preferences.continueWithCurrentDashboard()
+        #expect(FleetPreferences(defaults: defaults).dashboardMode == .essentials)
+        #expect(!FleetPreferences(defaults: defaults).shouldOfferDashboardChoice)
+        #expect(!FleetPreferences(defaults: defaults).shouldShowFeatureTour)
+        store.loadDemo()
+        store.preferences.dashboardMode = .full
+        store.clearDemo()
+        #expect(store.preferences.dashboardMode == .full)
+        #expect(FleetPreferences(defaults: defaults).dashboardMode == .full)
+    }
+
     @Test func dashboardCoinSelectionPersistsAndEmptyIsNotAutomatic() throws {
         let (defaults, suite) = try makeSuite()
         defer { defaults.removePersistentDomain(forName: suite) }

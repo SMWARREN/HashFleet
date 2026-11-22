@@ -7,10 +7,10 @@ struct MinerOverviewCard: View {
     let snapshot: MinerSnapshot?
     let isDemo: Bool
     var compact = false
-    var showsStatus = true
     var isLive = false
     var liveConnectionError: String?
     var marketData: [MiningPoolCoin: CoinGeckoMarket] = [:]
+    var numberFirst = false
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State private var statusNoticeSilenced: Bool
@@ -22,7 +22,8 @@ struct MinerOverviewCard: View {
         compact: Bool = false,
         isLive: Bool = false,
         liveConnectionError: String? = nil,
-        marketData: [MiningPoolCoin: CoinGeckoMarket] = [:]
+        marketData: [MiningPoolCoin: CoinGeckoMarket] = [:],
+        numberFirst: Bool = false
     ) {
         self.device = device
         self.snapshot = snapshot
@@ -31,6 +32,7 @@ struct MinerOverviewCard: View {
         self.isLive = isLive
         self.liveConnectionError = liveConnectionError
         self.marketData = marketData
+        self.numberFirst = numberFirst
         _statusNoticeSilenced = State(initialValue: MinerNoticeSnoozeStore.isSnoozed(for: device.id))
     }
 
@@ -54,22 +56,13 @@ struct MinerOverviewCard: View {
         )
     }
 
-    var status: String {
-        presentationState.title
-    }
-
-    var statusColor: Color {
-        presentationState.color
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header
-            hashrateRow
-            if isInitialLoading {
-                skeletonSecondaryRow
-            } else if compact || bestShare != nil || bestSessionShare != nil {
-                secondaryMetricsRow
+        VStack(alignment: .leading, spacing: numberFirst ? 6 : 10) {
+            if numberFirst {
+                numberFirstHeader
+            } else {
+                header
+                hashrateRow
             }
             if snapshot?.isReconnecting != true, snapshot?.error == nil, let info = snapshot?.info,
                 let alerts = MinerReportedAlerts(info: info), !alerts.isEmpty,
@@ -82,36 +75,9 @@ struct MinerOverviewCard: View {
                         )
                     )
             }
-            if !compact {
-                if let info = snapshot?.info {
-                    let layout =
-                        dynamicTypeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-                        : AnyLayout(HStackLayout(spacing: 18))
-                    layout {
-                        smallMetric(
-                            "Temperature",
-                            value: shortReading(FleetFormat.sensor(info, keys: "temp"), unit: "°C"),
-                            symbol: "thermometer.medium"
-                        )
-                        smallMetric(
-                            "Power",
-                            value: shortReading(FleetFormat.sensor(info, keys: "power"), unit: "W", decimals: 1),
-                            symbol: "bolt"
-                        )
-                        smallMetric(
-                            "Fan",
-                            value: shortReading(FleetFormat.sensor(info, keys: "fanspeed", "fanSpeed"), unit: "%"),
-                            symbol: "fan"
-                        )
-                    }
-                } else if isInitialLoading {
-                    skeletonMetricsRow
-                }
-            }
             if let error = snapshot?.error, !isDemo, snapshot?.isReconnecting != true {
                 Label("Connection error: \(error)", systemImage: "wifi.exclamationmark")
-                    .fleetFont(.caption)
+                    .fleetFont(.footnote)
                     .foregroundStyle(FleetTheme.warning)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -119,11 +85,21 @@ struct MinerOverviewCard: View {
                     .accessibilityIdentifier("dashboard.miner.error.\(device.id.uuidString)")
             } else if liveConnectionError != nil, !isDemo, snapshot?.isReconnecting != true {
                 Label("Live monitoring unavailable · using HTTP refresh", systemImage: "wifi.exclamationmark")
-                    .fleetFont(.caption)
+                    .fleetFont(.footnote)
                     .foregroundStyle(FleetTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("dashboard.miner.liveError.\(device.id.uuidString)")
+            }
+            if isInitialLoading {
+                skeletonSecondaryRow
+                if !compact { skeletonMetricsRow }
+            } else if numberFirst {
+                if let info = snapshot?.info { hardwareReadings(info, includeFan: !compact) }
+                if !compact { bestSummary }
+            } else {
+                if !compact, let info = snapshot?.info { hardwareReadings(info) }
+                if compact || bestShare != nil || bestSessionShare != nil { secondaryMetricsRow }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -159,7 +135,7 @@ struct MinerOverviewCard: View {
             : (info.raw["miningPaused"]?.boolValue == true
                 ? "Mining paused · see details" : "Miner status notice · see details")
         return Label(title, systemImage: "exclamationmark.triangle")
-            .fleetFont(.caption)
+            .fleetFont(.footnote)
             .foregroundStyle(FleetTheme.warning)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -167,41 +143,79 @@ struct MinerOverviewCard: View {
     }
 
     private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 10) {
-                identity
-                Spacer(minLength: 8)
-                if showsStatus {
-                    statusCluster
+        HStack(alignment: .top, spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 8) {
+                    identity.fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 4)
+                    statusCluster.fixedSize(horizontal: true, vertical: false)
                 }
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
                     identity
-                    Spacer(minLength: 0)
-                }
-                if showsStatus {
                     statusCluster
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.forward")
+                .fleetFont(.subheadline, weight: .semibold)
+                .foregroundStyle(FleetTheme.secondary)
+                .padding(.top, 3)
+                .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Status badge, plus a Hot pill when the chip is at or above the warning temperature.
+    private var numberFirstHeader: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                if !dynamicTypeSize.isAccessibilitySize {
+                    HStack(alignment: .top, spacing: 10) {
+                        numberFirstIdentity.fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 0)
+                        reading.fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    numberFirstIdentity
+                    reading
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.forward")
+                .fleetFont(.subheadline, weight: .semibold)
+                .foregroundStyle(FleetTheme.secondary)
+                .padding(.top, 4)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 44, alignment: .topLeading)
+    }
+
+    private var numberFirstIdentity: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            identity
+            statusCluster
+        }
+    }
+
+    /// Status badge, plus a Hot label when the chip is at or above the warning temperature.
     /// Offline is already shown by the badge and the connection error line, so no extra pill.
     private var statusCluster: some View {
-        HStack(spacing: 6) {
-            if let hot = MinerSidebarAttention.hotOnly(
-                state: presentationState,
-                temperature: snapshot?.info.flatMap { FleetFormat.sensor($0, keys: "temp") }
-            ) {
-                FleetStatusPill(text: hot.text, systemImage: hot.systemImage, tint: MinerSidebarAttention.hotTint)
+        let hot = MinerSidebarAttention.hotOnly(
+            state: presentationState,
+            temperature: snapshot?.info.flatMap { FleetFormat.sensor($0, keys: "temp") }
+        )
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 6))
+        return layout {
+            statusBadge
+                .accessibilityIdentifier("dashboard.card.status.\(device.id.uuidString)")
+            if let hot {
+                Label(hot.text, systemImage: hot.systemImage)
+                    .fleetFont(.footnote, weight: .semibold)
+                    .foregroundStyle(FleetTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(hot.accessibilityLabel)
                     .accessibilityIdentifier("dashboard.card.hot.\(device.id.uuidString)")
             }
-            statusBadge
-                .accessibilityIdentifier("dashboard.card.status.\(device.id.uuidString)")
         }
     }
 
@@ -210,7 +224,7 @@ struct MinerOverviewCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .center, spacing: 7) {
                     Text(device.name)
-                        .fleetFont(.headline)
+                        .fleetFont(numberFirst ? .subheadline : .title3, weight: .semibold)
                         .foregroundStyle(FleetTheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     if let coin = MinerMiningContext.resolve(info: snapshot?.info).pool?.coin {
@@ -224,15 +238,14 @@ struct MinerOverviewCard: View {
                         .accessibilityIdentifier("dashboard.miner.coin.\(device.id.uuidString)")
                     }
                 }
-                if !compact {
+                if !compact && !numberFirst {
                     if isInitialLoading {
                         FleetLoadingSkeleton(width: 72, height: 12, cornerRadius: 3, label: "Loading ASIC model")
                     } else {
                         Text(snapshot?.info?.asicModel ?? "ASIC not reported")
-                            .fleetFont(.caption2, design: .monospaced)
+                            .fleetFont(.footnote)
                             .foregroundStyle(FleetTheme.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -259,32 +272,45 @@ struct MinerOverviewCard: View {
     }
 
     private var reading: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: numberFirst ? 2 : 4) {
+            Text("Hashrate")
+                .fleetFont(numberFirst ? .caption : .footnote)
+                .foregroundStyle(FleetTheme.secondary)
             if isInitialLoading {
                 FleetLoadingSkeleton(width: 96, height: 26, cornerRadius: 4, label: "Loading hashrate")
                 Text("Waiting for first reading")
-                    .fleetFont(.caption2)
+                    .fleetFont(.footnote)
                     .foregroundStyle(FleetTheme.secondary)
             } else {
-                let value =
-                    snapshot?.info.flatMap { FleetFormat.sensor($0, keys: "hashRate", "hashrate") }.map {
-                        FleetFormat.hashrate($0)
-                    } ?? "Not reported"
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(value)
-                        .fleetFont(.title2, weight: .semibold)
+                if let rate = snapshot?.info.flatMap({ FleetFormat.sensor($0, keys: "hashRate", "hashrate") }) {
+                    let value = FleetFormat.hashrate(rate)
+                    let number = Text(value)
+                        .fleetFont(numberFirst ? .title3 : .title, weight: .semibold,
+                                   design: numberFirst ? .default : .rounded)
                         .monospacedDigit()
                         .foregroundStyle(FleetTheme.ink)
                         .fleetHeadlineNumericUpdate(value, reduceMotion: reduceMotion)
-                    if let rate = snapshot?.info.flatMap({ FleetFormat.sensor($0, keys: "hashRate", "hashrate") }) {
-                        Text(FleetFormat.hashrateUnit(rate))
-                            .fleetFont(.caption, design: .monospaced)
-                            .foregroundStyle(FleetTheme.secondary)
+                    let unit = Text(FleetFormat.hashrateUnit(rate))
+                        .fleetFont(numberFirst ? .footnote : .subheadline, weight: .medium)
+                        .foregroundStyle(FleetTheme.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            number
+                            unit
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            number
+                            unit
+                        }
                     }
+                } else {
+                    Text("Not reported")
+                        .fleetFont(.body, weight: .semibold)
+                        .foregroundStyle(FleetTheme.ink)
                 }
                 if snapshot?.error != nil || snapshot?.isReconnecting == true, snapshot?.info != nil, !isDemo {
                     Label("Last known reading", systemImage: "clock.arrow.circlepath")
-                        .fleetFont(.caption2, weight: .medium)
+                        .fleetFont(.footnote, weight: .medium)
                         .foregroundStyle(FleetTheme.secondary)
                         .fleetPillPadding()
                         .background(FleetTheme.secondary.opacity(0.10), in: Capsule())
@@ -292,10 +318,6 @@ struct MinerOverviewCard: View {
                 }
             }
         }
-    }
-
-    private func shortReading(_ value: Double?, unit: String, decimals: Int = 0) -> String {
-        value.map { "\(FleetFormat.number($0, decimals: decimals))\(unit)" } ?? "N/A"
     }
 }
 

@@ -17,7 +17,7 @@ struct MinerLiveAndXMRigIsolationCoverageTests {
         let rendered = try await FleetViewRenderHarness.render(
             NavigationStack { DashboardView(store: fixture.store, insights: fixture.insights) },
             width: 1_100, height: 1_600)
-        #expect(rendered.visibleText.contains("SAMPLE FLEET HASHRATE"))
+        #expect(rendered.visibleText.contains("Sample fleet hashrate"))
         #expect(!rendered.visibleText.contains("Hidden CPU Sentinel"))
         #expect(!rendered.visibleText.contains("XMRig"))
         #expect(FleetHistoryKind.available(in: fixture.store.visibleDevices) == [.sha256])

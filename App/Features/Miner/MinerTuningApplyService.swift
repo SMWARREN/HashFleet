@@ -7,7 +7,7 @@ enum MinerTuningHardwarePolicy {
     static func maximumCoreVoltage(device: MinerDevice, info: MinerInfo? = nil) -> Double? {
         let host = (try? device.validatedURL())?.host?.lowercased()
             .trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        let board = info?.raw["boardVersion"]?.stringValue?.lowercased()
+        let board = info?.raw["boardVersion"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return host == "192.0.2.221" || board == "601a" ? 1150 : nil
     }
 
@@ -43,6 +43,7 @@ struct MinerTuningApplyService {
         device: MinerDevice,
         payload: JSONValue,
         isDemo: Bool,
+        validatePreflight: (@MainActor (MinerInfo) throws -> Void)? = nil,
         writeAuthorized: () -> Bool
     ) async throws -> Result {
         guard !isDemo, writeAuthorized() else {
@@ -53,6 +54,7 @@ struct MinerTuningApplyService {
         let client = MinerAPIClient(device: device, session: session)
         let preflight = try await client.info()
         try Task.checkCancellation()
+        try validatePreflight?(preflight)
         try Self.checkPolicy(device: device, payload: validated, info: preflight)
         guard writeAuthorized() else {
             throw ApplyError.blocked("The miner connection changed during review. No tuning request was sent.")

@@ -25,8 +25,14 @@ private struct FleetGuidedDemoKey: EnvironmentKey {
 }
 
 private struct FleetGuidedTargetKey: EnvironmentKey { static let defaultValue = "" }
+private struct FleetGuidedEssentialsKey: EnvironmentKey { static let defaultValue = false }
 
 extension EnvironmentValues {
+    var fleetGuidedEssentials: Bool {
+        get { self[FleetGuidedEssentialsKey.self] }
+        set { self[FleetGuidedEssentialsKey.self] = newValue }
+    }
+
     var fleetGuidedTargetID: String {
         get { self[FleetGuidedTargetKey.self] }
         set { self[FleetGuidedTargetKey.self] = newValue }

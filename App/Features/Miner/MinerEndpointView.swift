@@ -30,14 +30,24 @@ struct MinerEndpointView: View {
     @State var selectedData: Data?
     @State var selectedFilename: String?
     @State var importing = false
-    @State var pending: PendingMinerWrite?
+    @State private(set) var pending: PendingMinerWrite?
+    @State private var confirmedRequest: PendingMinerWrite?
+    @State private var isSendingWrite = false
     @State var completionAlert: MinerCompletionAlert?
+    enum EditingField { case columns, query, json }
+    @FocusState private var editingField: EditingField?
+    var editingFocus: FocusState<EditingField?>.Binding { $editingField }
 
     var canWrite: Bool {
         MinerWriteAvailability.allows(
             store.snapshot(for: device.id), device: device,
             currentDevices: store.visibleDevices, isDemo: store.isDemo
         )
+    }
+
+    var simpleCommandEffect: String? {
+        guard store.preferences.dashboardMode == .essentials, MinerRequestSafety.isWrite(endpoint) else { return nil }
+        return endpoint.plainCommandEffect
     }
 
     init(
@@ -102,66 +112,11 @@ struct MinerEndpointView: View {
         TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
             timedContent
         }
-    }
-
-    private var timedContent: some View {
-        FleetSettingsForm {
-            overview
-            if !store.isDemo && !canWrite {
-                FleetSettingsSection { MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id)) }
-            }
-            if isPool { poolSection }
-            if endpoint == .statistics { statisticsSection }
-            if !isBinary { querySection }
-            if needsJSON { jsonSection }
-            if isBinary { binarySection }
-            FleetSettingsSection {
-                Button(action: prepare) {
-                    HStack {
-                        Label(
-                            MinerRequestSafety.isWrite(endpoint) ? "Review request…" : "Send read request",
-                            systemImage: MinerRequestSafety.isWrite(endpoint) ? "hand.raised" : "arrow.down.circle"
-                        )
-                        Spacer()
-                        if model.isRunning { ProgressView() }
-                    }
-                }.disabled(model.isRunning || (!canWrite && MinerRequestSafety.isWrite(endpoint)))
-                    .accessibilityIdentifier("endpoint.send")
-                if store.isDemo {
-                    Text("Demo mode: writes are locked and explorer requests never contact a device.")
-                        .fleetFont(.footnote)
-                        .foregroundStyle(FleetTheme.secondary)
-                }
-                if model.isRunning && isBinary {
-                    Text(
-                        "Uploading raw image. Keep this screen open, remain on Wi-Fi and do not "
-                            + "disconnect miner power. A firmware update can take several minutes."
-                    )
-                    .fleetFont(.footnote)
-                    .foregroundStyle(FleetTheme.warning)
-                }
-            }
-            .listRowBackground(FleetTheme.surface)
-            resultSection
-        }
-        .navigationTitle(endpoint.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(model.isRunning && MinerRequestSafety.isWrite(endpoint))
-        .scrollContentBackground(.hidden)
-        .background(FleetTheme.canvas)
-        .tint(FleetTheme.accent)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                MinerNavigationTitle(pageTitle: endpoint.title)
-            }
-        }
-        .environment(\.minerNavigationIdentity, navigationIdentity)
-        .navigationDestination(isPresented: Binding(
-            get: { pending != nil },
-            set: { isPresented in if !isPresented { pending = nil } }
-        )) {
-            if let request = pending {
-                confirmationDestination(request)
+        // A device write is a modal review, not a second push in the workspace's stack.
+        // Keep its presenter outside the periodic telemetry subtree on every platform.
+        .sheet(item: $pending, onDismiss: sendAfterReviewDismisses) { request in
+            TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
+                confirmationSheet(request)
             }
         }
         .alert(item: $completionAlert) { alert in
@@ -184,23 +139,92 @@ struct MinerEndpointView: View {
         )
     }
 
-    @ViewBuilder
-    private func confirmationDestination(_ request: PendingMinerWrite) -> some View {
-        let confirmation = MinerWriteConfirmation(
+    private var timedContent: some View {
+        FleetSettingsForm {
+            overview
+            if !store.isDemo && !canWrite {
+                FleetSettingsSection { MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id)) }
+            }
+            if isPool { poolSection }
+            if endpoint == .statistics { statisticsSection }
+            if !isBinary { querySection }
+            if needsJSON { jsonSection }
+            if isBinary { binarySection }
+            FleetSettingsSection {
+                Button(action: prepare) {
+                    HStack {
+                        Label(
+                            simpleCommandEffect != nil ? "Review \(endpoint.title.lowercased())…" :
+                                (MinerRequestSafety.isWrite(endpoint) ? "Review request…" : "Send read request"),
+                            systemImage: MinerRequestSafety.isWrite(endpoint) ? "hand.raised" : "arrow.down.circle"
+                        )
+                        Spacer()
+                        if model.isRunning { ProgressView() }
+                    }
+                }.disabled(model.isRunning || isSendingWrite || confirmedRequest != nil
+                    || (!canWrite && MinerRequestSafety.isWrite(endpoint)))
+                    .accessibilityIdentifier("endpoint.send")
+                if store.isDemo {
+                    Text("Demo mode: writes are locked and explorer requests never contact a device.")
+                        .fleetFont(.footnote)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+                if model.isRunning && isBinary {
+                    Text(
+                        "Uploading raw image. Keep this screen open, remain on Wi-Fi and do not "
+                            + "disconnect miner power. A firmware update can take several minutes."
+                    )
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.warning)
+                }
+            }
+            .listRowBackground(FleetTheme.surface)
+            resultSection
+        }
+        .fleetRevealEditingField(editingField)
+        .navigationTitle(endpoint.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(isSendingWrite)
+        .scrollContentBackground(.hidden)
+        .background(FleetTheme.canvas)
+        .tint(FleetTheme.accent)
+        .fleetEditingDone(editingField != nil, identifier: "endpoint.keyboardDone") { editingField = nil }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                MinerNavigationTitle(pageTitle: endpoint.title)
+            }
+        }
+        .environment(\.minerNavigationIdentity, navigationIdentity)
+    }
+
+    private func confirmationSheet(_ request: PendingMinerWrite) -> some View {
+        MinerWriteConfirmation(
             device: device,
             request: request,
             isDemo: store.isDemo,
             isOffline: !canWrite,
         ) {
-            guard canWrite else { return }
-            Task { await run(request.endpoint, body: request.body, query: request.query) }
+            guard pending?.id == request.id, confirmedRequest == nil, canWrite else { return }
+            confirmedRequest = request
+            pending = nil
         }
+        .environment(\.minerNavigationIdentity, navigationIdentity)
+    }
 
-        confirmation
-            .environment(\.minerNavigationIdentity, navigationIdentity)
+    private func sendAfterReviewDismisses() {
+        // Cancel and interactive dismissal never stage an authorized request. A confirmed
+        // request is consumed once and the lower-level write service rechecks availability.
+        guard let request = confirmedRequest else { return }
+        isSendingWrite = true
+        confirmedRequest = nil
+        Task {
+            defer { isSendingWrite = false }
+            await run(request.endpoint, body: request.body, query: request.query)
+        }
     }
 
     private func prepare() {
+        guard pending == nil, confirmedRequest == nil, !isSendingWrite, !model.isRunning else { return }
         do {
             let query = try queryItems()
             let body: Data?
@@ -223,11 +247,13 @@ struct MinerEndpointView: View {
                         "Offline settings are read only. Reconnect and refresh first."
                     )
                 }
+                editingField = nil
                 pending = PendingMinerWrite(
                     endpoint: resolvedEndpoint,
                     body: body,
                     query: query,
-                    filename: selectedFilename
+                    filename: selectedFilename,
+                    opensExactRequest: store.preferences.dashboardMode == .full
                 )
             } else {
                 Task { await run(resolvedEndpoint, body: body, query: query) }
@@ -260,9 +286,7 @@ struct MinerEndpointView: View {
                 didWrite: true
             )
         }
-        // Return from the review/progress destination before presenting the result so the user
-        // always lands back on the request screen, including failed writes.
-        pending = nil
+        // The native review is already dismissed, even for a fast request or error.
         completionAlert = alert
     }
 

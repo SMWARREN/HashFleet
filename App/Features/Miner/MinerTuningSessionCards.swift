@@ -96,20 +96,38 @@ enum MinerTuningJournalStore {
     }
 }
 
+struct MinerTuningAdvancedSwitch: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle("Advanced", isOn: $isOn)
+            .toggleStyle(.switch)
+            .fleetFont(.subheadline, weight: .semibold)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 14)
+            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityHint("Shows frequency and core voltage dials on this screen.")
+            .accessibilityIdentifier("tuningSession.advancedToggle")
+    }
+}
+
 /// Risk acknowledgement stays separate from firmware references and device-specific restrictions.
 struct MinerTuningSafetyCard: View {
     @Binding var riskAcknowledged: Bool
     let isBeyondReference: Bool
     let hasReference: Bool
     let voltageRestriction: String?
+    var compact = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Safety gate", systemImage: "exclamationmark.triangle.fill")
                 .fleetFont(.headline)
                 .foregroundStyle(FleetTheme.warning)
-            Text("Frequency and core voltage changes affect heat, power, stability and hardware life. "
-                 + "Raising voltage raises power draw and temperature on a shared supply. Nothing is sent while you drag or tap.")
+            Text(compact
+                 ? "Changing frequency or voltage can raise heat and power draw and damage hardware. Nothing is sent until you review and apply."
+                 : "Frequency and core voltage changes affect heat, power, stability and hardware life. "
+                    + "Raising voltage raises power draw and temperature on a shared supply. Nothing is sent while you drag or tap.")
                 .fleetFont(.footnote)
                 .foregroundStyle(FleetTheme.secondary)
             Toggle("I understand the hardware and overheating risks", isOn: $riskAcknowledged)
@@ -127,13 +145,13 @@ struct MinerTuningSafetyCard: View {
                     .fleetFont(.caption, weight: .semibold)
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("tuningSession.overReferenceWarning")
-            } else if hasReference {
+            } else if hasReference && !compact {
                 Label("Within the reported reference ceiling, not a safety certification.", systemImage: "checkmark.shield")
                     .fleetFont(.caption)
                     .foregroundStyle(FleetTheme.positive)
             }
         }
-        .fleetCard(padding: 16, fill: isBeyondReference ? Color.red.opacity(0.08) : FleetTheme.surface,
+        .fleetCard(padding: compact ? 12 : 16, fill: isBeyondReference ? Color.red.opacity(0.08) : FleetTheme.surface,
                    border: isBeyondReference ? Color.red.opacity(0.55) : FleetTheme.ink.opacity(0.045))
     }
 }

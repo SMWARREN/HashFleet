@@ -43,6 +43,7 @@ struct FleetOnboardingView: View {
                         .tracking(-1)
                         .foregroundStyle(FleetTheme.panelInk)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
                     Text(
                         "Connect compatible open-source miners on your network. See hashrate and temperatures, then "
                             + "review each settings change before it is sent."
@@ -52,10 +53,7 @@ struct FleetOnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
                 .fleetStaggeredEntrance(index: 2, reduceMotion: effectiveReduceMotion)
-                Button(action: addMiner) { Label("Connect your first miner", systemImage: "plus") }
-                    .buttonStyle(FleetPrimaryButtonStyle(onDarkSurface: true))
-                    .accessibilityIdentifier("dashboard.connectFirstMiner")
-                    .fleetStaggeredEntrance(index: 3, reduceMotion: effectiveReduceMotion)
+                connectButton.fleetStaggeredEntrance(index: 3, reduceMotion: effectiveReduceMotion)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fleetCard(padding: 26, fill: FleetTheme.charcoal)
@@ -118,6 +116,12 @@ struct FleetOnboardingView: View {
             .frame(maxWidth: .infinity)
             .fleetStaggeredEntrance(index: 8, reduceMotion: effectiveReduceMotion)
         }
+    }
+
+    private var connectButton: some View {
+        Button(action: addMiner) { Label("Connect your first miner", systemImage: "plus") }
+            .buttonStyle(FleetPrimaryButtonStyle(tone: .darkPanel))
+            .accessibilityIdentifier("dashboard.connectFirstMiner")
     }
 
     private func onboardingStep(_ number: String, title: String, detail: String, symbol: String) -> some View {

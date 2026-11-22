@@ -4,6 +4,26 @@ import XCTest
 extension RealModeControlUITests {
     enum ScrollDirection { case up, down }
 
+    func recordScreenshot(_ name: String, app: XCUIApplication) {
+        let receipt = XCTAttachment(screenshot: app.screenshot())
+        receipt.name = name
+        receipt.lifetime = .keepAlways
+        add(receipt)
+    }
+
+    func launchWithConfiguredReviewFixture(_ app: XCUIApplication, server: LoopbackMinerServer,
+                                           extraArguments: [String] = []) throws {
+        let address = try server.start()
+        let port = try XCTUnwrap(address.split(separator: ":").last)
+        app.launchArguments = ["--ui-testing", "--ui-test-loopback-review-port=\(port)"] + extraArguments
+        app.launch()
+        let connected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            server.journal.contains { $0.method == "GET" && $0.path == "/api/system/info" }
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [connected], timeout: 15), .completed,
+                       "The app must really fetch loopback telemetry, not a demo snapshot.")
+    }
+
     func addFixture(address: String, app: XCUIApplication, server: LoopbackMinerServer) throws {
         XCTAssertTrue(app.buttons["dashboard.connectFirstMiner"].waitForExistence(timeout: 10))
         app.buttons["dashboard.addMiner"].tap()

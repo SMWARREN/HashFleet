@@ -49,6 +49,18 @@ struct MinerShareSummary: Equatable, Sendable {
         return result
     }
 
+    /// A compact surface omits unavailable rows without dropping explicit zero readings.
+    var reportedMetrics: [Metric] {
+        metrics.filter { metric in
+            switch metric.id {
+            case "accepted": sharesAccepted != nil
+            case "rejected": sharesRejected != nil
+            case "rejectedPercentage": rejectedSharePercentage != nil || (sharesAccepted == 0 && sharesRejected == 0)
+            default: true // Firmware errors already require a valid field in metrics.
+            }
+        }
+    }
+
     var acceptedDisplay: String {
         sharesAccepted.map(Self.formatInteger) ?? "Not reported"
     }

@@ -4,6 +4,275 @@ import Testing
 import HashFleetCore
 @testable import HashFleet
 
+@Suite
+@MainActor
+struct MinerNumberFirstAvailabilityTests {
+    private var reported: [String: JSONValue] {
+        ["hostname": .string("fixture"), "version": .string("v0.0.1"),
+         "autofanspeed": .bool(true), "temptarget": .integer(62),
+         "frequency": .integer(500), "coreVoltage": .integer(1050)]
+    }
+
+    private func availability(
+        _ fields: [String: JSONValue], info: MinerProbeStatus = .supported,
+        settings: MinerProbeStatus = .supported, firmware: MinerProbeStatus = .supported,
+        actions: [MinerDetailQuickAction: MinerProbeStatus] = [:]
+    ) -> MinerNumberFirstAvailability {
+        .init(info: .init(raw: fields), infoStatus: info, settingsStatus: settings, firmwareStatus: firmware,
+              actionStatuses: actions)
+    }
+
+    @Test func onlyIndividuallySupportedActionsAppearInOriginalOrder() {
+        let mixed: [MinerDetailQuickAction: MinerProbeStatus] = [
+            .restart: .supported, .identify: .supported, .pause: .failed(message: "HTTP 403"),
+            .resume: .unsupported(statusCode: 405)
+        ]
+        #expect(availability(reported).quickActions.isEmpty)
+        #expect(availability(reported, settings: .notChecked, actions: mixed).quickActions == [.identify, .restart])
+        #expect(availability(reported, info: .notChecked, actions: mixed).quickActions.isEmpty)
+        #expect(availability(["error": .string("invalid")], actions: mixed).quickActions.isEmpty)
+    }
+
+    @Test func eachSurfaceRequiresItsOwnEvidence() {
+        let sample = NumberFirstPreview.minerFirmwareNotice
+        let supported = availability(reported)
+        #expect(supported.cooling && supported.tuning && supported.rawAPI)
+        #expect(supported.firmwareUpdate(sample)?.latestVersion == "v0.0.2")
+
+        for unknownOrDenied: MinerProbeStatus in [.notChecked, .failed(message: "HTTP 403"), .unsupported(statusCode: 405)] {
+            let readOnly = availability(reported, settings: unknownOrDenied, firmware: unknownOrDenied)
+            #expect(readOnly.rawAPI)
+            #expect(!readOnly.cooling && !readOnly.tuning && readOnly.firmwareUpdate(sample) == nil)
+
+            let noInfo = availability(reported, info: unknownOrDenied)
+            #expect(!noInfo.rawAPI && !noInfo.cooling && !noInfo.tuning && noInfo.firmwareUpdate(sample) == nil)
+        }
+
+        let noFirmware = availability(reported, firmware: .notChecked)
+        #expect(noFirmware.cooling && noFirmware.tuning && noFirmware.firmwareUpdate(sample) == nil)
+        #expect(!availability(["error": .string("unauthorized")]).rawAPI)
+    }
+
+    @Test func settingsRequireValidReportedConfiguration() {
+        var fields = reported
+        fields["temptarget"] = nil
+        fields["fanrpm"] = .integer(3100)
+        #expect(!availability(fields).cooling && availability(fields).tuning)
+        fields["autofanspeed"] = .bool(false)
+        fields["manualFanSpeed"] = .integer(0)
+        #expect(availability(fields).cooling)
+        fields["frequency"] = nil
+        fields["actualFrequency"] = .integer(500)
+        #expect(availability(fields).cooling && !availability(fields).tuning)
+
+        for invalid: JSONValue in [.integer(-1), .integer(101), .string("unknown")] {
+            fields["manualFanSpeed"] = invalid
+            #expect(!availability(fields).cooling)
+        }
+        fields = reported
+        fields["coreVoltage"] = .integer(0)
+        #expect(!availability(fields).tuning && availability(fields).cooling)
+    }
+
+    @Test func firmwareExampleNeedsAMatchingCurrentVersionAndNewerRelease() {
+        let supported = availability(reported)
+        #expect(supported.firmwareUpdate(nil) == nil)
+        for (current, latest, failed) in [
+            ("v0.0.0", "v0.0.2", false), ("v0.0.1", "v0.0.1", false), ("v0.0.1", "v0.0.2", true)
+        ] {
+            let notice = FirmwareUpdateNotice(currentVersion: current,
+                releases: [FirmwareRelease(version: latest, url: nil)], checkedAt: .now, checkFailed: failed)
+            #expect(supported.firmwareUpdate(notice) == nil)
+        }
+    }
+
+    @Test func settingsHubPreservesOrderAndRequiresCategoryEvidence() {
+        var fields = reported.merging([
+            "statsFrequency": .integer(30), "rotation": .integer(90),
+            "displayTimeout": .integer(-1), "invertscreen": .integer(0),
+            "stratumURL": .string("pool.example"), "fallbackStratumURL": .string("backup.example"),
+            "primaryPoolIndex": .integer(0), "secondaryPoolIndex": .integer(1),
+            "pools": .array([.object(["stratumURL": .string("pool.example")])])
+        ]) { _, new in new }
+        let example = availability(fields)
+        #expect(example.settingsCategories() == [.general, .pools, .display, .cooling, .tuning])
+        #expect(example.showsSettingsHub(in: .essentials))
+        #expect(example.showsSettingsHub(in: .full))
+
+        fields["displayTimeout"] = .number(1.5)
+        fields["statsFrequency"] = .integer(-1)
+        fields["pools"] = .array([])
+        #expect(availability(fields).settingsCategories() == [.cooling, .tuning])
+    }
+
+    @Test func essentialsCanShowReportedPoolRolesWithoutAdvancedAliasesOrAnAssignedFallback() {
+        let modern: [String: JSONValue] = [
+            "primaryPoolIndex": .integer(5), "secondaryPoolIndex": .integer(-1),
+            "pools": .array([.object(["id": .integer(5), "stratumURL": .string("pool.example")])])
+        ]
+        let legacy: [String: JSONValue] = ["stratumURL": .string("pool.example")]
+        for shape in [modern, legacy] {
+            let fields = reported.merging(shape) { _, new in new }
+            let example = availability(fields)
+            #expect(example.settingsCategories(usesEssentialsPools: true).contains(.pools))
+            #expect(!example.settingsCategories().contains(.pools))
+            #expect(!availability(fields, settings: .unsupported(statusCode: 405))
+                .settingsCategories(usesEssentialsPools: true).contains(.pools))
+        }
+    }
+
+    @Test func settingsHubKeepsIndependentReadOnlyTools() {
+        let denied = availability(reported, settings: .failed(message: "HTTP 403"), firmware: .notChecked)
+        #expect(denied.settingsCategories().isEmpty)
+        #expect(!denied.showsSettingsHub(in: .essentials))
+        #expect(denied.showsSettingsHub(in: .full))
+        #expect(denied.firmwareUpdate(NumberFirstPreview.minerFirmwareNotice) == nil)
+        #expect(!availability(reported, info: .notChecked).showsSettingsHub(in: .full))
+    }
+}
+
+@Suite
+@MainActor
+struct MinerTuningPreviewTests {
+    private let configured: [String: JSONValue] = ["frequency": .integer(525), "coreVoltage": .integer(1150)]
+
+    @Test func aDraftDoesNotChangeConfiguredOrMeasuredValues() throws {
+        let info = MinerInfo(raw: configured.merging([
+            "actualFrequency": .integer(521), "coreVoltageActual": .integer(1128),
+            "hashRate": .integer(638), "temp": .integer(59)
+        ]) { _, new in new })
+        let readings = MinerTuningPreviewReadings(info: info)
+        var draft = MinerTuningPreviewDraft(info: info)
+        #expect(draft.review == nil)
+        draft.edit(.frequency, String(Int(try #require(draft.next(.frequency, direction: 1)))))
+        let review = try #require(draft.review)
+        #expect(review.changes == [.init(field: .frequency, old: 525, new: 526)])
+        #expect(review.payload == .object(["frequency": .number(526)]))
+        #expect(review == draft.review)
+        #expect(draft.configured[.frequency] == 525 && draft.configured[.coreVoltage] == 1150)
+        #expect(readings.clock == 521 && readings.voltage == 1128)
+        #expect(readings.hashrate == 638 && readings.temperature == 59)
+        draft.reset()
+        #expect(draft.value(for: .frequency) == 525 && draft.review == nil)
+    }
+
+    @Test func absentAndMalformedFieldsNeverBorrowFromOtherReadings() {
+        let readings = MinerTuningPreviewReadings(info: .init(raw: configured))
+        #expect(readings.clock == nil && readings.voltage == nil)
+        #expect(readings.hashrate == nil && readings.temperature == nil)
+        var draft = MinerTuningPreviewDraft(info: .init(raw: [
+            "coreVoltage": .number(1150.5), "actualFrequency": .integer(521), "coreVoltageActual": .integer(1128)
+        ]))
+        #expect(draft.fields.isEmpty)
+        draft.edit(.frequency, "526")
+        #expect(draft.review == nil && draft.text.isEmpty)
+        draft = .init(info: .init(raw: ["frequency": .integer(525)]))
+        #expect(draft.fields == [.frequency])
+        #expect(draft.next(.coreVoltage, direction: 1) == nil)
+    }
+
+    @Test func onlyExactValidChangesCanBeReviewed() throws {
+        var draft = MinerTuningPreviewDraft(info: .init(raw: configured))
+        for entry in ["", "0525.0", "526.", "65536"] {
+            draft.edit(.frequency, entry)
+            #expect(draft.review == nil)
+        }
+        draft.edit(.frequency, "526.5")
+        let firstReview = try #require(draft.review)
+        draft.edit(.coreVoltage, "1155.5")
+        #expect(draft.review == nil)
+        draft.edit(.coreVoltage, "1155")
+        #expect(draft.review != firstReview)
+        #expect(draft.review?.payload == .object(["frequency": .number(526.5), "coreVoltage": .integer(1155)]))
+    }
+
+    @Test func adjustmentStopsAtValidatorBounds() {
+        var draft = MinerTuningPreviewDraft(info: .init(raw: ["frequency": .integer(1), "coreVoltage": .integer(65_535)]))
+        #expect(draft.next(.frequency, direction: -1) == nil)
+        #expect(draft.next(.frequency, direction: 1) == 2)
+        #expect(draft.next(.coreVoltage, direction: 1) == nil)
+        #expect(draft.next(.coreVoltage, direction: -1) == 65_530)
+        draft.edit(.coreVoltage, "0")
+        #expect(draft.review == nil)
+    }
+}
+
+@Suite
+@MainActor
+struct MinerCoolingPreviewDraftTests {
+    private var configured: [String: JSONValue] {
+        ["autofanspeed": .integer(1), "temptarget": .integer(55),
+         "manualFanSpeed": .integer(60), "minFanSpeed": .integer(25),
+         "fanspeed": .integer(65), "fanrpm": .integer(4_600), "overheat_mode": .integer(0)]
+    }
+
+    @Test func changesIncludeOnlyEditedActiveSettings() {
+        let original = MinerCoolingPreviewDraft(info: .init(raw: configured))
+        var draft = original
+        #expect(draft.changes(from: original).isEmpty)
+        draft.adjust(.target, increasing: true)
+        draft.adjust(.manual, increasing: true)
+        #expect(draft[.manual] == 60)
+        #expect(draft.changes(from: original) == ["temptarget": .integer(56)])
+        draft.adjust(.minimum, increasing: false)
+        #expect(draft.changes(from: original) == ["temptarget": .integer(56), "minFanSpeed": .integer(24)])
+        let applied = original.applying(draft.changes(from: original))
+        #expect(applied == draft)
+        #expect(draft.changes(from: applied).isEmpty)
+    }
+
+    @Test func changingModeUsesTheConfiguredSpeedNotTheReading() {
+        let original = MinerCoolingPreviewDraft(info: .init(raw: configured))
+        var draft = original
+        draft.adjust(.minimum, increasing: true)
+        draft.select(automatic: false)
+        let changes = draft.changes(from: original)
+        #expect(changes == ["autofanspeed": .integer(0), "manualFanSpeed": .integer(60)])
+        let applied = original.applying(changes)
+        #expect(applied.automatic == false)
+        #expect(applied[.minimum] == 25)
+        var back = applied
+        back.select(automatic: true)
+        #expect(back.changes(from: applied) == ["autofanspeed": .integer(1), "temptarget": .integer(55)])
+    }
+
+    @Test func boundariesPreventStepsPastTheSupportedRange() {
+        for (field, automatic): (MinerCoolingPreviewDraft.Field, Bool) in [(.target, true), (.minimum, true), (.manual, false)] {
+            for increasing in [true, false] {
+                let edge = increasing ? field.bounds.upperBound : field.bounds.lowerBound
+                var fields = configured
+                fields["autofanspeed"] = .bool(automatic)
+                fields[field.rawValue] = .integer(Int64(edge))
+                var draft = MinerCoolingPreviewDraft(info: .init(raw: fields))
+                #expect(draft.adjusted(field, increasing: increasing) == nil)
+                draft.adjust(field, increasing: increasing)
+                #expect(draft[field] == edge)
+                #expect(draft.adjusted(field, increasing: !increasing) != nil)
+            }
+        }
+    }
+
+    @Test func missingOrInvalidConfigurationDoesNotBorrowFromSensors() {
+        var fields = configured
+        fields["manualFanSpeed"] = nil
+        fields["minFanSpeed"] = .number(25.5)
+        var draft = MinerCoolingPreviewDraft(info: .init(raw: fields))
+        #expect(draft.supportsMode(automatic: true))
+        #expect(!draft.supportsMode(automatic: false))
+        #expect(draft[.minimum] == nil)
+        draft.select(automatic: false)
+        #expect(draft.automatic == true)
+        fields["temptarget"] = .integer(67)
+        draft = .init(info: .init(raw: fields))
+        #expect(!draft.supportsMode(automatic: true))
+        #expect(draft.adjusted(.target, increasing: false) == nil)
+        fields["autofanspeed"] = nil
+        draft = .init(info: .init(raw: fields))
+        #expect(draft.activeFields.isEmpty)
+        #expect(draft.changes(from: .init(info: .init(raw: configured))).isEmpty)
+    }
+}
+
 @Suite(.serialized)
 @MainActor
 struct MinerDetailRenderingCoverageTests {

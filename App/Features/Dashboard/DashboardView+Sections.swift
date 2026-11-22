@@ -4,11 +4,13 @@ import HashFleetCore
 /// Dashboard content sections and rows: header, search, hero context, miner cards, and footer.
 extension DashboardView {
     internal func dashboardContent(viewport: GeometryProxy) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: usesNumberFirstOverview ? 0 : 8) {
             if store.isDemo { demoNotice }
             if store.isPoolIconDemo { poolIconDemoGallery }
             if store.visibleDevices.isEmpty {
+                // Leave a visible gap before the first card, separate from that card's inner padding.
                 heading
+                    .padding(.bottom, usesCompactHorizontalLayout ? 28 : 0)
                 FleetOnboardingView(
                     addMiner: { showingAddMiner = true },
                     exploreDemo: { store.loadDemo() }
@@ -41,17 +43,18 @@ extension DashboardView {
         let headlineKind = FleetHistoryKind.available(in: store.visibleDevices).first ?? .sha256
         let headline = headlineKind.totals(devices: store.visibleDevices, snapshots: store.snapshots)
         let compactDashboard = viewport.size.width < FleetLayout.tier1Threshold
-        let sectionSpacing: CGFloat = compactDashboard ? 6 : 12
+        let sectionSpacing: CGFloat = usesNumberFirstOverview ? 8 : (compactDashboard ? 10 : 14)
         return VStack(alignment: .leading, spacing: sectionSpacing) {
                 // Keep the normal dashboard free of a scrolling strip. Large text and
                 // VoiceOver still need complete per-miner summaries before the charts
                 // and lazy card grid. These environments select the existing static,
                 // fully wrapping presentation, with no clock or pause control.
-                if !FleetLayout.isMac && (dynamicTypeSize.isAccessibilitySize || voiceOver) {
+                if dashboardMode == .full && !FleetLayout.isMac
+                    && (voiceOver || (!usesNumberFirstOverview && dynamicTypeSize.isAccessibilitySize)) {
                     FleetStatusTicker(fleet: store)
                         .fleetCard(padding: FleetLayout.cardPadding, fill: FleetTheme.raised)
                 }
-                if store.isDemo || store.isReconnecting || populatedFleetHasErrors {
+                if !store.isDemo && (store.isReconnecting || populatedFleetHasErrors) {
                     fleetOverviewNotice
                         .accessibilityIdentifier("dashboard.bitsy")
                         .fleetStaggeredEntrance(index: 0, reduceMotion: reduceMotion)
@@ -77,71 +80,144 @@ extension DashboardView {
                     liveFallbackCount: store.liveConnectionErrors.count,
                     sourceTitle: headlineKind.title,
                     compact: compactDashboard,
-                    shareSlices: headlineKind == .sha256
-                        ? FleetHashrateShare.slices(devices: store.visibleDevices, snapshots: store.snapshots)
-                        : []
+                    numberFirst: usesNumberFirstOverview
                 )
                 .fleetTourTarget("guide.hero")
                 .fleetStaggeredEntrance(index: 1, reduceMotion: reduceMotion)
-                fleetErrorSummary
-                    .fleetStaggeredEntrance(index: 2, reduceMotion: reduceMotion)
-                if FleetHistoryKind.available(in: store.visibleDevices).count > 1 {
-                    let cpu = FleetHistoryKind.cpu.totals(devices: store.visibleDevices, snapshots: store.snapshots).hashrate
-                    FleetMetricCard(
-                        title: "CPU · XMRig",
-                        value: cpu.hasReading ? FleetFormat.hashrate(cpu.value) : "—",
-                        unit: cpu.hasReading ? FleetFormat.hashrateUnit(cpu.value) : "",
-                        symbol: "cpu",
-                        caption: "Separate from SHA-256. " + (FleetReadingCaption.hashrate(cpu) ?? "Reported CPU rate."),
-                        identifier: "dashboard.cpuHashrate",
-                        accessibleValue: cpu.hasReading ? FleetFormat.hashrateWithUnit(cpu.value) : "Not reported"
-                    )
+                if dashboardMode == .full {
+                    fleetErrorSummary.fleetStaggeredEntrance(index: 2, reduceMotion: reduceMotion)
+                    cpuHashrate
                     .fleetStaggeredEntrance(index: 3, reduceMotion: reduceMotion)
+                } else {
+                    reportedFleetAlerts
                 }
                 FleetHistoryCard(
                     devices: store.visibleDevices,
                     snapshots: store.snapshots,
                     isDemo: store.isDemo,
                     initialRecentRange: .oneMinute,
-                    isCompactDashboard: compactDashboard
+                    isCompactDashboard: compactDashboard,
+                    dashboardMode: dashboardMode,
+                    numberFirst: usesNumberFirstOverview,
+                    prefersHistoryPopover: usesNumberFirstOverview && dynamicTypeSize.isAccessibilitySize
                 )
                     .accessibilityIdentifier("dashboard.history")
                     .fleetTourTarget("guide.history")
                     .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
-                FleetChainCard(fleet: store, insights: insights, compact: compactDashboard)
-                    .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
+                if dashboardMode == .full && headlineKind == .sha256 { fleetHashrateComparison }
+                if usesNumberFirstOverview {
+                    FleetChainCard(fleet: store, insights: insights, compactPreview: true)
+                }
+                if dashboardMode == .essentials {
+                    fleetErrorSummary
+                }
                 minersSection(viewport: viewport)
                     .id("fleet-miners")
-                    .fleetStaggeredEntrance(index: 6, reduceMotion: reduceMotion)
-                if !FleetLayout.isMac {
-                    fleetToolsSection
-                        .fleetStaggeredEntrance(index: 7, reduceMotion: reduceMotion)
+                    .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
+                if dashboardMode == .full {
+                    if !usesNumberFirstOverview {
+                        FleetChainCard(fleet: store, insights: insights, compact: compactDashboard)
+                            .fleetStaggeredEntrance(index: 6, reduceMotion: reduceMotion)
+                    }
+                    AnyView(secondaryOverview(wide: isWideDashboard(viewport)))
+                } else {
+                    AnyView(essentialsFleetDetails(compact: compactDashboard, wide: isWideDashboard(viewport)))
                 }
-                dashboardPair(wide: isWideDashboard(viewport)) {
-                    FleetBestShareCard(
-                        devices: store.visibleDevices,
-                        snapshots: store.snapshots,
-                        bestShareObservations: store.bestShareObservations,
-                        isDemo: store.isDemo,
-                        isCompact: true
-                    )
-                    .fleetStaggeredEntrance(index: 8, reduceMotion: reduceMotion)
-                } trailing: {
-                    FleetMilestonesCard(
-                        devices: store.visibleDevices,
-                        snapshots: store.snapshots,
-                        blockObservations: store.blockObservations,
-                        latestBlockEvent: store.latestBlockFoundEvent,
-                        isDemo: store.isDemo,
-                        openAchievements: { routeToDashboardPage(.achievements) }
-                    )
-                    .fleetStaggeredEntrance(index: 9, reduceMotion: reduceMotion)
-                }
-                summaryMetrics(wide: isWideDashboard(viewport))
-                    .fleetStaggeredEntrance(index: 10, reduceMotion: reduceMotion)
                 footer
                     .fleetStaggeredEntrance(index: 11, reduceMotion: reduceMotion)
             }
+    }
+
+    @ViewBuilder
+    private var fleetHashrateComparison: some View {
+        let slices = FleetHashrateShare.slices(devices: store.visibleDevices, snapshots: store.snapshots)
+        if slices.count >= 2 {
+            FleetHashrateShareStrip(slices: slices)
+                .fleetCard(padding: FleetSurfaceSpacing.cardInset, fill: FleetTheme.charcoal)
+        }
+    }
+
+    private func essentialsFleetDetails(compact: Bool, wide: Bool) -> some View {
+        DisclosureGroup(isExpanded: $showsFleetDetails) {
+            VStack(alignment: .leading, spacing: 12) {
+                cpuHashrate
+                if !usesNumberFirstOverview {
+                    FleetChainCard(fleet: store, insights: insights, compact: compact)
+                }
+                secondaryOverview(wide: wide)
+            }
+            .padding(.top, 8)
+        } label: {
+            Text("More fleet details")
+                .fleetFont(.headline)
+                .foregroundStyle(FleetTheme.ink)
+                .frame(minHeight: 44)
+        }
+        .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+    }
+
+    @ViewBuilder
+    private var cpuHashrate: some View {
+        if FleetHistoryKind.available(in: store.visibleDevices).count > 1 {
+            let cpu = FleetHistoryKind.cpu.totals(devices: store.visibleDevices, snapshots: store.snapshots).hashrate
+            FleetMetricCard(
+                title: "CPU · XMRig",
+                value: cpu.hasReading ? FleetFormat.hashrate(cpu.value) : "—",
+                unit: cpu.hasReading ? FleetFormat.hashrateUnit(cpu.value) : "",
+                symbol: "cpu",
+                caption: "Separate from SHA-256. " + (FleetReadingCaption.hashrate(cpu) ?? "Reported CPU rate."),
+                identifier: "dashboard.cpuHashrate",
+                accessibleValue: cpu.hasReading ? FleetFormat.hashrateWithUnit(cpu.value) : "Not reported"
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func secondaryOverview(wide: Bool) -> some View {
+        if !FleetLayout.isMac {
+            fleetToolsSection.fleetStaggeredEntrance(index: 7, reduceMotion: reduceMotion)
+        }
+        dashboardPair(wide: wide) {
+            FleetBestShareCard(
+                devices: store.visibleDevices, snapshots: store.snapshots,
+                bestShareObservations: store.bestShareObservations, isDemo: store.isDemo, isCompact: true
+            )
+            .fleetStaggeredEntrance(index: 8, reduceMotion: reduceMotion)
+        } trailing: {
+            FleetMilestonesCard(
+                devices: store.visibleDevices, snapshots: store.snapshots,
+                blockObservations: store.blockObservations, latestBlockEvent: store.latestBlockFoundEvent,
+                isDemo: store.isDemo, openAchievements: { routeToDashboardPage(.achievements) }
+            )
+            .fleetStaggeredEntrance(index: 9, reduceMotion: reduceMotion)
+        }
+        summaryMetrics(wide: wide).fleetStaggeredEntrance(index: 10, reduceMotion: reduceMotion)
+    }
+
+    @ViewBuilder
+    private var reportedFleetAlerts: some View {
+        let reports = store.visibleDevices.compactMap { miner -> (MinerDevice, MinerReportedAlerts)? in
+            guard let snapshot = store.snapshots[miner.id], !snapshot.isCached, !snapshot.isReconnecting,
+                  snapshot.error == nil, let info = snapshot.info, let alerts = MinerReportedAlerts(info: info)
+            else { return nil }
+            return (miner, alerts)
+        }
+        if !reports.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(store.isDemo ? "Sample miner alerts" : "Miner alerts", systemImage: "exclamationmark.triangle")
+                    .fleetFont(.headline).accessibilityAddTraits(.isHeader)
+                ForEach(reports, id: \.0.id) { miner, alerts in
+                    ForEach(Array(alerts.messages.enumerated()), id: \.offset) { _, message in
+                        Text("\(miner.name): \(message)")
+                            .fleetFont(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .foregroundStyle(FleetTheme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fleetCard(padding: FleetSurfaceSpacing.cardInset, fill: FleetTheme.warning.opacity(0.10))
+        }
     }
 
     private var populatedFleetHasErrors: Bool {
@@ -149,9 +225,6 @@ extension DashboardView {
     }
 
     private var fleetOverviewNoticeText: String {
-        if store.isDemo {
-            return "Sample data · no changes are sent to your hardware"
-        }
         if store.isReconnecting {
             return "Updating miner readings"
         }
@@ -162,16 +235,16 @@ extension DashboardView {
     }
 
     private var fleetOverviewNoticeSymbol: String {
-        if store.isDemo { return "info.circle" }
         if store.isReconnecting { return "arrow.triangle.2.circlepath" }
         return populatedFleetHasErrors ? "exclamationmark.triangle" : "checkmark.circle"
     }
 
     private var fleetOverviewNotice: some View {
         Label(fleetOverviewNoticeText, systemImage: fleetOverviewNoticeSymbol)
-            .fleetFont(.caption, weight: .semibold)
+            .fleetFont(.footnote, weight: .semibold)
             .foregroundStyle(FleetTheme.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -236,16 +309,17 @@ extension DashboardView {
                 .fleetFont(.caption, weight: .medium, design: .monospaced)
                 .tracking(1.6)
                 .foregroundStyle(FleetTheme.secondary)
+                .accessibilityHidden(true)
             Text("Fleet overview")
                 .fleetFont(.largeTitle, weight: .bold)
                 .tracking(-1.2)
-                .accessibilityAddTraits(.isHeader)
-            Text(
-                store.visibleDevices.isEmpty ? "Good things start with a single miner." : "Small machines. Working together."
-            )
-            .fleetFont(.subheadline)
-            .foregroundStyle(FleetTheme.secondary)
+            Text("Good things start with a single miner.")
+                .fleetFont(.subheadline)
+                .foregroundStyle(FleetTheme.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("dashboard.firstMinerHeading")
     }
 
     func summaryMetrics(wide: Bool) -> some View {
@@ -264,7 +338,7 @@ extension DashboardView {
         let efficiency = FleetHistoryKind.sha256.totals(devices: store.visibleDevices, snapshots: store.snapshots).efficiency
         return layout {
             FleetMetricCard(
-                title: "TOTAL POWER",
+                title: "Total power",
                 value: power.hasReading ? FleetFormat.number(power.value) : "—",
                 unit: power.hasReading ? "W" : "",
                 symbol: "bolt.fill",
@@ -273,7 +347,7 @@ extension DashboardView {
                 accessibleValue: power.hasReading ? "\(FleetFormat.number(power.value)) watts" : "Not reported"
             )
             FleetMetricCard(
-                title: "EFFICIENCY",
+                title: "Efficiency",
                 value: efficiency.value.map { FleetFormat.number($0, decimals: 1) } ?? "—",
                 unit: efficiency.hasReading ? "J/TH" : "",
                 symbol: "leaf.fill",
@@ -289,13 +363,12 @@ extension DashboardView {
     private func minersSection(viewport: GeometryProxy) -> some View {
         let listSummary = dashboardListSummary
         let availableWidth = max(0, viewport.size.width - (FleetLayout.pagePadding * 2))
-        let columns = FleetLayout.isMac
+        let preferredColumns = FleetLayout.isMac
             ? FleetLayout.macDashboardCardColumns(for: availableWidth, preferred: macMinerColumns)
             : FleetLayout.dashboardCardColumns(for: viewport.size.width)
-        let effectiveColumns = FleetLayout.isMac && dynamicTypeSize.isAccessibilitySize ? 1 : columns
-        let cardWidth = max(0, (availableWidth - CGFloat(effectiveColumns - 1) * 14) / CGFloat(effectiveColumns))
-        let gridItems = Array(repeating: GridItem(.flexible(), spacing: 14), count: columns)
-        VStack(alignment: .leading, spacing: 10) {
+        let columns = dynamicTypeSize.isAccessibilitySize ? 1 : preferredColumns
+        let gridItems = Array(repeating: GridItem(.flexible(), spacing: FleetLayout.cardGridSpacing), count: columns)
+        VStack(alignment: .leading, spacing: usesNumberFirstOverview ? 4 : 10) {
             minerSectionHeader(listSummary: listSummary, availableWidth: availableWidth)
             if filteredDevices.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -318,7 +391,6 @@ extension DashboardView {
                 .accessibilityIdentifier("dashboard.minerSearchEmpty")
             }
             minerCardsContainer(
-                availableWidth: cardWidth,
                 columns: columns,
                 gridItems: gridItems,
                 devices: filteredDevices
@@ -335,23 +407,39 @@ extension DashboardView {
         listSummary: FleetDashboardListSummary,
         availableWidth: CGFloat
     ) -> some View {
+        let sampleCount = usesNumberFirstOverview && store.isDemo && searchText.isEmpty
+            ? "\(store.visibleDevices.count) sample miners" : nil
         let layout =
-            dynamicTypeSize.isAccessibilitySize
+            overviewTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: usesNumberFirstOverview ? .center : .top,
+                                    spacing: usesNumberFirstOverview ? 8 : 12))
         layout {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: usesNumberFirstOverview ? 2 : 4) {
                 Text("Your miners")
-                    .fleetFont(.headline)
+                    .fleetFont(usesNumberFirstOverview ? .headline : .title3, weight: .semibold)
                     .accessibilityAddTraits(.isHeader)
-                Text(listSummary.subtitle)
-                    .fleetFont(.caption)
+                Text(sampleCount ?? listSummary.subtitle)
+                    .fleetFont(usesNumberFirstOverview ? .footnote : .subheadline)
                     .foregroundStyle(FleetTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel(listSummary.accessibilityLabel)
+                    .accessibilityLabel(sampleCount ?? listSummary.accessibilityLabel)
             }
-            if !dynamicTypeSize.isAccessibilitySize {
+            if !overviewTypeSize.isAccessibilitySize {
                 Spacer(minLength: 8)
+            }
+            if dashboardMode == .essentials && !store.isDemo {
+                Button {
+                    showingAddMiner = true
+                } label: {
+                    Label("Add miner", systemImage: "plus")
+                        .fleetFont(.subheadline, weight: .semibold)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(FleetTheme.accent)
+                .accessibilityIdentifier("dashboard.essentialsAddMiner")
             }
             minerSectionControls(availableWidth: availableWidth)
         }
@@ -366,14 +454,6 @@ extension DashboardView {
     private func minerSectionControls(availableWidth: CGFloat) -> AnyView {
         AnyView(HStack(alignment: .center, spacing: 8) {
             minerDisplayMenu
-            Text(store.visibleDevices.count.formatted())
-                .fleetFont(.caption, weight: .semibold, design: .monospaced)
-                .foregroundStyle(FleetTheme.ink)
-                .fleetNumericUpdate(store.visibleDevices.count.formatted(), reduceMotion: reduceMotion)
-                .fleetPillPadding()
-                .background(FleetTheme.raised, in: Capsule())
-                .accessibilityLabel("\(store.visibleDevices.count) miners")
-
             if FleetLayout.isMac {
                 Menu {
                     Button {
@@ -407,6 +487,8 @@ extension DashboardView {
                         .foregroundStyle(FleetTheme.ink)
                         .fleetPillPadding()
                         .background(FleetTheme.raised, in: Capsule())
+                        .frame(minWidth: 48, minHeight: 48)
+                        .contentShape(Rectangle())
                 }
                 .fleetDesignedMenu()
                 .accessibilityLabel("Miner card columns")
@@ -453,6 +535,8 @@ extension DashboardView {
                         .foregroundStyle(FleetTheme.ink)
                         .fleetPillPadding()
                         .background(FleetTheme.raised, in: Capsule())
+                        .frame(minWidth: 48, minHeight: 48)
+                        .contentShape(Rectangle())
                 }
                 .fleetDesignedMenu()
                 .accessibilityLabel("Miner actions")
@@ -503,53 +587,6 @@ extension DashboardView {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("dashboard.errorSummary")
         }
-    }
-
-    private var footer: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "network")
-            Text(
-                store.isDemo
-                    ? "Demo data stays separate from your real fleet."
-                    : (FleetLayout.isMac
-                        ? "Direct to your miners. Private by design.\nPress ⌘R to refresh your fleet."
-                        : "Direct to your miners. Private by design.\nPull down to refresh your fleet.")
-            )
-        }
-        .fleetFont(.footnote)
-        .foregroundStyle(FleetTheme.secondary)
-        .frame(maxWidth: .infinity)
-        .multilineTextAlignment(.center)
-        .padding(.top, 2)
-    }
-
-    private var filteredDevices: [MinerDevice] {
-        let devices = store.preferences.sorted(store.visibleDevices, snapshots: store.snapshots)
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return devices }
-        return devices.filter { device in
-            device.name.localizedCaseInsensitiveContains(query)
-                || device.address.localizedCaseInsensitiveContains(query)
-                || store.snapshots[device.id]?.info?.asicModel.localizedCaseInsensitiveContains(query) == true
-        }
-    }
-
-    private var attentionSummary: FleetAttentionSummary {
-        FleetAttentionSummary(
-            devices: store.visibleDevices,
-            snapshots: store.snapshots,
-            liveConnectionErrors: store.liveConnectionErrors
-        )
-    }
-
-    private var dashboardListSummary: FleetDashboardListSummary {
-        return FleetDashboardListSummary(
-            totalCount: store.visibleDevices.count,
-            onlineCount: store.onlineCount,
-            attentionCount: attentionSummary.count,
-            isRefreshing: store.isRefreshing,
-            reconnectingCount: store.reconnectingCount
-        )
     }
 
 }

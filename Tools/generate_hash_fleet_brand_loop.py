@@ -70,6 +70,32 @@ def _led_mask(image: Image.Image, region: tuple[int, int, int, int]) -> Image.Im
     return mask.filter(ImageFilter.GaussianBlur(0.45))
 
 
+def _restore_feet(source: Image.Image, reference: Image.Image) -> Image.Image:
+    """Restore both feet from intact launch art without altering other pixels."""
+    if source.mode != "RGBA":
+        source = source.convert("RGBA")
+    if reference.mode != "RGBA":
+        reference = reference.convert("RGBA")
+
+    # These tight source-art rectangles start below the enclosure and contain
+    # only the feet. The reference and dark artwork share framing, so scaling
+    # these crops to the dark source preserves alignment without softening it.
+    foot_boxes = ((100, 314, 128, 330), (264, 313, 292, 329))
+    scaled_reference = reference.resize(source.size, Image.Resampling.LANCZOS)
+    scale_x = source.width / reference.width
+    scale_y = source.height / reference.height
+    output = source.copy()
+    for left, top, right, bottom in foot_boxes:
+        box = (
+            round(left * scale_x),
+            round(top * scale_y),
+            round(right * scale_x),
+            round(bottom * scale_y),
+        )
+        output.alpha_composite(scaled_reference.crop(box), dest=box[:2])
+    return output
+
+
 def render_frames(
     source: Image.Image,
     *,
@@ -79,12 +105,15 @@ def render_frames(
     rotor_inner_radius: int = DEFAULT_ROTOR_INNER_RADIUS,
     rotor_outer_radius: int = DEFAULT_ROTOR_OUTER_RADIUS,
     led_region: tuple[int, int, int, int] = DEFAULT_LED_REGION,
+    feet_reference: Image.Image | None = None,
 ) -> list[Image.Image]:
     """Return full-canvas RGBA frames whose motion closes at one full turn."""
     if size <= 0 or frame_count < 4:
         raise ValueError("Size must be positive; use at least four frames")
     if source.mode != "RGBA":
         source = source.convert("RGBA")
+    if feet_reference is not None:
+        source = _restore_feet(source, feet_reference)
 
     rotor_mask = _annulus_mask(
         source.size, rotor_center, rotor_inner_radius, rotor_outer_radius
@@ -131,12 +160,17 @@ def save_loop(
     rotor_inner_radius: int = DEFAULT_ROTOR_INNER_RADIUS,
     rotor_outer_radius: int = DEFAULT_ROTOR_OUTER_RADIUS,
     led_region: tuple[int, int, int, int] = DEFAULT_LED_REGION,
+    feet_reference_path: Path | None = None,
 ) -> Path:
     """Encode the full-color RGBA loop as a lossless animated WebP."""
     if frame_duration_ms <= 0:
         raise ValueError("Frame duration must be positive")
     with Image.open(source_path) as opened:
         source = opened.convert("RGBA")
+    feet_reference = None
+    if feet_reference_path is not None:
+        with Image.open(feet_reference_path) as opened:
+            feet_reference = opened.convert("RGBA")
     frames = render_frames(
         source,
         size=size,
@@ -145,6 +179,7 @@ def save_loop(
         rotor_inner_radius=rotor_inner_radius,
         rotor_outer_radius=rotor_outer_radius,
         led_region=led_region,
+        feet_reference=feet_reference,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     frames[0].save(
@@ -169,6 +204,12 @@ def main() -> None:
     )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=default_source)
+    parser.add_argument(
+        "--feet-reference",
+        type=Path,
+        default=None,
+        help="Intact launch artwork used only for the two under-enclosure feet",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--size", type=int, default=DEFAULT_SIZE)
     parser.add_argument("--frames", type=int, default=DEFAULT_FRAME_COUNT)
@@ -203,6 +244,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    feet_reference_path = args.feet_reference
+    if (
+        feet_reference_path is None
+        and args.source.resolve() == default_source.resolve()
+    ):
+        feet_reference_path = (
+            repo_root
+            / "App/Resources/Assets.xcassets/HashFleetLaunch.imageset/"
+            "LaunchMinerTransparentLight.png"
+        )
     output = save_loop(
         args.source,
         args.output,
@@ -213,6 +264,7 @@ def main() -> None:
         rotor_inner_radius=args.rotor_inner_radius,
         rotor_outer_radius=args.rotor_outer_radius,
         led_region=tuple(args.led_region),
+        feet_reference_path=feet_reference_path,
     )
     print(
         f"Wrote {output} ({args.frames} frames, {args.size}px, "

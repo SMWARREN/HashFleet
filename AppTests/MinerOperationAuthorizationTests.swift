@@ -80,6 +80,55 @@ struct MinerOperationAuthorizationTests {
         #expect(!fixture.model.isRunning)
     }
 
+    @Test func rejectedFreshSettingsCannotSendACoolingWrite() async {
+        let fixture = AuthorizationFixture()
+        defer { fixture.finish() }
+        let operation = Task {
+            await fixture.model.execute(
+                device: fixture.device, endpoint: .settings,
+                body: Data(#"{"temptarget":62}"#.utf8), query: [], isDemo: false,
+                validatePreflight: { info in
+                    guard info.raw["temptarget"]?.intValue == 60 else {
+                        throw MinerToolError.message("Cooling settings changed on the miner.")
+                    }
+                },
+                writeAuthorized: { true }
+            )
+        }
+        await fixture.state.waitForPreflight()
+        fixture.state.releasePreflight()
+        await operation.value
+        #expect(fixture.state.methods == ["GET"])
+        #expect(fixture.model.error?.contains("Cooling settings changed") == true)
+    }
+
+    @Test func mismatchedFreshIdentityCannotSendATuningWrite() async {
+        let fixture = AuthorizationFixture()
+        defer { fixture.finish() }
+        let expected = MinerInlineActionState.Identity(mac: "020000000002", firmware: "v2.15.2")
+        let operation = Task { () -> String? in
+            do {
+                _ = try await MinerTuningApplyService(session: fixture.session).apply(
+                    device: fixture.device, payload: .object(["frequency": .integer(526)]), isDemo: false,
+                    validatePreflight: { info in
+                        guard MinerInlineActionState.identity(from: info) == expected else {
+                            throw MinerTuningApplyService.ApplyError.blocked("Fresh miner identity did not match.")
+                        }
+                    },
+                    writeAuthorized: { true }
+                )
+                return nil
+            } catch {
+                return error.localizedDescription
+            }
+        }
+        await fixture.state.waitForPreflight()
+        fixture.state.releasePreflight()
+        let error = await operation.value
+        #expect(error?.contains("identity did not match") == true)
+        #expect(fixture.state.methods == ["GET"])
+    }
+
     @Test func refreshedBoardPolicyStillBlocksOvervoltage() async {
         let fixture = AuthorizationFixture()
         defer { fixture.finish() }
@@ -232,7 +281,7 @@ private final class AuthorizationHTTPProtocol: URLProtocol, @unchecked Sendable 
             stopped = true
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             let payload = request.url?.path == "/api/system/info"
-                ? #"{"hostname":"fixture","hashRate":1000,"boardVersion":"601a"}"#
+                ? #"{"hostname":"fixture","hashRate":1000,"boardVersion":"601a","macAddr":"02:00:00:00:00:01","version":"v2.15.2","temptarget":61}"#
                 : #"{"ok":true}"#
             client?.urlProtocol(self, didLoad: Data(payload.utf8))
             client?.urlProtocolDidFinishLoading(self)

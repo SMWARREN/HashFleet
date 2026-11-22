@@ -82,9 +82,7 @@ struct FleetLiveActivitySettingsPage: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(FleetTheme.accent)
-                    .foregroundStyle(FleetTheme.buttonInk)
+                    .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
                     .disabled(store.visibleDevices.isEmpty || coordinator.isChangingActivity)
                     .accessibilityIdentifier("monitoring.startActivity")
                     }

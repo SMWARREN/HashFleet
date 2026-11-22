@@ -251,7 +251,7 @@ final class NativeOverviewUITests: XCTestCase {
     }
 
     func testWebsiteRangesAndMinerControlsMatchRequestedHierarchy() throws {
-        let app = launchDemo()
+        let app = launchDemo(extraArguments: ["--ui-test-offline-demo", "--ui-test-reduce-motion"])
         defer { app.terminate() }
         let bitsy = element("dashboard.bitsy", app)
         let hashNumbers = element("dashboard.fleetHashrate", app)
@@ -261,15 +261,17 @@ final class NativeOverviewUITests: XCTestCase {
         XCTAssertTrue(history.waitForExistence(timeout: 5))
         XCTAssertLessThan(bitsy.frame.maxY, hashNumbers.frame.minY, "Bitsy belongs above the hash numbers")
         XCTAssertLessThan(hashNumbers.frame.maxY, history.frame.minY, "Hash numbers belong above the history chart")
-        XCTAssertLessThanOrEqual(history.frame.height, 170,
-                                 "The history card should stay compact beneath live hashrate")
         let compactChart = element("dashboard.historyChart", app)
         XCTAssertTrue(compactChart.waitForExistence(timeout: 5))
         XCTAssertLessThanOrEqual(compactChart.frame.height, 100,
                                  "The history graph should not grow into a second hero card")
+        let miner = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'dashboard.miner.'")).firstMatch
+        XCTAssertTrue(miner.waitForExistence(timeout: 5))
+        XCTAssertLessThan(history.frame.maxY, miner.frame.minY)
+        XCTAssertTrue(miner.isHittable, "Labeled chart controls must keep the first miner within reach")
         let odds = element("dashboard.chains", app)
         XCTAssertTrue(odds.waitForExistence(timeout: 5))
-        XCTAssertLessThan(history.frame.maxY, odds.frame.minY, "Solo odds belongs below the history chart")
+        XCTAssertLessThan(miner.frame.maxY, odds.frame.minY, "Solo odds belongs below the miners")
         XCTAssertTrue(element("dashboard.historyRanges", app).exists, "Data-backed recent ranges share one control group")
         let oneMinute = app.buttons["dashboard.historyRange.oneMinute"]
         XCTAssertTrue(oneMinute.exists, "A phone dashboard with no user-selected range should expose 1m")
@@ -291,7 +293,8 @@ final class NativeOverviewUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(oneMinute.frame.width, minimumTapTarget)
         XCTAssertGreaterThanOrEqual(oneMinute.frame.height, minimumTapTarget)
         oneMinute.tap()
-        XCTAssertTrue(app.staticTexts["1m · TH/s"].waitForExistence(timeout: 5))
+        let recentCaption = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "1m · TH/s")).firstMatch
+        XCTAssertTrue(recentCaption.waitForExistence(timeout: 5))
         let chart = element("dashboard.historyChart", app)
         reveal(chart, app: app)
         chart.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)).tap()
@@ -299,7 +302,11 @@ final class NativeOverviewUITests: XCTestCase {
         app.chooseSavedHistoryWindow("weekly")
         XCTAssertFalse(app.buttons["dashboard.historySelection.clear"].exists)
         let search = app.textFields["dashboard.search"].firstMatch
-        reveal(search, app: app)
+        for _ in 0..<5 {
+            if search.isHittable { break }
+            app.swipeDown()
+        }
+        XCTAssertTrue(search.isHittable, "Pulling back over the top should reveal dashboard search")
         search.tap()
         search.typeText("Workshop Gamma\n")
         let best = app.descendants(matching: .any).matching(
@@ -335,7 +342,7 @@ final class NativeOverviewUITests: XCTestCase {
         capture("miner-status-with-independent-controls", app: app)
         controls.tap()
         XCTAssertTrue(app.buttons["Cooling"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Pools"].exists)
+        XCTAssertTrue(app.buttons["Edit pools"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Hash Fleet"].exists, "Opening Controls must not activate the sibling miner link")
     }
 

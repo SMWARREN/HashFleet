@@ -54,8 +54,9 @@ struct HashFleetApp: App {
                 defaults.removeObject(forKey: FleetStore.preferenceCheckpointKey)
             }
             // Deterministic UI tests never use public services unless explicitly opted into live acceptance.
-            defaults.set(ProcessInfo.processInfo.arguments.contains("--demo") ||
-                         ProcessInfo.processInfo.arguments.contains("--live-public-data"),
+            let arguments = ProcessInfo.processInfo.arguments
+            defaults.set((arguments.contains("--demo") && !arguments.contains("--ui-test-offline-demo")) ||
+                         arguments.contains("--live-public-data"),
                          forKey: FleetPreferences.Keys.externalData)
             if !ProcessInfo.processInfo.arguments.contains("--ui-test-system-appearance") {
                 // Existing visual regressions use an explicit dark starting mode.
@@ -68,6 +69,10 @@ struct HashFleetApp: App {
                     forKey: FleetPreferences.Keys.appearance
                 )
             }
+            #if DEBUG
+            FleetStore.seedLoopbackReviewFixture(defaults: defaults, arguments: ProcessInfo.processInfo.arguments)
+            FleetPreferences.seedDashboardTestFixture(defaults: defaults, arguments: ProcessInfo.processInfo.arguments)
+            #endif
         } else {
             defaults = .standard
         }
@@ -368,6 +373,8 @@ struct HashFleetApp: App {
                 }
             }
             .fleetWindowViewport()
+            .fleetDashboardWelcome(store: store, canPresent: !showsStartup && celebration == nil
+                && selectedTab == 0 && fleetPath.isEmpty && (sidebarSelection == .overview || sidebarSelection == nil))
             .environment(\.fleetPresentationResetID, presentationResetID)
             .preferredColorScheme(store.preferences.appearance.colorScheme)
         }

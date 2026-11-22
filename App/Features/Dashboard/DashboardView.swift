@@ -2,22 +2,9 @@ import SwiftUI
 import HashFleetCore
 import LucideSwift
 
-enum DashboardPageDestination: Equatable {
-    case overview
-    case miner(UUID)
-    case settings
-    case about
-    case support
-    case featureTour
-    case energy
-    case network
-    case reports
-    case backup
-    case achievements
-}
-
 struct DashboardView: View {
     @Environment(\.fleetGuidedDemo) private var guidedDemo
+    @Environment(\.fleetGuidedEssentials) private var guidedEssentials
     let store: FleetStore
     let insights: MiningInsightsStore
     var coordinator: FleetGlanceCoordinator?
@@ -39,7 +26,9 @@ struct DashboardView: View {
     @State var showsSearch = false
     @FocusState var searchIsFocused: Bool
     @State var showingAchievements = false
+    @State var showsFleetDetails = false
     @State var minerExpansion: [UUID: Bool] = [:]
+    @State var numberFirstCompactCards = true
     @AppStorage("dashboard.responsiveColumnLimit") var macMinerColumns = 0
     @State var minerSettingsRoute: DashboardMinerSettingsRoute?
     @State var minerTuningSessionDevice: MinerDevice?
@@ -67,6 +56,19 @@ struct DashboardView: View {
     @Environment(\.accessibilityVoiceOverEnabled) var voiceOver
     @Environment(\.scenePhase) private var scenePhase
 
+    var dashboardMode: FleetPreferences.DashboardMode { guidedDemo && !guidedEssentials ? .full : store.preferences.dashboardMode }
+
+    /// The new layout is scoped to the phone review build or the offline simulator fixture.
+    var usesNumberFirstOverview: Bool {
+        (guidedEssentials || (store.isDemo ? NumberFirstPreview.overview : NumberFirstPreview.usesLivePhoneLayouts))
+            && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && usesCompactHorizontalLayout
+    }
+
+    /// Use the same size for overview text and for layout branches in DashboardView itself.
+    var overviewTypeSize: DynamicTypeSize {
+        usesNumberFirstOverview && store.isDemo ? min(dynamicTypeSize, .xLarge) : dynamicTypeSize
+    }
+
     init(
         store: FleetStore,
         insights: MiningInsightsStore = MiningInsightsStore(),
@@ -85,6 +87,8 @@ struct DashboardView: View {
         GeometryReader { viewport in
             ScrollView {
                 dashboardContent(viewport: viewport)
+                    // Bound the compact preview only. Toolbar and presentations stay at the system size.
+                    .environment(\.dynamicTypeSize, overviewTypeSize)
             }
             .coordinateSpace(name: "dashboardScroll")
             .background(FleetTheme.canvas)
@@ -168,6 +172,7 @@ struct DashboardView: View {
                 let isTesting = arguments.contains("--ui-testing") ||
                     ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
                 guard !guidedDemo, ready, !isTesting || arguments.contains("--show-feature-tour"),
+                      !store.preferences.shouldOfferDashboardChoice || arguments.contains("--show-feature-tour"),
                       store.preferences.shouldShowFeatureTour else { return }
                 showingFeatureTour = true
             }
@@ -186,7 +191,10 @@ struct DashboardView: View {
                             // Unlike Settings previews, this intentionally closes the tour.
                             pendingCelebrationPreview = kind
                             showingFeatureTour = false
-                        }
+                        },
+                        showsEssentialsWalkthrough: NumberFirstPreview.usesLivePhoneLayouts && usesCompactHorizontalLayout
+                            && !store.isDemo && dashboardMode == .essentials
+                            && !ProcessInfo.processInfo.arguments.contains("--show-feature-tour")
                     )
                 }
                 .fleetPageSheet()
@@ -345,89 +353,121 @@ struct DashboardView: View {
         .fleetUnadornedToolbarBackground()
         #endif
         brandToolbarItem
+        #if os(iOS)
+        if usesNumberFirstOverview && !store.isDemo {
+            // Pull-to-search can replace the title without removing either action.
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 2) {
+                    dashboardSettingsMenu
+                    dashboardAddButton
+                }
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        } else {
+            standardDashboardActions
+        }
+        #else
+        standardDashboardActions
+        #endif
+    }
+
+    @ToolbarContentBuilder
+    private var standardDashboardActions: some ToolbarContent {
         if !showsSearch {
             ToolbarItem(placement: FleetToolbarLocation.trailing) {
-                Menu {
-                    Button {
-                        routeToDashboardPage(.settings)
-                    } label: {
-                        Label("App settings", systemImage: "gearshape")
-                    }
-                    .keyboardShortcut(",", modifiers: .command)
-                    .accessibilityIdentifier("dashboard.openSettings")
-                    Button {
-                        Task { await refreshDashboard() }
-                    } label: {
-                        Label("Refresh fleet", systemImage: "arrow.clockwise")
-                    }
-                    .keyboardShortcut("r", modifiers: .command)
-                    Button {
-                        routeToDashboardPage(.about)
-                    } label: {
-                        Label("About", systemImage: "info.circle")
-                    }
-                    .accessibilityIdentifier("dashboard.openAbout")
-                    Button {
-                        routeToDashboardPage(.support)
-                    } label: {
-                        Label("Support Hash Fleet", systemImage: "heart")
-                    }
-                    .accessibilityIdentifier("dashboard.openSupport")
-                    if !store.isDemo, !store.devices.isEmpty {
-                        Divider()
-                        Button(role: .destructive) {
-                            confirmingDeleteAll = true
-                        } label: {
-                            Label("Delete all miners…", systemImage: "trash")
-                        }
-                        .accessibilityIdentifier("dashboard.deleteAllMiners")
-                    }
-                    Divider()
-                    Button {
-                        store.preferences.appearance = colorScheme == .dark ? .light : .dark
-                        appearanceToggle += 1
-                    } label: {
-                        Label(
-                            colorScheme == .dark ? "Switch to light mode" : "Switch to dark mode",
-                            systemImage: colorScheme == .dark ? "sun.max" : "moon"
-                        )
-                    }
-                } label: {
-                    settingsToolbarIcon
-                        .foregroundStyle(FleetTheme.ink)
-                        #if !os(macOS)
-                        .frame(minWidth: 44, minHeight: 44)
-                        #endif
-                }
-                .fleetToolbarMenu()
-                .accessibilityLabel("App settings and preferences")
-                .accessibilityValue(
-                    store.preferences.appearance == .system
-                        ? "System · \(colorScheme == .dark ? "Dark" : "Light")"
-                        : store.preferences.appearance.title
-                )
-                .accessibilityIdentifier("dashboard.settingsMenu")
+                dashboardSettingsMenu
             }
             .fleetUnadornedToolbarBackground()
         }
         ToolbarItem(placement: FleetToolbarLocation.trailing) {
-            Button {
-                showingAddMiner = true
-            } label: {
-                Image(systemName: "plus")
-                    .fleetFont(.body, weight: .semibold)
-                    #if !os(macOS)
-                    .frame(minWidth: 44, minHeight: 44)
-                    #endif
-            }
-            .fleetToolbarButton()
-            .accessibilityLabel("Add a miner")
-            .accessibilityIdentifier("dashboard.addMiner")
-            .keyboardShortcut("n", modifiers: .command)
+            dashboardAddButton
         }
         .fleetUnadornedToolbarBackground()
     }
 
+    private var dashboardSettingsMenu: some View {
+        Menu {
+            Button {
+                searchIsFocused = false
+                routeToDashboardPage(.settings)
+            } label: {
+                Label("App settings", systemImage: "gearshape")
+            }
+            .keyboardShortcut(",", modifiers: .command)
+            .accessibilityIdentifier("dashboard.openSettings")
+            Button {
+                Task { await refreshDashboard() }
+            } label: {
+                Label("Refresh fleet", systemImage: "arrow.clockwise")
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            Button {
+                routeToDashboardPage(.about)
+            } label: {
+                Label("About", systemImage: "info.circle")
+            }
+            .accessibilityIdentifier("dashboard.openAbout")
+            Button {
+                routeToDashboardPage(.support)
+            } label: {
+                Label("Support Hash Fleet", systemImage: "heart")
+            }
+            .accessibilityIdentifier("dashboard.openSupport")
+            if !store.isDemo, !store.devices.isEmpty {
+                Divider()
+                Button(role: .destructive) {
+                    confirmingDeleteAll = true
+                } label: {
+                    Label("Delete all miners…", systemImage: "trash")
+                }
+                .accessibilityIdentifier("dashboard.deleteAllMiners")
+            }
+            Divider()
+            Button {
+                store.preferences.appearance = colorScheme == .dark ? .light : .dark
+                appearanceToggle += 1
+            } label: {
+                Label(
+                    colorScheme == .dark ? "Switch to light mode" : "Switch to dark mode",
+                    systemImage: colorScheme == .dark ? "sun.max" : "moon"
+                )
+            }
+        } label: {
+            settingsToolbarIcon
+                .foregroundStyle(FleetTheme.ink)
+                #if !os(macOS)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                #endif
+        }
+        .fleetToolbarMenu()
+        .accessibilityLabel("App settings and preferences")
+        .accessibilityValue(
+            store.preferences.appearance == .system
+                ? "System · \(colorScheme == .dark ? "Dark" : "Light")"
+                : store.preferences.appearance.title
+        )
+        .accessibilityIdentifier("dashboard.settingsMenu")
+    }
+
+    private var dashboardAddButton: some View {
+        Button {
+            searchIsFocused = false
+            showingAddMiner = true
+        } label: {
+            Image(systemName: "plus")
+                .fleetFont(.body, weight: .semibold)
+                #if !os(macOS)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                #endif
+        }
+        .fleetToolbarButton()
+        .accessibilityLabel("Add a miner")
+        .accessibilityIdentifier("dashboard.addMiner")
+        .keyboardShortcut("n", modifiers: .command)
+    }
 }
 
 extension DashboardView {

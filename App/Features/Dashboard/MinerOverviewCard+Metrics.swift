@@ -32,12 +32,16 @@ extension MinerOverviewCard {
     @ViewBuilder
     var bestSummary: some View {
         if bestShare != nil || bestSessionShare != nil {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                bestMetricLabels
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    bestMetricLabels
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 4) {
+                    bestMetricLabels
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .lineLimit(1)
-            .minimumScaleFactor(0.62)
         }
     }
 
@@ -48,17 +52,13 @@ extension MinerOverviewCard {
     }
 
     func bestLabel(_ title: String, value: String) -> some View {
-        Label {
-            Text("\(title) \(value)")
-                .fleetNumericUpdate(value, reduceMotion: reduceMotion)
-                .minimumScaleFactor(0.72)
-        } icon: {
-            Image(systemName: "trophy")
-        }
-        .fleetFont(.caption2, design: .monospaced)
-        .foregroundStyle(FleetTheme.accent)
-        .lineLimit(1)
-        .accessibilityLabel("\(title) reported share difficulty, \(value)")
+        Text("\(title) \(value)")
+            .fleetFont(.footnote)
+            .foregroundStyle(FleetTheme.secondary)
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
+            .fleetNumericUpdate(value, reduceMotion: reduceMotion)
+            .accessibilityLabel("\(title) reported share difficulty, \(value)")
     }
 
     var bestShare: String? {
@@ -71,44 +71,60 @@ extension MinerOverviewCard {
         return MiningDifficultyFormat.short(info.raw["bestSessionDiff"])
     }
 
-    @ViewBuilder
     var powerSummary: some View {
-        if let info = snapshot?.info,
-            let power = FleetFormat.sensor(info, keys: "power") {
-            let value = "\(FleetFormat.number(power, decimals: 1)) W"
-            Label {
-                Text(value).fleetNumericUpdate(value, reduceMotion: reduceMotion)
-            } icon: {
-                Image(systemName: "bolt")
+        let reading = snapshot?.info.flatMap { FleetFormat.sensor($0, keys: "power") }
+        let value = reading.map { FleetFormat.number($0, decimals: 1) }
+        return Text("Power: \(value.map { $0 + " W" } ?? "Not reported")")
+            .fleetFont(.subheadline, weight: .medium)
+            .foregroundStyle(FleetTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .fleetNumericUpdate(value, reduceMotion: reduceMotion)
+            .accessibilityLabel("Power, \(value.map { $0 + " watts" } ?? "not reported")")
+    }
+
+    func hardwareReadings(_ info: MinerInfo, includeFan: Bool = true) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 24) {
+                hardwareReadingItems(info, includeFan: includeFan)
             }
-            .fleetFont(.caption2, design: .monospaced)
-            .foregroundStyle(FleetTheme.secondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .accessibilityLabel("Power, \(FleetFormat.number(power, decimals: 1)) watts")
+            .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                hardwareReadingItems(info, includeFan: includeFan)
+            }
         }
     }
 
-    /// True only for presentations that read as a working, connected miner. This is the
-    /// sole driver of the one-shot status pulse, so ordinary telemetry refreshes that keep
-    /// the same online state never animate the dot.
-    var isMinerOnline: Bool {
-        presentationState.isOperational
+    @ViewBuilder
+    private func hardwareReadingItems(_ info: MinerInfo, includeFan: Bool) -> some View {
+        hardwareReading("Temperature", reading: FleetFormat.sensor(info, keys: "temp"),
+                        unit: " °C", spokenUnit: "degrees Celsius")
+        hardwareReading("Power", reading: FleetFormat.sensor(info, keys: "power"),
+                        unit: " W", spokenUnit: "watts", decimals: 1)
+        if includeFan {
+            hardwareReading("Fan speed", reading: FleetFormat.sensor(info, keys: "fanspeed", "fanSpeed"),
+                            unit: "%", spokenUnit: "percent")
+        }
     }
 
-    @ViewBuilder
     var statusBadge: some View {
         FleetMinerStatusBadge(state: presentationState)
     }
 
-    func smallMetric(_ title: String, value: String, symbol: String) -> some View {
-        Label {
-            Text(value).fleetNumericUpdate(value, reduceMotion: reduceMotion)
-        } icon: {
-            Image(systemName: symbol)
+    private func hardwareReading(_ title: String, reading: Double?, unit: String, spokenUnit: String,
+                                 decimals: Int = 0) -> some View {
+        let value = reading.map { FleetFormat.number($0, decimals: decimals) }
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .fleetFont(.footnote)
+                .foregroundStyle(FleetTheme.secondary)
+            Text(value.map { $0 + unit } ?? "Not reported")
+                .fleetFont(.subheadline, weight: .semibold)
+                .foregroundStyle(FleetTheme.ink)
+                .monospacedDigit()
+                .fleetNumericUpdate(value, reduceMotion: reduceMotion)
         }
-        .fleetFont(.caption, design: .monospaced)
-        .foregroundStyle(FleetTheme.secondary)
-        .accessibilityLabel("\(title), \(value)")
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(value.map { $0 + " " + spokenUnit } ?? "not reported")")
     }
 }

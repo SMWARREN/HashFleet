@@ -58,7 +58,12 @@ final class NetworkInsightsUITests: XCTestCase {
         let address = app.textFields["poolLookup.address"]
         XCTAssertTrue(address.waitForExistence(timeout: 5))
         address.tap()
-        address.typeText("1BoatSLRHtKNngkdXEeobR76b53LETtpyT\n")
+        let draft = "not-an-address-test-draft"
+        address.typeText(draft)
+        assertFleetEditingFieldAboveKeyboard(address, in: app, navigation: app.navigationBars["CKPool lookup"])
+        address.typeText("\n")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(address.value as? String, draft)
         let submit = app.buttons["poolLookup.submit"]
         reveal(submit, in: app)
         XCTAssertFalse(submit.isEnabled)
