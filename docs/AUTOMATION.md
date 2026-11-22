@@ -8,7 +8,7 @@ branch and pull request.
 
 Runs on pull requests and on pushes to `main`, with a read-only token and no secrets. It never uses `pull_request_target`. Branch protection should require exactly one check: **`CI required`**. Contributors do not need any secret to get a result.
 
-It runs repository syntax and contract checks, website tests and build, Swift package tests, the CLI build, and unsigned macOS and iOS simulator builds on the standard arm64 `xcode-27` preview runner with Xcode 27.2. This matches the project SDK, including SwiftUI toolbar APIs. Preview runner availability is not guaranteed. Heavy simulator UI tests are manual: run the workflow with mode `simulator-ui-tests`. `runner-check` only confirms runner access.
+It runs repository syntax and contract checks, website tests and build, Swift package tests, the CLI build, unsigned macOS and iOS simulator builds on the standard arm64 `xcode-27` preview runner with Xcode 27.2, and SonarQube analysis in Docker via `swift-sonar-kit` on `ubuntu-24.04`. Preview runner availability is not guaranteed. Heavy simulator UI tests are manual: run the workflow with mode `simulator-ui-tests`. `runner-check` only confirms runner access.
 
 ### SwiftLint
 

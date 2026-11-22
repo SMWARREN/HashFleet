@@ -172,12 +172,33 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+  sonar:
+    name: SonarQube analysis
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Install swift-sonar-kit
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install git+https://github.com/SMWARREN/swift-sonar-kit.git
+      - name: Run SonarQube analysis in Docker
+        run: |
+          swift-sonar run "$GITHUB_WORKSPACE" --no-browser
+
   # Stable aggregate for branch protection. It fails on any failed, cancelled or skipped
   # prerequisite, so the individual job names above can change without editing repository settings.
   ci-required:
     name: CI required
     if: ${{ always() && github.event_name != 'workflow_dispatch' }}
-    needs: [repo-checks, website, swiftlint, swift-package, mac-app-build, ios-app-build]
+    needs: [repo-checks, website, swiftlint, swift-package, mac-app-build, ios-app-build, sonar]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -188,8 +209,8 @@ jobs:
         run: |
           echo "Prerequisite results: $RESULTS"
           read -r -a prerequisites <<< "$RESULTS"
-          # Keep this count aligned with the six explicit jobs in needs above.
-          [ "${#prerequisites[@]}" -eq 6 ] || { echo "Missing prerequisite results." >&2; exit 1; }
+          # Keep this count aligned with the seven explicit jobs in needs above.
+          [ "${#prerequisites[@]}" -eq 7 ] || { echo "Missing prerequisite results." >&2; exit 1; }
           for result in "${prerequisites[@]}"; do
             [ "$result" = success ] || { echo "A prerequisite did not succeed." >&2; exit 1; }
           done
