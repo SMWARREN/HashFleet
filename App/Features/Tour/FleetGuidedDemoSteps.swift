@@ -2,13 +2,34 @@ import Foundation
 
 /// Every lesson refers to a control or reading rendered by a production screen, not a mock screenshot.
 struct FleetGuidedDemoStep: Identifiable, Sendable {
-    enum Screen: String, Sendable { case fleet, miner, coins, settings, preferences, energy, report, pdf, notifications }
+    enum Screen: String, Sendable { case fleet, miner, pools, coins, settings, preferences, energy, report, pdf, notifications }
     let id: String
     let screen: Screen
     let target: String
     let title: String
     let instruction: String
     let tapTitle: String?
+
+    static let essentials: [Self] = [
+        .init(id: "overview", screen: .fleet, target: "guide.hero", title: "Start with your fleet",
+              instruction: "Essentials puts the fleet’s total hashrate up top. These are sample miners, so nothing you try here changes a real miner.",
+              tapTitle: nil),
+        .init(id: "history", screen: .fleet, target: "guide.history", title: "See the trend",
+              instruction: "Use the time ranges on Hashrate trend to switch between recent readings and longer history.",
+              tapTitle: nil),
+        .init(id: "openMiner", screen: .fleet, target: "guide.miner", title: "Open a miner",
+              instruction: "Tap a miner for its own hashrate, temperatures, and controls. To add your own later, tap + on Fleet.",
+              tapTitle: "Open the sample miner"),
+        .init(id: "minerSettings", screen: .miner, target: "guide.minerSettings", title: "Find miner settings",
+              instruction: "Use Miner settings for connections and device settings. Let’s look at Pools using this sample miner.",
+              tapTitle: "See sample pool settings"),
+        .init(id: "pools", screen: .pools, target: "guide.ordinaryPools", title: "Primary and fallback pools",
+              instruction: "Essentials shows your primary connection and its backup. On a real miner you can edit the server, port, and worker here and review before saving.",
+              tapTitle: nil),
+        .init(id: "dashboardView", screen: .settings, target: "guide.dashboardView", title: "Switch views anytime",
+              instruction: "Use the gear next to + to find Dashboard view in App settings. Full View adds comparisons and advanced tools. Tap Done to return to where you started.",
+              tapTitle: nil)
+    ]
 
     static let all: [Self] = [
         .init(id: "overview", screen: .fleet, target: "guide.hero", title: "Meet your fleet",
@@ -42,9 +63,9 @@ struct FleetGuidedDemoStep: Identifiable, Sendable {
             tapTitle: nil),
         .init(id: "openPreferences", screen: .settings, target: "guide.preferencesEntry",
             title: "Find display settings",
-            instruction: "In Settings, tap Preferences to find appearance and sorting controls. "
+            instruction: "In App settings, tap Fleet to find appearance and sorting controls. "
                 + "This is where you switch between light and dark mode.",
-            tapTitle: "Open Preferences"),
+            tapTitle: "Open Fleet preferences"),
         .init(id: "appearance", screen: .preferences, target: "guide.appearance", title: "Choose your appearance",
             instruction: "The highlighted Appearance control lets you pick Light, Dark, or System mode. "
                 + "Your choice applies across the whole app and is saved for next launch.",

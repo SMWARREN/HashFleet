@@ -9,18 +9,23 @@ struct FleetTourView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var dontShowAgain: Bool
     var onPreviewCelebration: ((FleetCelebration.Kind) -> Void)?
+    @State private var showsEssentialsWalkthrough: Bool
     @State private var sandbox: FleetGuidedDemoSandbox?
     @State private var coordinator: FleetGlanceCoordinator?
     @State private var index = 0
     @State private var pdfData: Data?
-    private let steps = FleetGuidedDemoStep.all
+    private var steps: [FleetGuidedDemoStep] {
+        showsEssentialsWalkthrough ? FleetGuidedDemoStep.essentials : FleetGuidedDemoStep.all
+    }
 
     init(
         dontShowAgain: Binding<Bool> = .constant(false),
-        onPreviewCelebration: ((FleetCelebration.Kind) -> Void)? = nil
+        onPreviewCelebration: ((FleetCelebration.Kind) -> Void)? = nil,
+        showsEssentialsWalkthrough: Bool = false
     ) {
         _dontShowAgain = dontShowAgain
         self.onPreviewCelebration = onPreviewCelebration
+        _showsEssentialsWalkthrough = State(initialValue: showsEssentialsWalkthrough)
     }
 
     private var step: FleetGuidedDemoStep { steps[index] }
@@ -39,7 +44,7 @@ struct FleetTourView: View {
         }
         .background(FleetTheme.canvas)
         .foregroundStyle(FleetTheme.ink)
-        .navigationTitle("Guided demo")
+        .navigationTitle(showsEssentialsWalkthrough ? "Essentials walkthrough" : "Guided demo")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: FleetToolbarLocation.trailing) {
@@ -52,6 +57,7 @@ struct FleetTourView: View {
         .task {
             guard sandbox == nil else { return }
             let sample = FleetGuidedDemoSandbox()
+            if showsEssentialsWalkthrough { sample.store.preferences.dashboardMode = .essentials }
             sandbox = sample
             coordinator = FleetGlanceCoordinator(defaults: sample.store.defaults,
                 storage: FleetGlanceStorage(defaults: nil), isTesting: true, activityName: "GuidedDemo")
@@ -103,6 +109,7 @@ struct FleetTourView: View {
                 ZStack {
                 screenContent(sample, coordinator: coordinator)
                     .environment(\.fleetGuidedDemo, true)
+                    .environment(\.fleetGuidedEssentials, showsEssentialsWalkthrough)
                     .environment(\.fleetGuidedTargetID, targetID(sample))
                     .disabled(true)
                     .allowsHitTesting(false)
@@ -163,6 +170,10 @@ struct FleetTourView: View {
             DashboardView(store: sample.store, insights: sample.insights, coordinator: coordinator, startupReady: false)
         case .miner:
             minerScreenContent(sample)
+        case .pools:
+            if let device = sample.store.devices.first {
+                MinerEssentialsPoolsView(device: device, store: sample.store)
+            }
         case .coins:
             FleetCoinSelectionView(preferences: sample.store.preferences, automaticCoins: [.btc, .bch])
         case .settings:
@@ -221,9 +232,11 @@ struct FleetTourView: View {
             }
             .frame(height: dynamicTypeSize.isAccessibilitySize ? 110 : 65)
             controls
-            Toggle("Don’t show again", isOn: $dontShowAgain)
-                .fleetFont(.caption)
-                .accessibilityIdentifier("tour.dontShowAgain")
+            if !showsEssentialsWalkthrough {
+                Toggle("Don’t show again", isOn: $dontShowAgain)
+                    .fleetFont(.caption)
+                    .accessibilityIdentifier("tour.dontShowAgain")
+            }
         }
         .padding(16)
         .fixedSize(horizontal: false, vertical: true)

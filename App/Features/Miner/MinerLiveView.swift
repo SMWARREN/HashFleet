@@ -187,8 +187,7 @@ struct MinerLiveView: View {
                                 )
                             }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .foregroundStyle(FleetTheme.buttonInk)
+                        .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
                         .disabled(isDemo)
                         Button("Clear", systemImage: "trash") {
                             model.clear()

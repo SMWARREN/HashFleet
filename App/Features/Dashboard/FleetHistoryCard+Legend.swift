@@ -14,7 +14,8 @@ extension FleetHistoryCard {
                 id: history.id,
                 name: history.name,
                 color: FleetChartPalette.color(for: index),
-                seriesValue: historyValue
+                seriesValue: historyValue,
+                dash: FleetChartPalette.comparisonDash(for: index)
             )
         }
 
@@ -36,9 +37,16 @@ extension FleetHistoryCard {
 
     private func legendItemView(_ item: FleetChartLegendItem) -> some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(item.color)
-                .frame(width: 8, height: 8)
+            Rectangle()
+                .frame(width: 25, height: 2)
+                .hidden()
+                .overlay {
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: 1))
+                        path.addLine(to: CGPoint(x: 25, y: 1))
+                    }
+                    .stroke(item.color, style: StrokeStyle(lineWidth: 2, dash: item.dash))
+                }
                 .accessibilityHidden(true)
 
             Text(item.name)

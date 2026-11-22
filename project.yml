@@ -332,6 +332,7 @@ targets:
     platform: iOS
     sources:
       - AppTests
+      - path: UITests/LoopbackMinerServer.swift
     resources:
       - path: AppTests/Fixtures/animated-webp-2frames.webp
     dependencies:

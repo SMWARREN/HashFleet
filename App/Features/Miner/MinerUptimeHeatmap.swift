@@ -160,9 +160,10 @@ struct MinerUptimeRing: View {
                 .trim(from: 0, to: clamped)
                 .stroke(tint.gradient, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(Int((clamped * 100).rounded()))")
-                .font(.system(size: size * 0.3, weight: .semibold, design: .rounded))
+            Text(clamped, format: .percent.precision(.fractionLength(0)))
+                .font(.system(size: size * 0.26, weight: .semibold, design: .rounded))
                 .monospacedDigit()
+                .lineLimit(1)
                 .foregroundStyle(FleetTheme.ink)
                 .minimumScaleFactor(0.6)
         }

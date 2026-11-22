@@ -3,7 +3,7 @@
 //  HashFleet
 //
 //  Share calculation adapted from ShipSwift (MIT) - SWDonutChart.swift.
-//  Shown inside the Fleet hashrate card as a segmented bar with a per-miner legend.
+//  Shown as a segmented bar with a per-miner legend in Full View.
 //
 
 import SwiftUI
@@ -118,13 +118,14 @@ enum FleetHashrateShare {
     }
 }
 
-/// Each miner's share of the fleet hashrate, drawn inside the dark Fleet hashrate card:
+/// Each miner's share of the fleet hashrate, on a dedicated comparison card:
 /// one thin segmented bar plus a wrapping legend. Static (no animation), so live updates
 /// only re-lay out a few shapes once per second.
 struct FleetHashrateShareStrip: View {
     let slices: [FleetHashrateShare.Slice]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// The hero card is charcoal in both light and dark mode, so use bright fixed colors
+    /// This card is charcoal in both light and dark mode, so use bright fixed colors
     /// rather than the adaptive chart palette (whose light-mode colors are dark).
     static let panelColors: [Color] = [
         Color(red: 0xF5 / 255, green: 0xAC / 255, blue: 0x26 / 255),
@@ -138,10 +139,9 @@ struct FleetHashrateShareStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("SHARE BY MINER")
-                .fleetFont(.caption2, weight: .semibold, design: .monospaced)
-                .tracking(0.8)
-                .foregroundStyle(FleetTheme.panelSecondary)
+            Text("Share by miner")
+                .fleetFont(.headline)
+                .foregroundStyle(FleetTheme.panelInk)
             bar
             legend
         }
@@ -170,17 +170,19 @@ struct FleetHashrateShareStrip: View {
     }
 
     private var legend: some View {
-        FleetFlowLayout(spacing: 12, lineSpacing: 6) {
+        let columns = [GridItem(dynamicTypeSize >= .xxLarge ? .flexible() : .adaptive(minimum: 150),
+                                spacing: 12, alignment: .topLeading)]
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
             ForEach(slices) { slice in
-                HStack(spacing: 6) {
-                    Circle().fill(Self.panelColor(slice.colorIndex)).frame(width: 7, height: 7)
-                    Text(slice.name)
-                        .foregroundStyle(FleetTheme.panelInk)
-                    Text(slice.percentageString)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("●")
+                        .foregroundStyle(Self.panelColor(slice.colorIndex))
+                        .accessibilityHidden(true)
+                    Text("\(slice.name) \(slice.percentageString)")
                         .foregroundStyle(FleetTheme.panelSecondary)
-                        .monospacedDigit()
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .fleetFont(.caption)
+                .fleetFont(.footnote)
                 .help(slice.formattedHashrate)
             }
         }

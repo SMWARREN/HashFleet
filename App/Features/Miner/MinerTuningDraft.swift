@@ -88,15 +88,19 @@ struct MinerTuningDraft: Equatable, Sendable {
         return value
     }
 
+    static let coolingTargetBounds = 35...66
+    static let manualFanSpeedBounds = 0...100
+    static let minimumFanSpeedBounds = 0...99
+
     static func coolingPayload(automatic: Bool, manualSpeed: String, target: String) throws -> JSONValue {
         var fields: [String: JSONValue] = ["autofanspeed": .integer(automatic ? 1 : 0)]
         if automatic {
-            fields["temptarget"] = .integer(Int64(try integer(target, name: "Temperature target", bounds: 35...66)))
+            fields["temptarget"] = .integer(Int64(try integer(target, name: "Temperature target", bounds: coolingTargetBounds)))
         } else {
             let speed = try integer(
                 manualSpeed,
                 name: "Manual fan speed",
-                bounds: 0...100
+                bounds: manualFanSpeedBounds
             )
             fields["manualFanSpeed"] = .integer(Int64(speed))
         }
@@ -118,7 +122,7 @@ struct MinerTuningDraft: Equatable, Sendable {
         let speed = try integer(
             text,
             name: "Minimum fan speed",
-            bounds: 0...99
+            bounds: minimumFanSpeedBounds
         )
         return .object(["minFanSpeed": .integer(Int64(speed))])
     }

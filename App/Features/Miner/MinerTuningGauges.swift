@@ -126,6 +126,7 @@ struct MinerTuningDial: View {
     let step: Double, coarseStep: Double
     let accessibilityPrefix: String, valueIdentifier: String?
     let formatValue: (Double) -> String
+    let compact: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -139,6 +140,7 @@ struct MinerTuningDial: View {
          isBeyondReference: Bool = false, isRestricted: Bool = false, isEnabled: Bool = true,
          referenceOptions: [Double] = [], step: Double = 1,
          coarseStep: Double = 10, accessibilityPrefix: String, valueIdentifier: String? = nil,
+         compact: Bool = false,
          formatValue: @escaping (Double) -> String = { MinerTuningDraft.numericText($0) }) {
         (self.title, self.unit, self._setpoint, self.range) = (title, unit, setpoint, range)
         (self.liveValue, self.configuredValue, self.referenceMaximum) = (liveValue, configuredValue, referenceMaximum)
@@ -147,6 +149,7 @@ struct MinerTuningDial: View {
         self.isRestricted = isRestricted
         (self.step, self.coarseStep, self.accessibilityPrefix) = (step, coarseStep, accessibilityPrefix)
         (self.valueIdentifier, self.formatValue) = (valueIdentifier, formatValue)
+        self.compact = compact
     }
 
     private var beyond: Bool { isRestricted || isBeyondReference || (referenceMaximum.map { setpoint > $0 } ?? false) }
@@ -156,7 +159,7 @@ struct MinerTuningDial: View {
     private var motion: Animation? { reduceMotion ? nil : .spring(duration: 0.42, bounce: 0.24) }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: compact ? 8 : 12) {
             header
             GeometryReader { proxy in
                 let radius = MinerTuningDialGeometry.radius(in: proxy.size)
@@ -166,11 +169,11 @@ struct MinerTuningDial: View {
                 }
             }
             .aspectRatio(1, contentMode: .fit)
-            .frame(maxWidth: 360)
+            .frame(maxWidth: compact && !dynamicTypeSize.isAccessibilitySize ? 248 : 360)
             .frame(maxWidth: .infinity)
             stepButtons
         }
-        .fleetCard(padding: 16, fill: beyond ? Color.red.opacity(0.06) : FleetTheme.surface,
+        .fleetCard(padding: compact ? 12 : 16, fill: beyond ? Color.red.opacity(0.06) : FleetTheme.surface,
                    border: beyond ? Color.red.opacity(0.45) : FleetTheme.ink.opacity(0.045))
         .sensoryFeedback(.impact(weight: .light, intensity: 0.55), trigger: setpoint)
         .sensoryFeedback(.impact(weight: .heavy), trigger: beyond) { old, new in !old && new }

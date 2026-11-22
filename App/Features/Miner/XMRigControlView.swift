@@ -117,7 +117,7 @@ struct XMRigControlView: View {
                 .buttonStyle(.bordered)
         } else {
             actionButtonContent(action, disabled: disabled)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
         }
     }
 

@@ -41,6 +41,15 @@ struct MinerShareSummaryTests {
         #expect(summary.rejectedSharePercentageDisplay == "Not reported")
     }
 
+    @Test func compactPresentationKeepsEveryReportedValueAndOmitsOnlyMissingRows() {
+        let sparse = MinerShareSummary(raw: ["sharesAccepted": .integer(0), "errorPercentage": .number(1.2)])
+        #expect(sparse.reportedMetrics.map(\.id) == ["accepted", "firmwareErrors"])
+        #expect(sparse.reportedMetrics.map(\.value) == ["0", "1.20%"])
+        let zero = MinerShareSummary(raw: ["sharesAccepted": .integer(0), "sharesRejected": .integer(0)])
+        #expect(zero.reportedMetrics.map(\.value) == ["0", "0", "No shares yet"])
+        #expect(MinerShareSummary(raw: [:]).reportedMetrics.isEmpty)
+    }
+
     @Test func negativeCountsAreInvalidRatherThanClampedToZero() {
         let summary = MinerShareSummary(raw: [
             "sharesAccepted": .integer(-1),

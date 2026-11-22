@@ -2,6 +2,7 @@ import XCTest
 
 extension DashboardCardInteractionUITests {
     func testEasyFrequencySafetyAndApplyAreVisibleWithoutScrolling() throws {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--demo"]
         app.launch()
@@ -37,11 +38,78 @@ extension DashboardCardInteractionUITests {
         try exerciseEasyWrite(includeVoltage: false)
     }
 
+    func testEasyTunerMovesBetweenKeypadsAndRestoresReadOnlyReview() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--demo"]
+        app.launch()
+        defer { app.terminate() }
+        openEasyTuner(in: app)
+
+        let frequency = app.textFields["tuningSession.master.customInput"]
+        let voltage = app.textFields["tuningSession.voltage.customInput"]
+        let keyboard = app.keyboards.firstMatch
+        let bar = app.navigationBars["Frequency & voltage"]
+        revealFleetControl(frequency, in: app)
+        frequency.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        XCTAssertTrue(bar.buttons["tuningSession.master.keyboardDone"].isHittable)
+        XCTAssertLessThanOrEqual(frequency.frame.maxY, keyboard.frame.minY + 1)
+        XCTAssertFalse(app.buttons["tuningSession.apply"].exists, "The dock must not compete with the keypad")
+
+        XCTAssertTrue(voltage.isHittable)
+        voltage.tap()
+        let done = bar.buttons["tuningSession.voltage.keyboardDone"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(voltage.frame.maxY, keyboard.frame.minY + 1)
+        capture("Easy Tuner keypad and one navigation Done", app)
+        done.tap()
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        let apply = app.buttons["tuningSession.apply"]
+        XCTAssertTrue(apply.waitForExistence(timeout: 5))
+        XCTAssertTrue(apply.isHittable)
+        XCTAssertFalse(apply.isEnabled, "Dismissal must never loosen the demo write lock")
+        capture("Easy Tuner review returns after Done", app)
+    }
+
+    func testEasyTunerKeepsEitherFocusedFieldAboveLandscapeKeypad() throws {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--demo"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertGreaterThan(app.frame.width, app.frame.height)
+        openEasyTuner(in: app)
+
+        let bar = app.navigationBars["Frequency & voltage"]
+        for (prefix, title) in [("tuningSession.master", "Frequency"), ("tuningSession.voltage", "Core voltage")] {
+            let field = app.textFields["\(prefix).customInput"]
+            revealFleetControl(field, in: app)
+            field.tap()
+            let keyboard = app.keyboards.firstMatch
+            let done = bar.buttons["\(prefix).keyboardDone"]
+            XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+            XCTAssertTrue(done.waitForExistence(timeout: 5))
+            capture("\(title) stays above its landscape keypad", app)
+            XCTAssertGreaterThanOrEqual(field.frame.minY + 1, bar.frame.maxY)
+            XCTAssertLessThanOrEqual(field.frame.maxY, keyboard.frame.minY + 1)
+            XCTAssertTrue(field.isHittable)
+            XCTAssertTrue(done.isHittable)
+            done.tap()
+            XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        }
+        let apply = app.buttons["tuningSession.apply"]
+        revealFleetControl(apply, in: app)
+        XCTAssertFalse(apply.isEnabled, "Dismissal must never loosen the demo write lock")
+    }
+
     func testEasyPairConfirmsOneCombinedLoopbackWriteAndRejectsInvalidInput() throws {
         try exerciseEasyWrite(includeVoltage: true)
     }
 
     private func exerciseEasyWrite(includeVoltage: Bool) throws {
+        XCUIDevice.shared.orientation = .portrait
         let server = try LoopbackMinerServer()
         server.enableTuningWrites()
         server.setASICResponse(status: 200, json:
@@ -104,6 +172,7 @@ extension DashboardCardInteractionUITests {
     }
 
     func testEasyLargeTextKeepsSafetyAndApplyAdjacentBeforeTechnicalDetails() throws {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--demo", "-UIPreferredContentSizeCategoryName",
                                "UICTContentSizeCategoryAccessibilityXXXL"]

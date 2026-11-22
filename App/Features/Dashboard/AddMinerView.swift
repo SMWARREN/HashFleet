@@ -25,7 +25,12 @@ struct AddMinerView: View {
     private enum Field { case name, address, token }
 
     var body: some View {
-        FleetPageNavigationStack {
+        FleetPageNavigationStack { form }
+        .presentationBackground(FleetTheme.canvas)
+    }
+
+    private var form: some View {
+        ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     introduction
@@ -54,14 +59,18 @@ struct AddMinerView: View {
                                 "Give your hardware a name, or leave this blank " +
                                     "to use its model name automatically."
                         )
-                        TextField("Desk miner", text: $name)
+                        TextField("Miner name (optional)", text: $name,
+                                  prompt: Text("Desk miner").foregroundStyle(FleetTheme.secondary))
+                            .fleetFont(.body)
+                            .foregroundStyle(FleetTheme.ink)
                             .textContentType(.nickname)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .name)
                             .onSubmit { focusedField = .address }
                             .padding(16)
                             .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
-                            .accessibilityLabel("Miner name")
+                            .id(Field.name)
+                            .accessibilityLabel("Miner name (optional)")
                             .accessibilityIdentifier("addMiner.name")
                         inputLabel(
                             "NETWORK ADDRESS",
@@ -70,18 +79,30 @@ struct AddMinerView: View {
                                 : "Use the Mac hostname or IP and XMRig HTTP port, such as 192.168.1.20:18099."
                         )
                         TextField(
-                            minerKind == .espMiner ? "192.168.1.42 or bitaxe.local" : "127.0.0.1:18099",
-                            text: $address
+                            "Miner IP address or hostname",
+                            text: $address,
+                            prompt: Text(minerKind == .espMiner ? "192.168.1.42 or bitaxe.local" : "127.0.0.1:18099")
+                                .foregroundStyle(FleetTheme.secondary)
                         )
+                            .fleetFont(.body)
+                            .foregroundStyle(FleetTheme.ink)
                             .keyboardType(.URL)
                             .textContentType(.URL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .submitLabel(.done)
                             .focused($focusedField, equals: .address)
+                            #if os(iOS)
+                            .submitLabel(minerKind == .xmrig ? .next : .go)
+                            .onSubmit {
+                                if minerKind == .xmrig { focusedField = .token } else { addMiner() }
+                            }
+                            #else
+                            .submitLabel(.done)
                             .onSubmit(addMiner)
+                            #endif
                             .padding(16)
                             .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                            .id(Field.address)
                             .accessibilityLabel("Miner IP address or hostname")
                             .accessibilityIdentifier("addMiner.address")
                         if minerKind == .xmrig {
@@ -89,13 +110,20 @@ struct AddMinerView: View {
                                 "ACCESS TOKEN (OPTIONAL)",
                                 detail: "Stored in this device's Keychain. Hash Fleet never saves the token in its fleet data."
                             )
-                            SecureField("XMRig bearer token", text: $bearerToken)
+                            SecureField("XMRig bearer token (optional)", text: $bearerToken,
+                                        prompt: Text("XMRig bearer token").foregroundStyle(FleetTheme.secondary))
+                                .fleetFont(.body)
+                                .foregroundStyle(FleetTheme.ink)
                                 .textContentType(.password)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .focused($focusedField, equals: .token)
+                                .submitLabel(.done)
+                                .onSubmit { focusedField = nil }
                                 .padding(16)
                                 .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                                .id(Field.token)
+                                .accessibilityLabel("XMRig bearer token (optional)")
                                 .accessibilityIdentifier("addMiner.xmrigToken")
                             if FleetLayout.isMac {
                                 Button {
@@ -144,7 +172,6 @@ struct AddMinerView: View {
                     .buttonStyle(FleetPrimaryButtonStyle())
                     .accessibilityIdentifier("addMiner.save")
                     .disabled(!localNetwork.isGranted || address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isValidating)
-                    .opacity(address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
                     Text("Adding a miner saves its address. A live response confirms that it is connected.")
                         .fleetFont(.footnote)
                         .foregroundStyle(FleetTheme.secondary)
@@ -155,6 +182,9 @@ struct AddMinerView: View {
                 .frame(maxWidth: FleetLayout.readableWidth)
                 .frame(maxWidth: .infinity)
             }
+            .fleetEditingScroll()
+            .fleetRevealEditingField(focusedField, using: proxy)
+            .accessibilityIdentifier("addMiner.formScroll")
             .background(FleetTheme.canvas)
             .foregroundStyle(FleetTheme.ink)
             .navigationTitle("Add a miner")
@@ -165,7 +195,9 @@ struct AddMinerView: View {
                         .accessibilityIdentifier("addMiner.dismiss")
                 }
             }
+            .fleetEditingDone(focusedField != nil, identifier: "addMiner.keyboardDone") { focusedField = nil }
             .tint(FleetTheme.accent)
+            .onAppear { store.preferences.continueWithCurrentDashboard() }
             .onChange(of: address) { _, _ in validationError = nil }
             .onChange(of: minerKind) { _, _ in
                 validationError = nil
@@ -191,7 +223,6 @@ struct AddMinerView: View {
                 localNetwork.cancel()
             }
         }
-        .presentationBackground(FleetTheme.canvas)
     }
 
     private var discoveryCard: some View {
@@ -200,6 +231,7 @@ struct AddMinerView: View {
                 Label("Find miners on Wi-Fi", systemImage: "wifi")
                     .fleetFont(.headline)
                     .foregroundStyle(FleetTheme.ink)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 8)
             }
             Text(
@@ -227,9 +259,7 @@ struct AddMinerView: View {
                     Label("Scan nearby miners", systemImage: "magnifyingglass")
                         .frame(maxWidth: .infinity, minHeight: 24)
                 }
-                .buttonStyle(.bordered)
-                .tint(FleetTheme.accent)
-                .disabled(!localNetwork.isGranted)
+                .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
                 .accessibilityIdentifier("addMiner.discoveryStart")
             }
 
@@ -277,8 +307,7 @@ struct AddMinerView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 24)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(FleetTheme.accent)
+            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
             .disabled(localNetwork.status == .requesting)
             .accessibilityIdentifier("addMiner.allowLocalNetwork")
             Button {
@@ -286,7 +315,7 @@ struct AddMinerView: View {
                 Label("Scan nearby miners", systemImage: "magnifyingglass")
                     .frame(maxWidth: .infinity, minHeight: 24)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
             .disabled(true)
             .accessibilityIdentifier("addMiner.discoveryStart")
             .accessibilityHint("Available after you respond to the local network prompt.")
@@ -321,6 +350,7 @@ struct AddMinerView: View {
                 .fleetFont(.largeTitle, weight: .bold)
                 .tracking(-1)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             Text("Connect your open-source miner and keep an eye on its work.")
                 .fleetFont(.body)
                 .foregroundStyle(FleetTheme.secondary)

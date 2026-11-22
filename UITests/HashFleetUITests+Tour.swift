@@ -6,6 +6,112 @@ import XCTest
 /// stable: the presented root is `tour.view`, each page exposes `tour.step.<id>`, and navigation
 /// uses the fixed control identifiers below.
 extension HashFleetUITests {
+    #if HASHFLEET_LIVE_REVIEW
+    func testFirstRunWalkthroughShowsCurrentEssentialsAndReturnsToViewChoice() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["--ui-testing", "--ui-test-dashboard-fresh"]
+        app.launch()
+
+        let entry = app.buttons["dashboard.chooseView.walkthrough"]
+        let full = app.buttons["dashboard.chooseView.full"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 8) && entry.isHittable)
+        XCTAssertGreaterThan(entry.frame.minY, full.frame.minY)
+        XCTAssertFalse(tourView(in: app).exists)
+        recordScreenshot("First-run view choice with optional walkthrough", app: app)
+        entry.tap()
+        for (id, tap) in [("overview", false), ("history", false), ("openMiner", true),
+                          ("minerSettings", true), ("pools", false), ("dashboardView", false)] {
+            XCTAssertTrue(app.staticTexts["tour.step.\(id)"].waitForExistence(timeout: 10), "Missing step \(id)")
+            let target = app.descendants(matching: .any)[tap ? "tour.tapTarget" : "tour.highlight"]
+            XCTAssertTrue(target.waitForExistence(timeout: 10), "Missing real target for \(id)")
+            XCTAssertGreaterThan(target.frame.height, 10)
+            if id == "pools" { recordScreenshot("Walkthrough points to Primary and Fallback", app: app) }
+            if tap { target.tap() }
+            else { app.buttons[id == "dashboardView" ? "tour.done" : "tour.next"].tap() }
+        }
+        XCTAssertTrue(tourView(in: app).waitForNonExistence(timeout: 5))
+        XCTAssertTrue(entry.waitForExistence(timeout: 5) && entry.isHittable)
+        entry.tap()
+        XCTAssertTrue(app.staticTexts["tour.step.overview"].waitForExistence(timeout: 8))
+        app.buttons["tour.close"].tap()
+        XCTAssertTrue(full.waitForExistence(timeout: 5))
+        full.tap()
+        XCTAssertTrue(entry.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["dashboard.connectFirstMiner"].exists)
+        XCTAssertTrue(minerIDs(in: app).isEmpty)
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "--ui-test-preserve-storage"]
+        app.launch()
+        XCTAssertTrue(app.buttons["dashboard.addMiner"].waitForExistence(timeout: 8))
+        XCTAssertFalse(entry.exists)
+        XCTAssertFalse(tourView(in: app).exists)
+        openFleetSettings(in: app)
+        let fullSegment = app.buttons["settings.dashboardView.full"]
+        reveal(fullSegment, in: app)
+        XCTAssertTrue(fullSegment.isSelected)
+    }
+
+    func testSkippingWalkthroughLeavesEssentialsAndCanReplayFromAppSettings() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["--ui-testing", "--ui-test-dashboard-fresh", "--ui-test-reduce-motion"]
+        app.launch()
+        let skip = app.buttons["dashboard.chooseView.skip"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 8))
+        skip.tap()
+        XCTAssertTrue(skip.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(tourView(in: app).exists)
+        openFleetSettings(in: app)
+        let essentials = app.buttons["settings.dashboardView.essentials"]
+        reveal(essentials, in: app)
+        XCTAssertTrue(essentials.isSelected)
+        let replay = app.buttons["monitoring.featureTour"]
+        reveal(replay, in: app)
+        XCTAssertTrue(replay.label.contains("Essentials walkthrough"))
+        replay.tap()
+        XCTAssertTrue(app.staticTexts["tour.step.overview"].waitForExistence(timeout: 8))
+        let chooser = app.buttons["tour.chooser"]
+        XCTAssertTrue(chooser.isHittable)
+        chooser.tap()
+        XCTAssertTrue(app.buttons["tour.jump.pools"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["tour.jump.openCoins"].exists)
+        app.buttons["tour.jump.pools"].tap()
+        XCTAssertTrue(app.staticTexts["tour.step.pools"].waitForExistence(timeout: 8))
+        app.buttons["tour.close"].tap()
+        XCTAssertTrue(tourView(in: app).waitForNonExistence(timeout: 5))
+        XCTAssertTrue(replay.waitForExistence(timeout: 5))
+    }
+
+    func testWalkthroughAndSkipAreReachableAtLargestText() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["--ui-testing", "--ui-test-dashboard-fresh", "--ui-test-reduce-motion",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        let entry = app.buttons["dashboard.chooseView.walkthrough"]
+        XCTAssertTrue(app.staticTexts["dashboard.chooseView"].waitForExistence(timeout: 10))
+        for _ in 0..<3 where !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.isHittable)
+        entry.tap()
+        XCTAssertTrue(app.staticTexts["tour.step.overview"].waitForExistence(timeout: 8))
+        let close = app.buttons["tour.close"]
+        XCTAssertTrue(close.isHittable)
+        close.tap()
+        let skip = app.buttons["dashboard.chooseView.skip"]
+        for _ in 0..<3 where !skip.isHittable { app.swipeUp() }
+        XCTAssertTrue(skip.isHittable)
+        skip.tap()
+        XCTAssertTrue(app.buttons["dashboard.addMiner"].waitForExistence(timeout: 6))
+        XCTAssertFalse(tourView(in: app).exists)
+    }
+    #endif
+
     func testGuidedDemoWalksRealScreensWithHighlightedTapsAndKeepsSavedFleet() throws {
         continueAfterFailure = false
         let server = try LoopbackMinerServer()

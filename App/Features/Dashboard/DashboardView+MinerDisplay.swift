@@ -11,10 +11,13 @@ extension DashboardView {
                 }
             }
             Toggle("Ascending", isOn: $preferences.ascending)
-            Toggle("Compact cards", isOn: $preferences.compactCards)
+            Toggle("Compact cards", isOn: usesNumberFirstOverview ? $numberFirstCompactCards : $preferences.compactCards)
         } label: {
-            Image(systemName: "arrow.up.arrow.down")
-                .frame(minWidth: 44, minHeight: 44)
+            Label("Sort", systemImage: "arrow.up.arrow.down")
+                .fleetFont(.footnote, weight: .semibold)
+                .foregroundStyle(FleetTheme.ink)
+                .frame(minWidth: 48, minHeight: 48)
+                .contentShape(Rectangle())
         }
         .fleetDesignedMenu()
         .accessibilityLabel("Sort and display miners")

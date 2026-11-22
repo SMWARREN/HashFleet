@@ -246,6 +246,7 @@ struct FleetSidebarView: View {
 
     @State private var searchText = ""
     @State private var confirmingDeleteAll = false
+    @State private var showsMoreTools = false
     #if os(macOS)
     @State private var showsSidebarSearch = false
     @FocusState private var sidebarSearchFocused: Bool
@@ -260,6 +261,11 @@ struct FleetSidebarView: View {
             device.address.lowercased().contains(query)
         }
     }
+
+    private var isEssentials: Bool { store.preferences.dashboardMode == .essentials }
+
+    private var analyticsDestinations: [FleetSidebarDestination] { [.network, .energy, .achievements, .reports] }
+    private var additionalDestinations: [FleetSidebarDestination] { [.backup, .about, .support] }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -335,38 +341,15 @@ struct FleetSidebarView: View {
                     #endif
                 }
 
-                Section {
-                    sidebarDestinationRow(.network) {
-                        FleetSidebarTileLabel(title: "Network insights", destination: .network)
+                if isEssentials {
+                    Section {
+                        appSettingsRow
+                        moreToolsDisclosure
                     }
-                    sidebarDestinationRow(.energy) {
-                        FleetSidebarTileLabel(title: "Energy & Efficiency", destination: .energy)
-                    }
-                    sidebarDestinationRow(.achievements) {
-                        FleetSidebarTileLabel(title: "Achievements", destination: .achievements)
-                    }
-                    sidebarDestinationRow(.reports) {
-                        FleetSidebarTileLabel(title: "Reports & Export", destination: .reports)
-                    }
-                } header: {
-                    sidebarSectionHeader("Analytics & Insights")
                 }
-
-                Section {
-                    sidebarDestinationRow(.backup) {
-                        FleetSidebarTileLabel(title: "Backup & Restore", destination: .backup)
-                    }
-                    sidebarDestinationRow(.monitoring) {
-                        FleetSidebarTileLabel(title: "App settings", destination: .monitoring)
-                    }
-                    sidebarDestinationRow(.about) {
-                        FleetSidebarTileLabel(title: "About Hash Fleet", destination: .about)
-                    }
-                    sidebarDestinationRow(.support) {
-                        FleetSidebarTileLabel(title: "Support Hash Fleet", destination: .support)
-                    }
-                } header: {
-                    sidebarSectionHeader("Management")
+                if !isEssentials || showsMoreTools {
+                    analyticsSection
+                    managementSection
                 }
             }
             .listStyle(.sidebar)
@@ -405,6 +388,12 @@ struct FleetSidebarView: View {
         .background(FleetTheme.sidebarSurface)
         #endif
         .fleetWindowToolbarChrome()
+        .onChange(of: selection, initial: true) { _, current in
+            revealSidebarDestination(current)
+        }
+        .onChange(of: isEssentials) { _, essentials in
+            if essentials { revealSidebarDestination(selection) }
+        }
         .confirmationDialog(
             "Delete all \(store.devices.count) miners?",
             isPresented: $confirmingDeleteAll,
@@ -419,6 +408,59 @@ struct FleetSidebarView: View {
         } message: {
             Text("This removes every miner and its saved history from Hash Fleet. The miners themselves are not changed.")
         }
+    }
+
+    private func revealSidebarDestination(_ destination: FleetSidebarDestination?) {
+        guard isEssentials, let destination,
+              analyticsDestinations.contains(destination) || additionalDestinations.contains(destination) else { return }
+        showsMoreTools = true
+    }
+
+    private var moreToolsDisclosure: some View {
+        Button {
+            showsMoreTools.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Label("More tools", systemImage: "ellipsis.circle")
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: showsMoreTools ? "chevron.up" : "chevron.down")
+                    .foregroundStyle(FleetTheme.secondary)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(FleetTheme.ink)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(showsMoreTools ? "Expanded" : "Collapsed")
+        .accessibilityIdentifier("sidebar.moreTools")
+    }
+
+    private var analyticsSection: some View {
+        Section {
+            sidebarDestinationRow(.network) { FleetSidebarTileLabel(title: "Network insights", destination: .network) }
+            sidebarDestinationRow(.energy) { FleetSidebarTileLabel(title: "Energy & Efficiency", destination: .energy) }
+            sidebarDestinationRow(.achievements) { FleetSidebarTileLabel(title: "Achievements", destination: .achievements) }
+            sidebarDestinationRow(.reports) { FleetSidebarTileLabel(title: "Reports & Export", destination: .reports) }
+        } header: {
+            sidebarSectionHeader("Analytics & Insights")
+        }
+    }
+
+    private var managementSection: some View {
+        Section {
+            sidebarDestinationRow(.backup) { FleetSidebarTileLabel(title: "Backup & Restore", destination: .backup) }
+            if !isEssentials { appSettingsRow }
+            sidebarDestinationRow(.about) { FleetSidebarTileLabel(title: "About Hash Fleet", destination: .about) }
+            sidebarDestinationRow(.support) { FleetSidebarTileLabel(title: "Support Hash Fleet", destination: .support) }
+        } header: {
+            sidebarSectionHeader("Management")
+        }
+    }
+
+    private var appSettingsRow: some View {
+        sidebarDestinationRow(.monitoring) { FleetSidebarTileLabel(title: "App settings", destination: .monitoring) }
     }
 
     private var minerSectionHeading: some View {
@@ -535,9 +577,14 @@ struct FleetSidebarView: View {
 
     #if os(macOS)
     private func moveSidebarFocus(_ direction: MoveCommandDirection, from destination: FleetSidebarDestination) {
-        let destinations: [FleetSidebarDestination] = [.overview]
-            + filteredDevices.map { .miner($0.id) }
-            + [.network, .energy, .achievements, .reports, .backup, .monitoring, .about]
+        var destinations: [FleetSidebarDestination] = [.overview] + filteredDevices.map { .miner($0.id) }
+        if isEssentials { destinations.append(.monitoring) }
+        if !isEssentials || showsMoreTools {
+            destinations += analyticsDestinations
+            destinations.append(.backup)
+            if !isEssentials { destinations.append(.monitoring) }
+            destinations += [.about, .support]
+        }
         guard let index = destinations.firstIndex(of: destination) else { return }
         let next: Int
         switch direction {

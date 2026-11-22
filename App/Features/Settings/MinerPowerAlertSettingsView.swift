@@ -5,6 +5,8 @@ struct MinerPowerAlertSettingsView: View {
     let device: MinerDevice
     @State private var model: MinerPowerAlertSettingsModel
     @Environment(\.openURL) private var openURL
+    @FocusState private var editingThreshold: Bool
+    private let thresholdAnchor = "powerAlerts.threshold"
 
     init(device: MinerDevice, preferences: FleetPowerAlertPreferences) {
         self.device = device
@@ -17,9 +19,11 @@ struct MinerPowerAlertSettingsView: View {
             behaviorSection
             deliverySection
         }
+        .fleetRevealEditingField(editingThreshold ? thresholdAnchor : nil)
         .tint(FleetTheme.accent)
         .navigationTitle("Power alert")
         .navigationBarTitleDisplayMode(.inline)
+        .fleetEditingDone(editingThreshold, identifier: "powerAlerts.keyboardDone") { editingThreshold = false }
         .accessibilityIdentifier("powerAlerts.minerPage")
     }
 
@@ -34,10 +38,12 @@ struct MinerPowerAlertSettingsView: View {
             FleetSettingsRow {
                 TextField("Alert threshold (W)", text: $model.thresholdText)
                     .keyboardType(.decimalPad)
+                    .focused($editingThreshold)
                     .disabled(model.isSaving)
                     .accessibilityLabel("Alert threshold in watts")
-                    .accessibilityIdentifier("powerAlerts.threshold")
+                    .accessibilityIdentifier(thresholdAnchor)
             }
+            .id(thresholdAnchor)
             if model.proposedPolicy == nil {
                 FleetSettingsRow {
                     Text(MinerPowerAlertPolicy.ValidationError.invalidThreshold.localizedDescription)
@@ -48,6 +54,7 @@ struct MinerPowerAlertSettingsView: View {
             }
             FleetSettingsRow {
                 Button("Save alert settings") {
+                    editingThreshold = false
                     Task { await model.save() }
                 }
                 .disabled(model.isSaving || model.proposedPolicy == nil || !model.hasChanges)

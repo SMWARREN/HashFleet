@@ -9,6 +9,7 @@ import HashFleetCore
 /// unreachable and no safety wording was dropped.
 struct MinerDetailView: View {
     @Environment(\.fleetGuidedDemo) private var guidedDemo
+    @Environment(\.fleetGuidedEssentials) var guidedEssentials
     let device: MinerDevice
     @Bindable var store: FleetStore
     // No @Environment(\.dismiss) here. Its value changes whenever this page's stack pushes or pops a
@@ -39,6 +40,7 @@ struct MinerDetailView: View {
     @State var showsCooling = true
     @State var showsTuning = true
     @State var showsAdvancedTools = false
+    @State var showsSecondaryReadings = false
     @State var showsIdentity = false
     @State var showsPools = false
     @State var isNoticeSilenced = false
@@ -46,8 +48,11 @@ struct MinerDetailView: View {
     @State var showsRenamePrompt = false
     @State var renameDraft = ""
     @State var renameError: String?
+    @State var previewQuickActionResult: MinerDetailQuickAction?
+    @State var liveQuickAction = MinerInlineActionState()
     #if !os(macOS)
     @State var tuningSessionRoute: MinerDevice?
+    @State var compactEndpointRoute: MinerEndpoint?
     #endif
     @AppStorage("detail.responsiveColumnLimit") var macDetailColumns = 0
     /// Measured content width. Drives the adaptive arrangement on iPad and Mac windows.
@@ -58,6 +63,12 @@ struct MinerDetailView: View {
     var info: MinerInfo? { snapshot?.info }
     var currentDevice: MinerDevice { store.devices.first(where: { $0.id == device.id }) ?? device }
     var isXMRig: Bool { currentDevice.kind == .xmrig }
+    var dashboardMode: FleetPreferences.DashboardMode { guidedDemo && !guidedEssentials ? .full : store.preferences.dashboardMode }
+    var usesNumberFirstDetail: Bool {
+        (guidedEssentials || (store.isDemo ? NumberFirstPreview.minerDetail : NumberFirstPreview.usesLivePhoneLayouts))
+            && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
+            && usesCompactHorizontalLayout && !isXMRig
+    }
 
     var miningCoin: MiningPoolCoin? {
         MinerMiningContext.resolve(info: info).pool?.coin
@@ -94,13 +105,26 @@ struct MinerDetailView: View {
     /// Retained implementation is testable independently of the shipping release gate.
     var releasedContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                statusStrip
-                    .fleetStaggeredEntrance(index: 0, reduceMotion: reduceMotion)
-                if FleetLayout.isMac, !dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: usesNumberFirstDetail ? 10 : 14) {
+                if usesNumberFirstDetail && store.isDemo {
+                    numberFirstDemoNotice
+                } else if !usesNumberFirstDetail {
+                    statusStrip
+                        .fleetStaggeredEntrance(index: 0, reduceMotion: reduceMotion)
+                } else {
+                    #if os(iOS)
+                    compactMinerStatus
+                    #endif
+                }
+                #if os(iOS)
+                if usesNumberFirstDetail && dashboardMode == .full {
+                    compactMinerFirmwareUpdates
+                }
+                #endif
+                if dashboardMode == .full, FleetLayout.isMac, !dynamicTypeSize.isAccessibilitySize {
                     detailColumnControl
                 }
-                if !store.isDemo, snapshot?.info != nil || snapshot?.error != nil,
+                if !usesNumberFirstDetail, !store.isDemo, snapshot?.info != nil || snapshot?.error != nil,
                    !MinerWriteAvailability.allows(snapshot) {
                     MinerOfflineSettingsNotice(snapshot: snapshot)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,12 +135,12 @@ struct MinerDetailView: View {
                     MinerDetailSection { poolIconDemoControls }
                         .fleetStaggeredEntrance(index: 1, reduceMotion: reduceMotion)
                 }
-                if let notice = store.firmwareUpdates.notice(for: device.id),
+                if !usesNumberFirstDetail, let notice = store.firmwareUpdates.notice(for: device.id),
                    store.firmwareUpdates.shouldShow(notice, for: device.id) {
                     firmwareUpdateSection(notice)
                         .fleetStaggeredEntrance(index: 2, reduceMotion: reduceMotion)
                 }
-                if let error = snapshot?.error, snapshot?.isReconnecting != true {
+                if !usesNumberFirstDetail, let error = snapshot?.error, snapshot?.isReconnecting != true {
                     Label(error, systemImage: "wifi.exclamationmark")
                         .fleetFont(.footnote).foregroundStyle(FleetTheme.warning)
                         .fixedSize(horizontal: false, vertical: true)
@@ -125,7 +149,7 @@ struct MinerDetailView: View {
                         .accessibilityIdentifier("detail.telemetryError")
                         .fleetStaggeredEntrance(index: 2, reduceMotion: reduceMotion)
                 }
-                if snapshot?.isReconnecting != true, snapshot?.error == nil, liveConnectionError != nil {
+                if !usesNumberFirstDetail, snapshot?.isReconnecting != true, snapshot?.error == nil, liveConnectionError != nil {
                     Label("Live monitoring unavailable · using HTTP refresh", systemImage: "wifi.exclamationmark")
                         .fleetFont(.footnote).foregroundStyle(FleetTheme.warning)
                         .fixedSize(horizontal: false, vertical: true)
@@ -134,7 +158,8 @@ struct MinerDetailView: View {
                         .accessibilityIdentifier("detail.liveError")
                         .fleetStaggeredEntrance(index: 2, reduceMotion: reduceMotion)
                 }
-                if snapshot?.isReconnecting != true, let info, let alerts = MinerReportedAlerts(info: info), !alerts.isEmpty {
+                if usesNumberFirstDetail || snapshot?.isReconnecting != true,
+                   let info, let alerts = MinerReportedAlerts(info: info, includesPause: !usesNumberFirstDetail || store.isDemo) {
                     faultBanner(alerts)
                         .fleetStaggeredEntrance(index: 3, reduceMotion: reduceMotion)
                 }
@@ -178,25 +203,34 @@ struct MinerDetailView: View {
                         }
                         .fleetStaggeredEntrance(index: 3, reduceMotion: reduceMotion)
                     }
-                    if isXMRig {
-                        xmrigControlLink
-                            .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
-                    } else {
-                        quickControls
-                            .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
-                        poolsSection
-                            .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
+                    if usesNumberFirstDetail || dashboardMode == .essentials {
+                        minerHistoryCard
+                    }
+                    if !usesNumberFirstDetail {
+                        if isXMRig {
+                            xmrigControlLink
+                                .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
+                        } else if dashboardMode == .essentials {
+                            controlMinerCard
+                        } else {
+                            quickControls
+                                .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
+                            poolsSection
+                                .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
+                        }
                     }
                 }
-                if !embedsControlsInWideTelemetry {
+                if !usesNumberFirstDetail, !embedsControlsInWideTelemetry {
                     controls
                         .fleetStaggeredEntrance(index: 6, reduceMotion: reduceMotion)
                 }
-                Text(isXMRig
-                    ? "XMRig control is limited to reviewed pause and resume commands. Hash Fleet never stops the process or rewrites its configuration."
-                    : "Every write requires explicit review. Endpoint availability depends on the installed firmware, not this app.")
-                    .fleetFont(.footnote).foregroundStyle(FleetTheme.secondary)
-                    .fleetStaggeredEntrance(index: 7, reduceMotion: reduceMotion)
+                if !usesNumberFirstDetail {
+                    Text(isXMRig
+                        ? "XMRig control is limited to reviewed pause and resume commands. Hash Fleet never stops the process or rewrites its configuration."
+                        : "Every write requires explicit review. Endpoint availability depends on the installed firmware, not this app.")
+                        .fleetFont(.footnote).foregroundStyle(FleetTheme.secondary)
+                        .fleetStaggeredEntrance(index: 7, reduceMotion: reduceMotion)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fleetPageContainer(
@@ -222,14 +256,22 @@ struct MinerDetailView: View {
         .fleetPerformanceScreen("Miner")
         .navigationBarTitleDisplayMode(.inline)
         .tint(FleetTheme.accent)
-        .fleetAppNavigation { base in
-        base.navigationDestination(for: MinerEndpoint.self) { endpoint in
-            MinerEndpointView(device: device, store: store, endpoint: endpoint, insights: insights)
+        .alert("Miner command not confirmed", isPresented: $liveQuickAction.showsError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(liveQuickAction.receipt ?? "Check the miner before trying again.")
         }
+        .fleetAppNavigation { base in
+            base.navigationDestination(for: MinerEndpoint.self) { endpoint in
+                MinerEndpointView(device: device, store: store, endpoint: endpoint, insights: insights)
+            }
         }
         #if !os(macOS)
         .navigationDestination(item: $tuningSessionRoute) { route in
             MinerTuningSessionView(device: route, store: store, insights: insights)
+        }
+        .navigationDestination(item: $compactEndpointRoute) { endpoint in
+            MinerEndpointView(device: device, store: store, endpoint: endpoint, insights: insights)
         }
         #endif
         .refreshable { await store.refresh() }
@@ -273,18 +315,20 @@ struct MinerDetailView: View {
             }
             #endif
             ToolbarItem(placement: FleetToolbarLocation.trailing) {
-                Button("Refresh", systemImage: "arrow.triangle.2.circlepath") { Task { await store.refresh() } }
-                    .fleetToolbarButton()
-                    .accessibilityIdentifier("detail.refresh")
+                #if os(iOS)
+                if usesNumberFirstDetail && !store.isDemo {
+                    compactMinerRefreshButton
+                } else {
+                    standardMinerRefreshButton
+                }
+                #else
+                standardMinerRefreshButton
+                #endif
             }
             .fleetUnadornedToolbarBackground()
             ToolbarItem(placement: FleetToolbarLocation.trailing) {
                 Menu("Manage miner", systemImage: "ellipsis") {
-                    Button("Rename in app", systemImage: "pencil") {
-                        renameDraft = currentDevice.name
-                        renameError = nil
-                        showsRenamePrompt = true
-                    }
+                    Button("Rename in app", systemImage: "pencil", action: promptToRenameMiner)
                     Button("Remove from fleet", systemImage: "trash", role: .destructive) {
                         showsRemoveConfirmation = true
                     }
@@ -297,10 +341,20 @@ struct MinerDetailView: View {
             }
         }
         .environment(\.minerNavigationIdentity, navigationIdentity)
+        .modifier(MinerLocalManagementDialogs(
+            device: currentDevice, store: store, showsRename: $showsRenamePrompt,
+            renameDraft: $renameDraft, renameError: $renameError, showsRemoval: $showsRemoveConfirmation
+        ))
     }
 
     var minerTitle: some View {
         MinerNavigationTitle(pageTitle: nil, identifier: "detail.minerTitle")
+    }
+
+    private var standardMinerRefreshButton: some View {
+        Button("Refresh", systemImage: "arrow.triangle.2.circlepath") { Task { await store.refresh() } }
+            .fleetToolbarButton()
+            .accessibilityIdentifier("detail.refresh")
     }
 
     var detailColumnControl: some View {
@@ -361,7 +415,7 @@ struct MinerDetailView: View {
     }
 
     var embedsControlsInWideTelemetry: Bool {
-        usesWideDetail && info != nil && !isXMRig
+        (dashboardMode == .essentials || usesWideDetail) && info != nil && !isXMRig
     }
 
     /// Supplies actual sample time and snapshot provenance so retained/error states never append history.
@@ -381,12 +435,16 @@ struct MinerDetailView: View {
     /// Builds the detail telemetry sections from the same current MinerInfo sample.
     @ViewBuilder
     func telemetrySections(_ info: MinerInfo) -> some View {
-        if isXMRig {
+        if usesNumberFirstDetail {
+            numberFirstTelemetry(info)
+        } else if isXMRig {
             hashrateHero(info)
             minerHistoryCard
             bestShares(info)
             xmrigControlLink
             identity(info)
+        } else if dashboardMode == .essentials {
+            essentialsTelemetrySections(info)
         } else {
         let diagnostics = MinerDiagnosticsModel(info: info)
         if FleetLayout.isMac && usesWideDetail {
@@ -428,6 +486,35 @@ struct MinerDetailView: View {
             poolsSection
             MinerDiagnosticsView(model: diagnostics)
         }
+        }
+    }
+
+    func essentialsTelemetrySections(_ info: MinerInfo) -> some View {
+        // Never put the history behind a disclosure or in a secondary column.
+        VStack(alignment: .leading, spacing: 14) {
+            hashrateHero(info)
+            heroConditions(info)
+            minerHistoryCard
+            AnyView(controlMinerCard)
+            AnyView(essentialsAPITools)
+            DisclosureGroup(isExpanded: $showsSecondaryReadings) {
+                VStack(alignment: .leading, spacing: 14) {
+                    firmwareTelemetryView(info)
+                    if !isXMRig { uptimeHeatmap }
+                    bestShares(info)
+                    identity(info)
+                    metrics(info, diagnostics: MinerDiagnosticsModel(info: info))
+                    poolsSection
+                }
+                .padding(.top, 8)
+            } label: {
+                Text("More miner readings")
+                    .fleetFont(.headline)
+                    .foregroundStyle(FleetTheme.ink)
+                    .frame(minHeight: 44)
+            }
+            .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+            fleetManagementControls.buttonStyle(.plain)
         }
     }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MonitoringSettingsView: View {
+    @Environment(\.fleetGuidedEssentials) private var guidedEssentials
     let store: FleetStore
     @Bindable var coordinator: FleetGlanceCoordinator
     /// Only the split workspace root owns a bound path. A Settings page pushed
@@ -11,6 +12,10 @@ struct MonitoringSettingsView: View {
     var showPoolIconDemo: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.fleetStandalonePage) private var standalonePage
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @State private var showingFeatureTour = false
     @State var notificationsExpanded = false
 
@@ -30,6 +35,22 @@ struct MonitoringSettingsView: View {
                 hidesListRowSeparators: true
             ) {
                 settingsHero
+            }
+            FleetSettingsSection {
+                FleetSettingsRow(showsSeparator: false) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Dashboard view")
+                            .fleetFont(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        dashboardViewSelector
+                            .fleetTourTarget("guide.dashboardView")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text("Essentials keeps the dashboard focused on readings and quick controls. Full View adds comparisons, diagnostics, and API tools.")
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             FleetSettingsSection {
                 Button {
@@ -244,10 +265,65 @@ struct MonitoringSettingsView: View {
                 FleetTourView(dontShowAgain: Binding(
                     get: { store.preferences.suppressFeatureTour },
                     set: { store.preferences.suppressFeatureTour = $0 }
-                ), onPreviewCelebration: onPreviewCelebration)
+                ), onPreviewCelebration: onPreviewCelebration, showsEssentialsWalkthrough: offersEssentialsWalkthrough)
             }
             .fleetPageSheet()
         })
+    }
+
+    @ViewBuilder private var dashboardViewSelector: some View {
+        #if os(iOS)
+        if NumberFirstPreview.usesLivePhoneLayouts && horizontalSizeClass == .compact && (!store.isDemo || guidedEssentials) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            layout {
+                ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                    let selected = mode == store.preferences.dashboardMode
+                    Button {
+                        if !selected { store.preferences.dashboardMode = mode }
+                    } label: {
+                        Text(mode.title)
+                            .fleetFont(.subheadline, weight: .semibold)
+                            .foregroundStyle(selected ? FleetTheme.ink : FleetTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background {
+                                if selected { RoundedRectangle(cornerRadius: 9).fill(FleetTheme.ink.opacity(0.14)).padding(3) }
+                            }
+                            .contentShape(Rectangle())
+                    }
+                    // In a List each segment must own its touch target, not the whole row.
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .accessibilityIdentifier("settings.dashboardView.\(mode.rawValue)")
+                }
+            }
+            .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 12))
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Dashboard view")
+            .accessibilityIdentifier("settings.dashboardView")
+        } else {
+            nativeDashboardViewPicker
+        }
+        #else
+        nativeDashboardViewPicker
+        #endif
+    }
+
+    private var nativeDashboardViewPicker: some View {
+        Picker("Dashboard view", selection: Binding(
+            get: { store.preferences.dashboardMode },
+            set: { store.preferences.dashboardMode = $0 }
+        )) {
+            ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .accessibilityIdentifier("settings.dashboardView")
     }
 
     @ViewBuilder
@@ -267,11 +343,22 @@ struct MonitoringSettingsView: View {
 
     private var featureTourLabel: some View {
         MonitoringDestinationLabel(
-            title: "Feature tour",
-            subtitle: "A guided walkthrough. Skip or replay anytime.",
+            title: offersEssentialsWalkthrough ? "Essentials walkthrough" : "Feature tour",
+            subtitle: offersEssentialsWalkthrough
+                ? "Practice with sample miners. Skip or replay anytime."
+                : "A guided walkthrough. Skip or replay anytime.",
             symbol: "sparkles",
             tint: .indigo
         )
+    }
+
+    private var offersEssentialsWalkthrough: Bool {
+        #if os(iOS)
+        NumberFirstPreview.usesLivePhoneLayouts && horizontalSizeClass == .compact
+            && !store.isDemo && store.preferences.dashboardMode == .essentials
+        #else
+        false
+        #endif
     }
 
     /// A value push above a view-backed Settings presentation can replace that

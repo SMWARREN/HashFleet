@@ -62,10 +62,13 @@ struct AddMinerScanRadar: View {
     }
 
     private var accessibilitySummary: String {
-        candidatesCount == 0
-            ? "Scanning nearby network"
-            : "\(candidatesCount) \(candidatesCount == 1 ? "miner" : "miners") found so far, still scanning"
+        let phase = checkingLateReplies ? "Checking for late replies" : "Scanning nearby network"
+        return candidatesCount == 0
+            ? phase
+            : "\(phase), \(candidatesCount) \(candidatesCount == 1 ? "miner" : "miners") found so far"
     }
+
+    private var checkingLateReplies: Bool { isScanning && hostCount > 0 && probedHosts >= hostCount }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -74,7 +77,8 @@ struct AddMinerScanRadar: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(AddMinerScanRadarModel.progressText(probedHosts: probedHosts, hostCount: hostCount))
+                Text(checkingLateReplies ? "Checking for late replies…"
+                     : AddMinerScanRadarModel.progressText(probedHosts: probedHosts, hostCount: hostCount))
                     .fleetFont(.subheadline, weight: .semibold)
                     .foregroundStyle(FleetTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -84,8 +88,10 @@ struct AddMinerScanRadar: View {
                         .frame(width: 6, height: 6)
                     Text(AddMinerScanRadarModel.foundCountText(candidatesCount: candidatesCount))
                         .foregroundStyle(candidatesCount > 0 ? FleetTheme.positive : FleetTheme.secondary)
-                    Text("· " + AddMinerScanRadarModel.percentText(fraction: progress))
-                        .foregroundStyle(FleetTheme.secondary)
+                    if !checkingLateReplies {
+                        Text("· " + AddMinerScanRadarModel.percentText(fraction: progress))
+                            .foregroundStyle(FleetTheme.secondary)
+                    }
                 }
                 .fleetFont(.caption, design: .monospaced)
             }

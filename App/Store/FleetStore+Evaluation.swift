@@ -37,7 +37,8 @@ extension FleetStore {
             appendHistorySample(info, to: &snapshot, at: date)
             snapshots[deviceID] = snapshot
             if !isDemo, preferences.telemetryStorageEnabled {
-                recordTelemetryToDatabase(info: info, deviceID: deviceID, date: date)
+                recordTelemetryToDatabase(info: info, deviceID: deviceID, date: date,
+                                          hasFreshTemperature: hasFreshTemperature, hasFreshPower: hasFreshPower)
             }
             return false
         }
@@ -59,7 +60,8 @@ extension FleetStore {
 
         // Record telemetry to database if enabled
         if !isDemo, preferences.telemetryStorageEnabled {
-            recordTelemetryToDatabase(info: info, deviceID: deviceID, date: date)
+            recordTelemetryToDatabase(info: info, deviceID: deviceID, date: date,
+                                      hasFreshTemperature: hasFreshTemperature, hasFreshPower: hasFreshPower)
         }
 
         guard let device = devices.first(where: { $0.id == deviceID }) else { return false }
@@ -314,17 +316,20 @@ extension FleetStore {
         snapshot.history = Array(snapshot.history.suffix(360))
     }
 
-    private func recordTelemetryToDatabase(info: MinerInfo, deviceID: UUID, date: Date) {
+    private func recordTelemetryToDatabase(info: MinerInfo, deviceID: UUID, date: Date,
+                                           hasFreshTemperature: Bool, hasFreshPower: Bool) {
         MinerTelemetryDatabase.shared.recordReading(
             minerId: deviceID.uuidString,
             timestamp: date,
-            reading: Self.telemetryReading(info: info)
+            reading: Self.telemetryReading(info: info, hasFreshTemperature: hasFreshTemperature,
+                                          hasFreshPower: hasFreshPower)
         )
     }
 
     /// The app recorder consumes the same canonical ESP-Miner keys as the status views and
     /// translated XMRig summary. Missing, invalid and negative sentinel readings stay SQL NULL.
-    static func telemetryReading(info: MinerInfo) -> MinerReadingInput {
+    static func telemetryReading(info: MinerInfo, hasFreshTemperature: Bool = true,
+                                 hasFreshPower: Bool = true) -> MinerReadingInput {
         func integer(_ keys: String...) -> Int? {
             for key in keys {
                 guard let raw = info.raw[key] else { continue }
@@ -345,8 +350,8 @@ extension FleetStore {
         }
         return MinerReadingInput(
             hashrate: FleetMetricTotal.reading(info, keys: FleetTotals.hashrateKeys),
-            power: FleetMetricTotal.reading(info, keys: ["power"]),
-            temp: FleetMetricTotal.reading(info, keys: ["temp"]),
+            power: hasFreshPower ? FleetMetricTotal.reading(info, keys: ["power"]) : nil,
+            temp: hasFreshTemperature ? FleetMetricTotal.reading(info, keys: ["temp"]) : nil,
             vrTemp: FleetMetricTotal.reading(info, keys: ["vrTemp"]),
             fanSpeed: fan.flatMap { $0 <= 100 ? $0 : nil },
             fanRPM: integer("fanrpm", "fanRpm"),

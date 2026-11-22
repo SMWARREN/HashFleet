@@ -59,7 +59,7 @@ extension MinerSettingsView {
     }
 
     var tuningPage: some View {
-        MinerTuningSessionView(device: device, store: store, insights: insights)
+        MinerTuningPreviewRoute(device: device, store: store, insights: insights)
     }
 
     var advancedPage: some View {

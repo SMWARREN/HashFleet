@@ -7,6 +7,7 @@ struct FleetEnergyView: View {
     @State private var currency: String
     @State private var feedback: String?
     @FocusState private var editingRate: Bool
+    private let rateAnchor = "energy.rateField"
 
     init(store: FleetStore) {
         self.store = store
@@ -43,8 +44,9 @@ struct FleetEnergyView: View {
                             .keyboardType(.decimalPad)
                             .focused($editingRate)
                             .accessibilityLabel("Electricity price per kilowatt-hour")
-                            .accessibilityIdentifier("energy.rateField")
+                            .accessibilityIdentifier(rateAnchor)
                     }
+                    .id(rateAnchor)
                     FleetSettingsRow {
                         FleetSettingsPicker("Currency", valueTitle: currency,
                             selection: $currency, valueColor: FleetTheme.accent) {
@@ -134,12 +136,14 @@ struct FleetEnergyView: View {
                 .fleetSettingsSectionIdentifier("energy.estimateSection")
                 FleetEnergyHistorySection(store: store, rate: settings.rate, currency: settings.currency)
             }
+            .fleetRevealEditingField(editingRate ? rateAnchor : nil)
             .scrollContentBackground(.hidden)
             .background(FleetTheme.canvas)
         }
         .tint(FleetTheme.accent)
         .fleetAppNavigation { $0.navigationTitle("Electricity estimates") }
         .navigationBarTitleDisplayMode(.inline)
+        .fleetEditingDone(editingRate, identifier: "energy.keyboardDone") { editingRate = false }
         .accessibilityIdentifier("energy.view")
     }
 

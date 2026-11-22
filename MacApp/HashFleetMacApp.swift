@@ -59,6 +59,8 @@ struct HashFleetApp: App {
                 notificationLayer
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .fleetDashboardWelcome(store: store, canPresent: celebration == nil
+                && fleetPath.isEmpty && (sidebarSelection == .overview || sidebarSelection == nil))
             .preferredColorScheme(store.preferences.appearance.colorScheme)
             .environment(\.fleetPresentationResetID, presentationResetID)
             .background(FleetMacWindowAccessor { window, openWindow in

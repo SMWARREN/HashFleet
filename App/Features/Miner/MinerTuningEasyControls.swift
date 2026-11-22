@@ -11,7 +11,7 @@ struct MinerTuningEasyControls: View {
     let accessibilityPrefix: String
     let valueIdentifier: String
     var resetGeneration = 0
-    var onFocusChanged: (Bool) -> Void = { _ in }
+    var sessionFocus: FocusState<MinerTuningEasyField?>.Binding?
     var onValidityChanged: (Bool) -> Void = { _ in }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -19,7 +19,10 @@ struct MinerTuningEasyControls: View {
     @ScaledMetric(relativeTo: .subheadline) private var iconWidth = 22
     @ScaledMetric(relativeTo: .caption) private var unitColumnWidth = 30
     @State private var input = MinerTuningEasyInputState()
-    @FocusState private var isFocused: Bool
+    @FocusState private var standaloneFocus: MinerTuningEasyField?
+
+    private var focus: FocusState<MinerTuningEasyField?>.Binding { sessionFocus ?? $standaloneFocus }
+    private var isFocused: Bool { focus.wrappedValue == field }
 
     private var warningColor: Color { isRestricted || isBeyondReference ? .red : FleetTheme.accent }
 
@@ -68,20 +71,7 @@ struct MinerTuningEasyControls: View {
         }
         .onChange(of: isFocused) { _, focused in
             if !focused { commitInput() }
-            onFocusChanged(focused)
         }
-        .onDisappear { onFocusChanged(false) }
-        #if !os(macOS)
-        .toolbar {
-            if isFocused {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { isFocused = false }
-                        .accessibilityIdentifier("\(accessibilityPrefix).keyboardDone")
-                }
-            }
-        }
-        #endif
     }
 
     private var fieldLabel: some View {
@@ -102,10 +92,17 @@ struct MinerTuningEasyControls: View {
             : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
         return layout {
             fieldLabel
+                .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
+                .layoutPriority(1)
             if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
             HStack(spacing: 6) {
                 inputField
-                    .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : inputWidth)
+                    .frame(
+                        minWidth: dynamicTypeSize.isAccessibilitySize ? nil : 58,
+                        idealWidth: dynamicTypeSize.isAccessibilitySize ? nil : inputWidth,
+                        maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : inputWidth
+                    )
+                    .id(field)
                 Text(field.unit)
                     .fleetFont(.caption)
                     .foregroundStyle(FleetTheme.secondary)
@@ -133,11 +130,11 @@ struct MinerTuningEasyControls: View {
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .monospacedDigit()
-        .focused($isFocused)
+        .focused(focus, equals: field)
         #if !os(macOS)
         .keyboardType(field == .frequency ? .decimalPad : .numberPad)
         #endif
-        .onSubmit { isFocused = false }
+        .onSubmit { if isFocused { focus.wrappedValue = nil } }
         .accessibilityLabel("\(title) in \(field.unit)")
         .accessibilityHint("Stages the draft when you finish editing. Nothing is sent until you review and confirm Apply.")
         .accessibilityIdentifier("\(accessibilityPrefix).customInput")
@@ -145,7 +142,7 @@ struct MinerTuningEasyControls: View {
 
     private func resetInput() {
         input.reset(value: isEnabled ? setpoint : nil)
-        isFocused = false
+        if isFocused { focus.wrappedValue = nil }
         onValidityChanged(true)
     }
 

@@ -18,6 +18,15 @@ import GRDB
 /// Non-finite values use the pure aggregate type because JSON cannot represent NaN or infinity.
 @Suite(.serialized) @MainActor
 struct FleetTelemetryCompletenessTests {
+    @Test func mergedFrameDoesNotRecordRetainedSensorsAsNewValues() {
+        let merged = MinerInfo(raw: ["power": .integer(22), "temp": .integer(53), "hashRate": .integer(1000)])
+        let temperatureOnly = FleetStore.telemetryReading(info: merged, hasFreshPower: false)
+        let powerOnly = FleetStore.telemetryReading(info: merged, hasFreshTemperature: false)
+        #expect(temperatureOnly.temp == 53 && temperatureOnly.power == nil)
+        #expect(powerOnly.power == 22 && powerOnly.temp == nil)
+        #expect(temperatureOnly.hashrate == 1000 && powerOnly.hashrate == 1000)
+    }
+
     @Test func recorderUsesCanonicalFieldsAndPreservesRealZero() async throws {
         let info = MinerInfo(raw: [
             "hashRate": .integer(0), "power": .integer(0), "temp": .integer(-1),

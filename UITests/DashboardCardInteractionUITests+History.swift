@@ -31,7 +31,7 @@ extension DashboardCardInteractionUITests {
 
     func testHistoryWindowPagerSupportsDailyWeeklyMonthlyYearlyWindows() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--demo"]
+        app.launchArguments = ["--ui-testing", "--demo", "--ui-test-offline-demo"]
         app.launch()
         defer { app.terminate() }
 
@@ -49,7 +49,8 @@ extension DashboardCardInteractionUITests {
         XCTAssertEqual(display.value as? String, "Individual miners")
 
         let daily = app.staticTexts["1-minute average per-miner reading"]
-        reveal(daily, in: app)
+        // The caption is readable in the viewport but not an interactive element.
+        reveal(daily, in: app, requireHittable: false)
         expectText(containing: "1m · TH/s", in: app)
         expectText(containing: "1-minute average", in: app)
 

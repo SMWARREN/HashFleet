@@ -177,10 +177,8 @@ extension HashFleetApp {
                 Button(action: resumeCelebrations) {
                     Label("Review records (\(celebrations.unacknowledgedCount) waiting)", systemImage: "trophy")
                         .fleetFont(.subheadline, weight: .semibold)
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
                 .accessibilityIdentifier("celebration.queue.resume")
                 .accessibilityValue("\(celebrations.unacknowledgedCount)")
                 .accessibilityHint("Resumes the oldest unacknowledged record first.")
@@ -263,6 +261,12 @@ extension HashFleetApp {
             await waitForUITestNotificationDelay()
             let kind: FleetCelebration.Kind = flag.hasSuffix("block") ? .blockFound
                 : flag.hasSuffix("session") ? .bestShareSession : .bestShareAllTime
+            #if DEBUG
+            if isTesting && arguments.contains("--ui-test-queue-celebration") {
+                celebrations.submit(.present(makePreviewCelebration(kind), sessionEnabled: true))
+                return
+            }
+            #endif
             presentPreviewCelebration(kind)
         }
     }
@@ -294,13 +298,20 @@ extension HashFleetApp {
     }
 
     func presentPreviewCelebration(_ kind: FleetCelebration.Kind) {
+        let preview = makePreviewCelebration(kind)
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) {
+            previewCelebration = preview
+        }
+    }
+
+    private func makePreviewCelebration(_ kind: FleetCelebration.Kind) -> FleetCelebration {
         let device = store.visibleDevices.first
         let isBlock = kind == .blockFound
         let name = device?.name ?? "Your miner"
         let bestKey = kind == .bestShareSession ? "bestSessionDiff" : "bestDiff"
         let bestValue = device.flatMap { store.snapshots[$0.id]?.info?.raw[bestKey]?.stringValue }
             ?? (kind == .bestShareSession ? "9.20M" : "392.00M")
-        let preview = FleetCelebration(
+        var preview = FleetCelebration(
             kind: kind,
             deviceID: device?.id ?? UUID(),
             minerName: name,
@@ -309,11 +320,8 @@ extension HashFleetApp {
                 : kind == .bestShareSession ? "Preview: a new session best, not a solved block"
                 : "Preview: this is what a new high score looks like"
         )
-        var mutablePreview = preview
-        mutablePreview.viewMinerAvailable = device != nil
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) {
-            previewCelebration = mutablePreview
-        }
+        preview.viewMinerAvailable = device != nil
+        return preview
     }
 
     @ViewBuilder var mainTabs: some View {

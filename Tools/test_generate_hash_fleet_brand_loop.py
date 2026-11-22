@@ -13,6 +13,20 @@ else:
 
 
 class GenerateHashFleetBrandLoopTests(unittest.TestCase):
+    def assert_feet_visible(self, frame, boxes, minimum_pixels):
+        for foot_name, box in zip(("left", "right"), boxes):
+            rgba = frame.crop(box).tobytes()
+            visible_pixels = sum(
+                1
+                for red, green, blue, alpha in zip(rgba[::4], rgba[1::4], rgba[2::4], rgba[3::4])
+                if alpha > 128 and max(red, green, blue) < 100
+            )
+            self.assertGreaterEqual(
+                visible_pixels,
+                minimum_pixels,
+                f"{foot_name} foot missing or too faint in box {box}",
+            )
+
     @staticmethod
     def synthetic_source():
         image = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
@@ -42,6 +56,22 @@ class GenerateHashFleetBrandLoopTests(unittest.TestCase):
                 frame = webp.convert("RGBA").copy()
                 frames.append(frame)
                 alpha_bounds.append(frame.getchannel("A").getbbox())
+                self.assert_feet_visible(
+                    frame,
+                    ((164, 520, 219, 553), (437, 520, 488, 553)),
+                    minimum_pixels=100,
+                )
+
+        poster = (
+            Path(__file__).resolve().parents[1]
+            / "App/Resources/Assets.xcassets/HashFleetBrand.imageset/HashFleetBrandOnDark.png"
+        )
+        with Image.open(poster) as image:
+            self.assert_feet_visible(
+                image.convert("RGBA"),
+                ((96, 310, 130, 330), (258, 310, 294, 330)),
+                minimum_pixels=40,
+            )
 
         self.assertEqual(len(set(alpha_bounds)), 1)
 

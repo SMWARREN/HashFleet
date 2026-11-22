@@ -5,19 +5,30 @@ import HashFleetCore
 extension DashboardView {
     internal var demoNotice: some View {
         let layout =
-            dynamicTypeSize.isAccessibilitySize
+            overviewTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: usesNumberFirstOverview ? 8 : 12))
         return layout {
-            Label(
-                store.isPoolIconDemo ? "Pool icon demo · mock data" : "Demo · simulated readings",
-                systemImage: "sparkles"
-            )
-            .fleetFont(.caption, weight: .semibold)
+            VStack(alignment: .leading, spacing: 3) {
+                Label(
+                    store.isPoolIconDemo ? "Pool icon demo · mock data" : "Demo · simulated readings",
+                    systemImage: "sparkles"
+                )
+                .fleetFont(usesNumberFirstOverview ? .caption : .footnote, weight: .semibold)
+                if !usesNumberFirstOverview {
+                    Text("No changes are sent to your hardware.")
+                        .fleetFont(.footnote)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("dashboard.bitsy")
             Button("Exit demo", action: store.clearDemo)
-                .fleetFont(.caption, weight: .semibold)
-                .frame(minHeight: 44)
+                .fleetFont(usesNumberFirstOverview ? .caption : .footnote, weight: .semibold)
+                .foregroundStyle(usesNumberFirstOverview ? FleetTheme.secondary : FleetTheme.accent)
+                .frame(minWidth: 48, minHeight: usesNumberFirstOverview ? 44 : 48)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("dashboard.exitDemo")
         }
         .foregroundStyle(FleetTheme.accent)

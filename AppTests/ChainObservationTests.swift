@@ -231,6 +231,67 @@ struct ChainObservationTests {
         #expect(ChainObservation.nextHeight(-1) == nil)
     }
 
+    @Test func baseRewardUsesTheCandidateHeightAndUnitsOfEachChain() {
+        #expect(reward(.btc, height: 839_998) == 6.25)
+        #expect(reward(.btc, height: 839_999) == 3.125)
+        #expect(reward(.bch, height: 839_999) == 3.125)
+        #expect(reward(.xec, height: 839_999) == 3_125_000)
+        #expect(reward(.btc, height: 6_929_999) == 0)
+
+        for fork: MiningPoolCoin in [.bc2, .bch2] {
+            #expect(reward(fork, height: 59_000, poolHeight: true) == 50)
+            #expect(reward(fork, height: 209_999, poolHeight: true) == nil)
+            #expect(reward(fork, height: 210_000, poolHeight: true) == 25)
+        }
+    }
+
+    @Test func digibyteRewardAppliesIntegerDecayWithoutGuessingEarlyRewards() {
+        #expect(reward(.dgb, height: 1_429_998) == nil)
+        #expect(reward(.dgb, height: 1_429_999) == 1_078.5)
+        #expect(reward(.dgb, height: 1_605_198) == 1_078.5)
+        #expect(reward(.dgb, height: 1_605_199) == 1_066.46394)
+        #expect(reward(.dgb, height: 21_500_000) == 300.04549168)
+        #expect(reward(.dgb, height: Int.max - 1) == 0)
+    }
+
+    @Test func blockRewardFailsClosedOnStaleMissingOrInvalidHeight() {
+        #expect(reward(.btc, height: nil) == nil)
+        #expect(reward(.btc, height: -1) == nil)
+        #expect(reward(.btc, height: Int.max) == nil)
+        #expect(reward(.btc, height: 960_000, sourceAge: 300) == 3.125)
+        #expect(reward(.btc, height: 960_000, sourceAge: 301) == nil)
+        #expect(reward(.btc, height: 960_000, sourceAge: -61) == nil)
+        #expect(reward(.btc, height: 960_000, error: .http(statusCode: 503)) == nil)
+    }
+
+    @Test func blockValueUsesCoinUnitsAndTheWholeSubsidy() {
+        #expect(ChainObservation.blockValueUSD(reward: 3.125, priceUSD: 80_000, priceFresh: true) == 250_000)
+        #expect(ChainObservation.blockValueUSD(reward: 3_125_000, priceUSD: 0.000_027, priceFresh: true) == 84.375)
+        #expect(ChainObservation.blockValueUSD(reward: 0, priceUSD: 80_000, priceFresh: true) == 0)
+    }
+
+    @Test func blockValueRequiresValidSubsidyAndFreshPositiveSameCoinQuote() {
+        #expect(ChainObservation.blockValueUSD(reward: 3.125, priceUSD: 80_000, priceFresh: false) == nil)
+        for invalidQuote: Double? in [nil, 0, -1, .nan, .infinity] {
+            #expect(ChainObservation.blockValueUSD(reward: 3.125, priceUSD: invalidQuote, priceFresh: true) == nil)
+        }
+        for invalidReward: Double? in [nil, -1, .nan, .infinity] {
+            #expect(ChainObservation.blockValueUSD(reward: invalidReward, priceUSD: 80_000, priceFresh: true) == nil)
+        }
+        #expect(ChainObservation.blockValueUSD(reward: 3.125, priceUSD: .greatestFiniteMagnitude, priceFresh: true) == nil)
+        #expect(ChainObservation.blockValueUSD(reward: Double.leastNonzeroMagnitude, priceUSD: 0.001, priceFresh: true) == nil)
+    }
+
+    private func reward(_ coin: MiningPoolCoin, height: Int?, poolHeight: Bool = false,
+                        sourceAge: TimeInterval = 0, error: MiningInsightsError? = nil) -> Double? {
+        let now = Date()
+        let result = MiningDataResult(value: height, error: error, fetchedAt: now,
+                                      sourceURL: URL(string: "https://example.invalid/height")!,
+                                      sourceTimestamp: now.addingTimeInterval(-sourceAge))
+        return ChainObservation.blockReward(for: coin, observation: result, now: now,
+                                            poolHeight: poolHeight, height: { $0 })
+    }
+
     @Test func nonHTTPErrorsReportGenericNetworkUnavailable() {
         let now = Date()
         let source = URL(string: "https://example.invalid/stats")!

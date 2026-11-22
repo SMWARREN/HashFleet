@@ -30,6 +30,15 @@ enum HistoryWindow: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var rangeTitle: String {
+        switch self {
+        case .daily: "Last 24 hours"
+        case .weekly: "Last 7 days"
+        case .monthly: "Last 30 days"
+        case .yearly: "Last 365 days"
+        }
+    }
+
     var summaryLabel: String {
         switch self {
         case .daily: "Daily average"
@@ -58,13 +67,11 @@ enum HistoryWindow: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var axisFormat: Date.FormatStyle {
+    func axisFormat(recentRange: FleetRecentRange) -> Date.FormatStyle {
         switch self {
-        case .daily, .weekly:
-            return .dateTime.hour().minute()
-        case .monthly:
-            return .dateTime.month().day().hour().minute()
-        case .yearly:
+        case .daily:
+            return recentRange == .oneMinute ? .dateTime.hour().minute().second() : .dateTime.hour().minute()
+        case .weekly, .monthly, .yearly:
             return .dateTime.month().day()
         }
     }
@@ -115,6 +122,11 @@ enum FleetChartPalette {
 
     static func color(for index: Int) -> Color {
         colors[index % colors.count]
+    }
+
+    static func comparisonDash(for index: Int) -> [CGFloat] {
+        let patterns: [[CGFloat]] = [[], [7, 4], [2, 4], [9, 3, 2, 3], [13, 4], [4, 2, 1, 2]]
+        return patterns[index % patterns.count]
     }
 }
 
@@ -322,6 +334,7 @@ struct FleetChartLegendItem: Identifiable, Sendable {
     let name: String
     let color: Color
     let seriesValue: FleetChartSelection.SeriesValue?
+    var dash: [CGFloat] = []
 
     var formattedRate: String {
         seriesValue?.formattedRate ?? ""
@@ -344,6 +357,7 @@ struct FleetAXChartDescriptorProvider: AXChartDescriptorRepresentable {
     let series: [MinerHistorySeries]
     let windowHeading: String
     let isDemo: Bool
+    var trendSummary: String? = nil
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let allPoints = series.flatMap(\.points).filter { $0.value.isFinite && $0.value >= 0 }
@@ -407,8 +421,9 @@ struct FleetAXChartDescriptorProvider: AXChartDescriptorRepresentable {
     }
 
     private var chartSummary: String {
-        isDemo
+        let scope = isDemo
             ? "Simulated hashrate history for \(series.count) miner(s) over \(windowHeading)."
             : "Recorded hashrate history for \(series.count) miner(s) over \(windowHeading)."
+        return trendSummary.map { scope + " " + $0 } ?? scope
     }
 }

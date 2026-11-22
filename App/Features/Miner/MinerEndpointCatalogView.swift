@@ -257,7 +257,21 @@ struct PendingMinerWrite: Identifiable {
     let body: Data?
     let query: [URLQueryItem]
     let filename: String?
+    var opensExactRequest = true
     var highRisk: Bool { MinerRequestSafety.isHighRisk(endpoint, data: body) }
+    var hasRequestParameters: Bool { body != nil || !query.isEmpty || filename != nil }
+}
+
+extension MinerEndpoint {
+    var plainCommandEffect: String? {
+        switch self {
+        case .pause: "This stops mining on this device until you resume."
+        case .resume: "This asks the miner to start hashing again."
+        case .identify: "This asks the miner to signal so you can find the physical device."
+        case .restart: "This restarts the device. Mining and monitoring will be interrupted while it comes back online."
+        default: nil
+        }
+    }
 }
 
 struct MinerWriteConfirmation: View {
@@ -271,10 +285,45 @@ struct MinerWriteConfirmation: View {
     @FocusState private var tokenFocused: Bool
     @State private var confirmation = ""
     @State private var understood = false
-    @State private var submitted = false
+    @State private var showsExactRequest = false
+    @State private var hasShownExactRequest = false
+
+    private var mustOpenExactRequest: Bool {
+        request.hasRequestParameters && !request.opensExactRequest && !hasShownExactRequest
+    }
 
     private var canConfirm: Bool {
-        !submitted && !isDemo && !isOffline && understood && confirmation == "APPLY"
+        !isDemo && !isOffline && !mustOpenExactRequest && understood && confirmation == "APPLY"
+    }
+
+    private var effectDescription: String {
+        if request.highRisk {
+            return "Voltage, cooling, clock, boot and firmware changes can stop mining, "
+                + "overheat hardware or leave the device unbootable. Verify the exact board "
+                + "and firmware image. Keep power and Wi-Fi stable. The app cannot verify "
+                + "electrical safety or image compatibility."
+        }
+        return request.endpoint.plainCommandEffect ??
+            "This may interrupt mining, change persisted configuration or affect connectivity. "
+            + "The app cannot automatically undo this operation."
+    }
+
+    private var exactRequest: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(request.endpoint.method) \(request.endpoint.path)")
+                .textSelection(.enabled)
+                .accessibilityIdentifier("confirmation.methodAndPath")
+            ForEach(Array(request.query.enumerated()), id: \.offset) { _, item in
+                Text("Query: \(item.name) = \(item.value ?? "")").textSelection(.enabled)
+            }
+            if let filename = request.filename { Text("File: \(filename)").textSelection(.enabled) }
+            Text(MinerRequestSafety.reviewedBody(request.body)).textSelection(.enabled)
+                .accessibilityIdentifier("confirmation.body")
+        }
+        .fleetFont(.caption, design: .monospaced)
+        .foregroundStyle(FleetTheme.ink)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     var body: some View {
@@ -282,68 +331,90 @@ struct MinerWriteConfirmation: View {
             ScrollViewReader { proxy in
                 FleetSettingsForm {
                     FleetSettingsSection {
-                        Label("Review", systemImage: "wrench.and.screwdriver.fill")
-                            .fleetFont(.caption, weight: .semibold)
-                            .foregroundStyle(FleetTheme.secondary)
-                            .accessibilityIdentifier("confirmation.advancedBadge")
-                        Label(
-                            request.highRisk ? "High-risk device change" : "Confirm device change",
-                            systemImage: request.highRisk ? "exclamationmark.triangle.fill" : "hand.raised.fill"
-                        )
-                        .fleetFont(.headline).foregroundStyle(FleetTheme.accent)
+                        if request.opensExactRequest {
+                            Label("Review", systemImage: "wrench.and.screwdriver.fill")
+                                .fleetFont(.caption, weight: .semibold)
+                                .foregroundStyle(FleetTheme.secondary)
+                                .accessibilityIdentifier("confirmation.advancedBadge")
+                        }
+                        if request.opensExactRequest || request.highRisk {
+                            Label(
+                                request.highRisk ? "High-risk device change" : "Confirm device change",
+                                systemImage: request.highRisk ? "exclamationmark.triangle.fill" : "hand.raised.fill"
+                            )
+                            .fleetFont(.headline).foregroundStyle(FleetTheme.accent)
+                        }
+                        Text(request.endpoint.plainCommandEffect == nil ? request.endpoint.title : "\(request.endpoint.title)?")
+                            .fleetFont(.title2, weight: .semibold)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("confirmation.actionTitle")
+                        Text(effectDescription).fleetFont(.body)
                         Text(
-                            "You are about to send \(request.endpoint.method) to \(device.name) "
-                            + "at \(device.address). This is a real device operation, not a preview."
+                            "If confirmed, this request goes to \(device.name) at \(device.address)."
                         )
-                        Text(
-                            "Nothing is sent while you edit this screen. Review the target, method and payload, "
-                                + "then type APPLY to authorize this one request."
-                        )
+                        Text("Nothing is sent while you review. Check the box and type APPLY to enable sending.")
                         .fleetFont(.footnote)
                         .foregroundStyle(FleetTheme.secondary)
-                        Text(
-                            request.highRisk
-                                ? ("Voltage, cooling, clock, boot and firmware changes can stop mining, "
-                                    + "overheat hardware or leave the device unbootable. Verify the exact board "
-                                    + "and firmware image. Keep power and Wi-Fi stable. The app cannot verify "
-                                    + "electrical safety or image compatibility.")
-                                : ("This may interrupt mining, change persisted configuration or affect connectivity. "
-                                    + "The app cannot automatically undo this operation.")
-                        )
-                        .fleetFont(.footnote)
                     }
                     .listRowBackground(FleetTheme.surface)
-                    FleetSettingsSection("Exact request") {
-                        Text("\(request.endpoint.method) \(request.endpoint.path)").fleetFont(.caption, design: .monospaced).textSelection(.enabled)
-                        ForEach(Array(request.query.enumerated()), id: \.offset) { _, item in
-                            LabeledContent("Query: \(item.name)", value: item.value ?? "")
-                                .fleetFont(.caption, design: .monospaced)
+                    if request.opensExactRequest {
+                        FleetSettingsSection("Exact request") { exactRequest }
+                            .listRowBackground(FleetTheme.surface)
+                    } else {
+                        FleetSettingsSection {
+                            Button {
+                                showsExactRequest.toggle()
+                                if showsExactRequest { hasShownExactRequest = true }
+                            } label: {
+                                HStack {
+                                    Text("View exact request")
+                                    Spacer(minLength: 8)
+                                    Image(systemName: showsExactRequest ? "chevron.up" : "chevron.down")
+                                        .accessibilityHidden(true)
+                                }
+                                .foregroundStyle(FleetTheme.ink)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityValue(showsExactRequest ? "Expanded" : "Collapsed")
+                            .accessibilityIdentifier("confirmation.showExactRequest")
+                            if showsExactRequest { exactRequest.padding(.vertical, 8) }
+                            if mustOpenExactRequest {
+                                Text("Open the exact request to review its parameters before sending.")
+                                    .fleetFont(.footnote).foregroundStyle(FleetTheme.secondary)
+                            }
                         }
-                        if let filename = request.filename { LabeledContent("File", value: filename) }
-                        Text(MinerRequestSafety.reviewedBody(request.body)).fleetFont(.caption, design: .monospaced).textSelection(.enabled)
+                        .listRowBackground(FleetTheme.surface)
                     }
-                    .listRowBackground(FleetTheme.surface)
                     FleetSettingsSection {
-                        Toggle("I reviewed the target, payload and risks", isOn: $understood).accessibilityIdentifier(
-                            "confirmation.understood"
-                        )
-                        TextField("Type APPLY to authorize", text: $confirmation).textInputAutocapitalization(
+                        Toggle(request.hasRequestParameters || request.opensExactRequest
+                               ? "I reviewed the target, payload and risks"
+                               : "I reviewed the device, action and risks", isOn: $understood)
+                            .disabled(mustOpenExactRequest)
+                            .accessibilityIdentifier("confirmation.understood")
+                        TextField("Type APPLY to authorize", text: $confirmation,
+                                  prompt: Text("Type APPLY to authorize").foregroundStyle(FleetTheme.secondary))
+                            .textInputAutocapitalization(
                             .characters
-                        ).autocorrectionDisabled().accessibilityIdentifier("confirmation.token")
+                        ).autocorrectionDisabled()
+                            .accessibilityLabel("Type APPLY to authorize")
+                            .accessibilityIdentifier("confirmation.token")
                             .focused($tokenFocused)
                             .submitLabel(.done)
                             .onSubmit { tokenFocused = false }
+                            .id("confirmation.token")
                         Button(
                             "Send confirmed request",
                             role: .destructive
                         ) {
                             guard canConfirm else { return }
-                            submitted = true
-                            dismiss()
                             onConfirm()
-                        }.disabled(!canConfirm)
-                            .accessibilityIdentifier("confirmation.apply")
-                            .id("confirmation.sendAction")
+                        }
+                        .buttonStyle(FleetPrimaryButtonStyle(size: .compact, fullWidth: true))
+                        .disabled(!canConfirm)
+                        .accessibilityIdentifier("confirmation.apply")
+                        .id("confirmation.sendAction")
                         if isDemo { Text("Writes are locked in demo mode.").foregroundStyle(FleetTheme.secondary) }
                         if isOffline {
                             Text("Miner offline or stale. Reconnect before applying changes.").foregroundStyle(
@@ -353,6 +424,7 @@ struct MinerWriteConfirmation: View {
                     }
                     .listRowBackground(FleetTheme.surface)
                 }
+                .fleetRevealEditingField(tokenFocused ? "confirmation.token" : nil, using: proxy)
                 .scrollContentBackground(.hidden)
                 .background(FleetTheme.canvas)
                 .navigationTitle("Review before sending")
@@ -362,8 +434,13 @@ struct MinerWriteConfirmation: View {
                     ToolbarItem(placement: .principal) {
                         MinerNavigationTitle(pageTitle: "Review before sending")
                     }
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                            .keyboardShortcut(.cancelAction)
+                            .accessibilityIdentifier("confirmation.cancel")
+                    }
                 }
+                .fleetEditingDone(tokenFocused, identifier: "confirmation.keyboardDone") { tokenFocused = false }
                 .tint(FleetTheme.accent)
                 .task(id: confirmation == "APPLY") {
                     guard confirmation == "APPLY" else { return }
@@ -379,6 +456,11 @@ struct MinerWriteConfirmation: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 380, idealWidth: 510, minHeight: 340, idealHeight: 560)
+        #else
+        .presentationDetents([.large])
+        #endif
         .presentationBackground(FleetTheme.canvas)
         .interactiveDismissDisabled(understood)
     }

@@ -37,8 +37,12 @@ extension MinerSettingsView {
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused(editingFocus, equals: .hostname)
+                    .submitLabel(.done)
+                    .onSubmit { editingFocus.wrappedValue = nil }
                     .disabled(offlineReadOnly)
                     .accessibilityIdentifier("settings.quick.hostname")
+                    .id(EditingField.hostname)
             }
             .fleetFont(.subheadline)
             .padding(.vertical, 7)
@@ -83,10 +87,7 @@ extension MinerSettingsView {
                 canSaveDirectly ? "Save changes" : "Review common changes",
                 systemImage: "checkmark.circle"
             ) { reviewQuickChanges() }
-                .buttonStyle(.borderedProminent)
-                .tint(FleetTheme.accent)
-                .foregroundStyle(FleetTheme.buttonInk)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(FleetPrimaryButtonStyle(size: .compact, fullWidth: true))
                 .padding(.top, 5)
                 .disabled(store.isDemo || offlineReadOnly || isSaving)
                 .accessibilityIdentifier("settings.quick.review")
