@@ -6,6 +6,19 @@ import HashFleetCore
 @MainActor
 @Observable
 final class FleetPreferences {
+    enum DashboardMode: String, CaseIterable, Identifiable, Sendable {
+        case essentials
+        case full
+
+        var id: String { rawValue }
+        var title: String { self == .essentials ? "Essentials" : "Full View" }
+        var summary: String {
+            self == .essentials ? "Miner health, alerts, and charts" : "Comparisons, diagnostics, and API tools"
+        }
+    }
+
+    private static let unselectedDashboard = "unselected"
+
     enum Appearance: String, CaseIterable, Identifiable, Sendable {
         case system
         case light
@@ -94,6 +107,8 @@ final class FleetPreferences {
     }
 
     enum Keys {
+        static let dashboardMode = "app.hashfleet.preferences.dashboardMode"
+        static let dashboardWelcomeCompleted = "app.hashfleet.preferences.dashboardWelcomeCompleted"
         static let appearance = "app.hashfleet.preferences.appearance"
         static let systemAppearanceMigration = "app.hashfleet.preferences.systemAppearanceMigration"
         static let sort = "app.hashfleet.preferences.sort"
@@ -117,6 +132,8 @@ final class FleetPreferences {
 
     @MainActor
     private struct StoredValues {
+        var dashboardChoice: DashboardMode?
+        var dashboardWelcomeCompleted: Bool
         var hasSeenFeatureTour: Bool
         var suppressFeatureTour: Bool
         var dashboardCoins: Set<MiningPoolCoin>?
@@ -137,6 +154,10 @@ final class FleetPreferences {
         var telemetryRetention: TelemetryRetention
 
         init(defaults: UserDefaults) {
+            let storedMode = defaults.string(forKey: Keys.dashboardMode)
+            dashboardChoice = storedMode == unselectedDashboard ? nil :
+                (storedMode.flatMap(DashboardMode.init(rawValue:)) ?? .full)
+            dashboardWelcomeCompleted = defaults.bool(forKey: Keys.dashboardWelcomeCompleted)
             hasSeenFeatureTour = defaults.bool(forKey: Keys.tourSeen)
             suppressFeatureTour = defaults.bool(forKey: Keys.tourSuppressed)
             dashboardCoins = defaults.stringArray(forKey: Keys.dashboardCoins)
@@ -177,6 +198,27 @@ final class FleetPreferences {
 
     private var storedValues: StoredValues
 
+    /// Purely a local display preference. Both modes operate on the same devices and data.
+    var dashboardMode: DashboardMode {
+        get { storedValues.dashboardChoice ?? .essentials }
+        set {
+            if storedValues.dashboardChoice == nil {
+                // The welcome replaces the automatic tour for this new install. Do not mark
+                // the tour seen or change its opt-out; it remains available on demand.
+                storedValues.dashboardWelcomeCompleted = true
+                defaults.set(true, forKey: Keys.dashboardWelcomeCompleted)
+            }
+            storedValues.dashboardChoice = newValue
+            defaults.set(newValue.rawValue, forKey: Keys.dashboardMode)
+        }
+    }
+
+    var shouldOfferDashboardChoice: Bool { storedValues.dashboardChoice == nil }
+
+    func continueWithCurrentDashboard() {
+        if shouldOfferDashboardChoice { dashboardMode = .essentials }
+    }
+
     var hasSeenFeatureTour: Bool {
         get { storedValues.hasSeenFeatureTour }
         set {
@@ -193,7 +235,9 @@ final class FleetPreferences {
         }
     }
 
-    var shouldShowFeatureTour: Bool { !hasSeenFeatureTour && !suppressFeatureTour }
+    var shouldShowFeatureTour: Bool {
+        !hasSeenFeatureTour && !suppressFeatureTour && !storedValues.dashboardWelcomeCompleted
+    }
 
     /// nil follows detected coins. An explicit empty set intentionally hides all coin rows.
     var dashboardCoins: Set<MiningPoolCoin>? {
@@ -343,7 +387,17 @@ final class FleetPreferences {
         }
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, hasSavedFleet: Bool = false) {
+        if defaults.object(forKey: Keys.dashboardMode) == nil {
+            // Read the legacy installation marker before the appearance migration writes it.
+            // An existing empty or unreadable fleet still counts as an existing installation.
+            let legacyPreferenceKeys = [Keys.systemAppearanceMigration, Keys.appearance, Keys.sort,
+                                        Keys.compactCards, Keys.tourSeen, Keys.tourSuppressed, Keys.externalData,
+                                        Keys.dashboardCoins, Keys.telemetryStorageEnabled, Keys.telemetryRetention]
+            let existingInstall = hasSavedFleet || legacyPreferenceKeys.contains { defaults.object(forKey: $0) != nil }
+            defaults.set(existingInstall ? DashboardMode.full.rawValue : Self.unselectedDashboard,
+                         forKey: Keys.dashboardMode)
+        }
         // Start this release in System once, including upgrades from the old
         // forced two-mode preference. Explicit choices made afterward persist.
         if !defaults.bool(forKey: Keys.systemAppearanceMigration) {
@@ -358,4 +412,18 @@ final class FleetPreferences {
     func reloadFromDefaults() {
         storedValues = StoredValues(defaults: defaults)
     }
+
+    #if DEBUG
+    /// Legacy tests keep their established layout. New flows can exercise either view or the offer.
+    static func seedDashboardTestFixture(defaults: UserDefaults, arguments: [String]) {
+        guard arguments.contains("--ui-testing"), !arguments.contains("--ui-test-preserve-storage") else { return }
+        if arguments.contains("--ui-test-dashboard-fresh") {
+            defaults.set(Self.unselectedDashboard, forKey: Keys.dashboardMode)
+        } else if arguments.contains("--ui-test-dashboard-essentials") {
+            defaults.set(DashboardMode.essentials.rawValue, forKey: Keys.dashboardMode)
+        } else {
+            defaults.set(DashboardMode.full.rawValue, forKey: Keys.dashboardMode)
+        }
+    }
+    #endif
 }

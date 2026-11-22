@@ -73,8 +73,7 @@ extension AddMinerView {
                   systemImage: remaining == 0 ? "checkmark.circle.fill" : "plus.circle.fill")
                 .frame(maxWidth: .infinity, minHeight: 24)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(FleetTheme.accent)
+        .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
         .disabled(!localNetwork.isGranted || discovery.isScanning)
         .accessibilityIdentifier("addMiner.addAll")
         .accessibilityHint("Adds every miner found without changing their settings.")

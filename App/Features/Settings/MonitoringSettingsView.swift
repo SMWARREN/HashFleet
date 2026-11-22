@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MonitoringSettingsView: View {
+    @Environment(\.fleetGuidedEssentials) private var guidedEssentials
     let store: FleetStore
     @Bindable var coordinator: FleetGlanceCoordinator
     /// Only the split workspace root owns a bound path. A Settings page pushed
@@ -11,6 +12,10 @@ struct MonitoringSettingsView: View {
     var showPoolIconDemo: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.fleetStandalonePage) private var standalonePage
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @State private var showingFeatureTour = false
     @State var notificationsExpanded = false
 
@@ -30,6 +35,22 @@ struct MonitoringSettingsView: View {
                 hidesListRowSeparators: true
             ) {
                 settingsHero
+            }
+            FleetSettingsSection {
+                FleetSettingsRow(showsSeparator: false) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Dashboard view")
+                            .fleetFont(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        dashboardViewSelector
+                            .fleetTourTarget("guide.dashboardView")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text("Essentials keeps the dashboard focused on readings and quick controls. Full View adds comparisons, diagnostics, and API tools.")
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             FleetSettingsSection {
                 Button {
@@ -244,10 +265,65 @@ struct MonitoringSettingsView: View {
                 FleetTourView(dontShowAgain: Binding(
                     get: { store.preferences.suppressFeatureTour },
                     set: { store.preferences.suppressFeatureTour = $0 }
-                ), onPreviewCelebration: onPreviewCelebration)
+                ), onPreviewCelebration: onPreviewCelebration, showsEssentialsWalkthrough: offersEssentialsWalkthrough)
             }
             .fleetPageSheet()
         })
+    }
+
+    @ViewBuilder private var dashboardViewSelector: some View {
+        #if os(iOS)
+        if NumberFirstPreview.usesLivePhoneLayouts && horizontalSizeClass == .compact && (!store.isDemo || guidedEssentials) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            layout {
+                ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                    let selected = mode == store.preferences.dashboardMode
+                    Button {
+                        if !selected { store.preferences.dashboardMode = mode }
+                    } label: {
+                        Text(mode.title)
+                            .fleetFont(.subheadline, weight: .semibold)
+                            .foregroundStyle(selected ? FleetTheme.ink : FleetTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background {
+                                if selected { RoundedRectangle(cornerRadius: 9).fill(FleetTheme.ink.opacity(0.14)).padding(3) }
+                            }
+                            .contentShape(Rectangle())
+                    }
+                    // In a List each segment must own its touch target, not the whole row.
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .accessibilityIdentifier("settings.dashboardView.\(mode.rawValue)")
+                }
+            }
+            .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 12))
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Dashboard view")
+            .accessibilityIdentifier("settings.dashboardView")
+        } else {
+            nativeDashboardViewPicker
+        }
+        #else
+        nativeDashboardViewPicker
+        #endif
+    }
+
+    private var nativeDashboardViewPicker: some View {
+        Picker("Dashboard view", selection: Binding(
+            get: { store.preferences.dashboardMode },
+            set: { store.preferences.dashboardMode = $0 }
+        )) {
+            ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .accessibilityIdentifier("settings.dashboardView")
     }
 
     @ViewBuilder
@@ -267,11 +343,22 @@ struct MonitoringSettingsView: View {
 
     private var featureTourLabel: some View {
         MonitoringDestinationLabel(
-            title: "Feature tour",
-            subtitle: "A guided walkthrough. Skip or replay anytime.",
+            title: offersEssentialsWalkthrough ? "Essentials walkthrough" : "Feature tour",
+            subtitle: offersEssentialsWalkthrough
+                ? "Practice with sample miners. Skip or replay anytime."
+                : "A guided walkthrough. Skip or replay anytime.",
             symbol: "sparkles",
             tint: .indigo
         )
+    }
+
+    private var offersEssentialsWalkthrough: Bool {
+        #if os(iOS)
+        NumberFirstPreview.usesLivePhoneLayouts && horizontalSizeClass == .compact
+            && !store.isDemo && store.preferences.dashboardMode == .essentials
+        #else
+        false
+        #endif
     }
 
     /// A value push above a view-backed Settings presentation can replace that
@@ -369,7 +456,7 @@ struct MonitoringSettingsView: View {
     }
 }
 
-private struct MonitoringDestinationLabel: View {
+struct MonitoringDestinationLabel: View {
     let title: String
     let subtitle: String
     let symbol: String
@@ -395,156 +482,6 @@ private struct MonitoringDestinationLabel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct FleetWidgetSettingsPage: View {
-    let store: FleetStore
-    @Bindable var coordinator: FleetGlanceCoordinator
-
-    var body: some View {
-        FleetSettingsForm {
-            FleetSettingsSection(
-                footer: "Shares only hashrate, power and counts. Local widget refresh is a separate, optional permission below."
-            ) {
-                Toggle(
-                    "Share fleet readings",
-                    isOn: Binding(
-                        get: { coordinator.sharesWithWidgets },
-                        set: { coordinator.setWidgetSharing($0, glance: store.glance) }
-                    )
-                )
-                .accessibilityIdentifier("monitoring.widgetSharing")
-            }
-
-            FleetSettingsSection {
-                Toggle("Allow widget refresh", isOn: Binding(
-                    get: { coordinator.allowsWidgetRefresh },
-                    set: { coordinator.setWidgetRefreshEnabled($0,
-                        devices: store.visibleDevices, snapshots: store.snapshots, isDemo: store.isDemo) }
-                ))
-                .disabled(!coordinator.sharesWithWidgets || store.isDemo || !coordinator.widgetStorageAvailable)
-                .accessibilityIdentifier("monitoring.widgetRefresh")
-                Toggle("Refresh automatically", isOn: Binding(
-                    get: { coordinator.allowsAutomaticWidgetRefresh },
-                    set: { coordinator.setAutomaticWidgetRefreshEnabled($0,
-                        devices: store.visibleDevices, snapshots: store.snapshots, isDemo: store.isDemo) }
-                ))
-                .disabled(!coordinator.allowsWidgetRefresh || store.isDemo || !coordinator.widgetStorageAvailable)
-                .accessibilityIdentifier("monitoring.automaticWidgetRefresh")
-                Text(coordinator.widgetRefreshStatus)
-                    .fleetFont(.footnote)
-                    .foregroundStyle(FleetTheme.secondary)
-                    .accessibilityIdentifier("monitoring.widgetRefreshStatus")
-            } header: {
-                Text("Optional local refresh")
-            } footer: {
-                Text("""
-                    Off by default. Allow widget refresh enables reads when you tap Refresh. Refresh automatically \
-                    additionally allows reads when iOS runs the widget, without tapping. iOS controls the schedule, \
-                    not a continuous live feed. Shares local IP addresses and MAC identity pins with the bundled \
-                    widget, never names or credentials. No uploads or miner setting changes. Requires a recent \
-                    foreground connection and Local Network permission in Hash Fleet.
-                    """)
-            }
-
-            FleetSettingsSection {
-                FleetGlancePreviewCard(glance: store.glance, showsDetails: false)
-            } header: {
-                Text("Widget preview")
-            } footer: {
-                Text("A clean, at-a-glance view of your fleet.")
-            }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-
-            FleetSettingsSection {
-                MonitoringNoteRow(
-                    symbol: "lock.shield",
-                    title: "Privacy",
-                    message: "Saved readings contain only fleet aggregates. Optional local refresh also shares local IP "
-                        + "addresses and MAC identity pins with the bundled widget. Never miner names or credentials.",
-                    tint: FleetTheme.accent
-                )
-            }
-
-            if !coordinator.widgetStorageAvailable {
-                FleetSettingsSection {
-                    Label(
-                        "Widget sharing needs App Group setup in this build.",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .fleetFont(.subheadline)
-                    .foregroundStyle(FleetTheme.secondary)
-                    DisclosureGroup("Setup details") {
-                        Text(
-                            "Enable the same App Group for the app and widget extension "
-                                + "in Xcode Signing & Capabilities. The source documentation includes the setup steps."
-                        )
-                        .fleetFont(.footnote)
-                        .foregroundStyle(FleetTheme.secondary)
-                    }
-                }
-            }
-
-            FleetSettingsSection {
-                DisclosureGroup {
-                    Text("Touch and hold the Home Screen. Choose Edit → Add Widget, then search for Hash Fleet.")
-                        .fleetFont(.footnote)
-                        .foregroundStyle(FleetTheme.secondary)
-                        .padding(.vertical, 4)
-                } label: {
-                    MonitoringDestinationLabel(
-                        title: "Add to Home Screen",
-                        subtitle: "Instructions for adding the widget to your \(FleetDeviceCopy.current.name) Home Screen.",
-                        symbol: FleetDeviceCopy.current.symbol
-                    )
-                }
-                DisclosureGroup {
-                    Text("Touch and hold the Lock Screen, choose Customize, then add a Hash Fleet widget.")
-                        .fleetFont(.footnote)
-                        .foregroundStyle(FleetTheme.secondary)
-                        .padding(.vertical, 4)
-                } label: {
-                    MonitoringDestinationLabel(
-                        title: "Add to Lock Screen",
-                        subtitle: "Instructions for adding the widget to your Lock Screen.",
-                        symbol: FleetDeviceCopy.current.symbol
-                    )
-                }
-            } header: {
-                Text("Add widgets")
-            }
-
-            FleetSettingsSection {
-                MonitoringNoteRow(
-                    symbol: "info.circle",
-                    title: nil,
-                    message: "Saved snapshots, not live streaming. \(FleetDeviceCopy.current.systemName) controls refresh timing.",
-                    tint: FleetTheme.secondary
-                )
-                DisclosureGroup("How readings stay fresh") {
-                    Text(
-                        "Widgets use your latest saved aggregate snapshot, not a continuous connection. "
-                            + "When sharing is enabled, Hash Fleet asks \(FleetDeviceCopy.current.systemName) for a best-effort local background refresh "
-                            + "about every 15 minutes. \(FleetDeviceCopy.current.systemName) controls timing and may delay it. "
-                            + "Readings become stale after 60 seconds; opening Hash Fleet starts an immediate "
-                            + "in-app refresh. Realtime miner readings stay inside Fleet while it is open, "
-                            + "and the timeline itself never connects to miners. If you separately enable local widget refresh, "
-                            + "tapping Refresh makes one bounded read-only attempt on your local network. Unlock is required. "
-                            + "A failed or incomplete attempt keeps the last saved reading and its original time."
-                    )
-                    .fleetFont(.footnote)
-                    .foregroundStyle(FleetTheme.secondary)
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(FleetTheme.canvas)
-        .tint(FleetTheme.accent)
-        .navigationTitle("Widgets")
-        .navigationBarTitleDisplayMode(.inline)
-        .modifier(MonitoringErrorAlert(coordinator: coordinator))
     }
 }
 

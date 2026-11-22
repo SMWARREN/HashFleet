@@ -7,7 +7,7 @@ final class CompactDashboardUITests: XCTestCase {
 
     func testInitialViewportShowsMinerBeforeSecondaryInformation() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--demo"]
+        app.launchArguments = ["--ui-testing", "--demo", "--ui-test-offline-demo", "--ui-test-reduce-motion"]
         app.launch()
         assertNoLegacyModeSelector(in: app)
         defer { app.terminate() }
@@ -20,7 +20,10 @@ final class CompactDashboardUITests: XCTestCase {
         let chains = app.descendants(matching: .any).matching(identifier: "dashboard.chains").firstMatch
         XCTAssertLessThan(chains.frame.height, 190,
                           "Collapsed solo comparison should stay compact at default text size")
-        XCTAssertLessThan(chains.frame.maxY, miner.frame.minY)
+        XCTAssertGreaterThan(chains.frame.minY, miner.frame.maxY, "Solo odds must follow the miner list in Full View")
+        let comparison = app.descendants(matching: .any)["dashboard.hashrateShare"].firstMatch
+        XCTAssertTrue(comparison.exists)
+        XCTAssertGreaterThan(comparison.frame.minY, miner.frame.maxY, "Per-miner comparison must follow the miner list")
         let poolStats = app.buttons
             .matching(NSPredicate(format: "identifier BEGINSWITH 'fleetPools.stats.'")).firstMatch
         XCTAssertFalse(poolStats.exists)

@@ -9,6 +9,9 @@ struct FleetHistoryCard: View {
     let database: MinerTelemetryDatabase?
     let isMinerDetail: Bool
     let isCompactDashboard: Bool
+    let dashboardMode: FleetPreferences.DashboardMode
+    let numberFirst: Bool
+    let prefersHistoryPopover: Bool
     /// Miner detail only: a 24-hour uptime row rendered inside this card under the chart.
     var uptime: MinerUptimeHeatmap?
     /// The dashboard history card is a compact companion to the live hashrate card. Detail views
@@ -22,11 +25,15 @@ struct FleetHistoryCard: View {
     @State var recentRange: FleetRecentRange
     @State private var selectedKind: FleetHistoryKind?
     @State var displayMode: FleetHistoryDisplay
+    @State var showsHistoryControls = false
+    @State var selectedMetric: MinerHistoryMetric = .hashrate
 
     init(devices: [MinerDevice], snapshots: [UUID: MinerSnapshot], isDemo: Bool,
          initialDisplay: FleetHistoryDisplay = .fleet, initialRecentRange: FleetRecentRange = .hour,
          database: MinerTelemetryDatabase? = nil, isMinerDetail: Bool = false,
-         isCompactDashboard: Bool = false, uptime: MinerUptimeHeatmap? = nil) {
+         isCompactDashboard: Bool = false, uptime: MinerUptimeHeatmap? = nil,
+         dashboardMode: FleetPreferences.DashboardMode = .full, numberFirst: Bool = false,
+         prefersHistoryPopover: Bool = false) {
         self.devices = devices
         self.snapshots = snapshots
         self.isDemo = isDemo
@@ -34,12 +41,21 @@ struct FleetHistoryCard: View {
         self.isMinerDetail = isMinerDetail
         self.isCompactDashboard = isCompactDashboard
         self.uptime = uptime
+        self.dashboardMode = dashboardMode
+        self.numberFirst = numberFirst
+        self.prefersHistoryPopover = prefersHistoryPopover
         _displayMode = State(initialValue: initialDisplay)
         _recentRange = State(initialValue: initialRecentRange)
         _isLoadingHistory = State(initialValue: !isDemo)
     }
 
     var isFleetView: Bool { displayMode == .fleet }
+    var isEssentials: Bool { dashboardMode == .essentials }
+    private var sensorDevice: MinerDevice? {
+        guard isMinerDetail, devices.count == 1, let device = devices.first, device.kind != .xmrig else { return nil }
+        return device
+    }
+    var showsSavedSensor: Bool { sensorDevice != nil && selectedMetric != .hashrate }
 
     /// Both dashboard and miner detail charts use the surrounding neutral theme roles. The
     /// top fleet summary remains the deliberately dark panel, so these cards stay distinct.
@@ -47,20 +63,22 @@ struct FleetHistoryCard: View {
     var chartSecondary: Color { FleetTheme.secondary }
     var chartAccent: Color { FleetTheme.accent }
 
+    // The narrow plot and equal-width range rail have a finite label budget. Keep those
+    // labels legible without limiting the primary readings, heading, or saved-history rows.
+    var numberFirstChartLabelSize: DynamicTypeSize {
+        numberFirst && isMinerDetail ? min(dynamicTypeSize, .xxxLarge) : dynamicTypeSize
+    }
+
     var effectiveChartHeight: CGFloat {
-        if isMinerDetail { return chartHeight }
-        return min(chartHeight, isCompactDashboard ? 56 : 64)
+        if isMinerDetail { return numberFirst ? min(chartHeight + 20, 144) : chartHeight }
+        if dynamicTypeSize.isAccessibilitySize { return max(chartHeight, 136) }
+        if numberFirst { return min(chartHeight, dynamicTypeSize >= .xLarge ? 104 : 92) }
+        return min(chartHeight, isCompactDashboard ? 82 : 88)
     }
 
     private var effectiveBaseContentHeight: CGFloat {
         if isMinerDetail { return baseContentHeight }
-        return min(baseContentHeight, isCompactDashboard ? 72 : 80)
-    }
-
-    private var effectiveMeasuredPageHeight: CGFloat {
-        guard !isMinerDetail else { return measuredPageHeight }
-        let compactLimit = isCompactDashboard ? 72 : .greatestFiniteMagnitude
-        return min(measuredPageHeight, compactLimit)
+        return min(baseContentHeight, isCompactDashboard ? 104 : 80)
     }
 
     /// The website's miner detail page shows one chart directly below the reading. It does not
@@ -85,6 +103,7 @@ struct FleetHistoryCard: View {
     @State var recentRangeCache = FleetHistoryRangeCache()
 
     var rangeHeading: String { selectedWindow == .daily ? recentRange.rawValue : selectedWindow.heading }
+    var rangeTitle: String { selectedWindow == .daily ? recentRange.rangeTitle : selectedWindow.rangeTitle }
 
     /// Tracks history boundaries and timestamps so capped buffer rollovers (e.g. at 360 points)
     /// are detected even when `points.count` remains constant.
@@ -102,41 +121,75 @@ struct FleetHistoryCard: View {
     var body: some View {
         // The selected window's page data feeds both the header unit and its page. Resolving it
         // once per body pass avoids repeating the merge and fleet alignment for the same window.
-        let selectedPage: PageData? = devices.isEmpty ? nil : pageData(for: selectedWindow)
-        VStack(alignment: .leading, spacing: isMinerDetail ? 8 : 5) {
-            VStack(alignment: .leading, spacing: isMinerDetail ? 5 : 3) {
-                ViewThatFits(in: .horizontal) {
-                    if !dynamicTypeSize.isAccessibilitySize {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            chartTitle.fixedSize()
-                            Spacer(minLength: 0)
-                            if !devices.isEmpty {
-                                windowControls.fixedSize(horizontal: true, vertical: false)
+        let selectedPage: PageData? = devices.isEmpty || showsSavedSensor ? nil : pageData(for: selectedWindow)
+        VStack(alignment: .leading, spacing: numberFirst ? 4 : (isMinerDetail ? 8 : 5)) {
+            VStack(alignment: .leading, spacing: numberFirst ? 2 : 5) {
+                if numberFirst {
+                    if isMinerDetail, sensorDevice != nil {
+                        numberFirstMinerChartHeading
+                    } else {
+                        chartTitle
+                    }
+                    if !devices.isEmpty { numberFirstChartControls }
+                } else if isEssentials || showsSavedSensor {
+                    chartTitle
+                    if !devices.isEmpty { essentialsHistoryControls }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                chartTitle.fixedSize()
+                                Spacer(minLength: 0)
+                                if !devices.isEmpty {
+                                    windowControls.fixedSize(horizontal: true, vertical: false)
+                                }
                             }
                         }
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        chartTitle
-                        if !devices.isEmpty { windowControls }
+                        VStack(alignment: .leading, spacing: 8) {
+                            chartTitle
+                            if !devices.isEmpty { windowControls }
+                        }
                     }
                 }
-                if isMinerDetail || !isFleetView || dynamicTypeSize.isAccessibilitySize {
+                if showsSavedSensor {
+                    Text("\(rangeTitle) · \(selectedMetric.unit)")
+                        .fleetFont(.caption2).foregroundStyle(chartSecondary)
+                } else if isMinerDetail && !numberFirst {
                     Text((isDemo ? "Simulated hashrate history" : "Recorded hashrate history") + " · \(activeKind.title)")
                         .fleetFont(.caption2)
                         .foregroundStyle(chartSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Text("\(isEssentials ? rangeTitle : rangeHeading) · \(displayUnit(forHistories: selectedPage?.histories ?? []).rawValue)")
+                        .fleetFont(.caption2, design: .monospaced)
+                        .foregroundStyle(chartSecondary)
+                } else {
+                    let source = isDemo ? "Simulated hashrate history" : "Recorded hashrate history"
+                    let unit = displayUnit(forHistories: selectedPage?.histories ?? []).rawValue
+                    let period = isEssentials ? "" : "\(rangeHeading) · "
+                    let savedPeriod = selectedWindow == .daily ? "" : "\(selectedWindow.rangeTitle) · "
+                    Text(numberFirst ? "\(isDemo ? "Simulated" : "Recorded") · \(activeKind.title) · \(savedPeriod)\(unit)"
+                         : "\(source) · \(activeKind.title) · \(period)\(unit)")
+                        .fleetFont(numberFirst ? .caption : .footnote)
+                        .dynamicTypeSize(numberFirstChartLabelSize)
+                        .foregroundStyle(chartSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("\(rangeHeading) · \(displayUnit(forHistories: selectedPage?.histories ?? []).rawValue)")
-                    .fleetFont(.caption2, design: .monospaced)
-                    .foregroundStyle(chartSecondary)
+                if sensorDevice != nil && !numberFirst { metricMenu }
             }
             .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isHeader)
 
             if devices.isEmpty {
                 emptyState
+            } else if showsSavedSensor, let device = sensorDevice {
+                MinerSensorHistoryPlot(
+                    deviceID: device.id, metric: selectedMetric, rangeTitle: rangeTitle,
+                    interval: selectedWindow == .daily ? recentRange.interval : selectedWindow.interval,
+                    observationMinute: snapshots[device.id]?.updatedAt.map { Int($0.timeIntervalSince1970 / 60) },
+                    axisFormat: selectedWindow.axisFormat(recentRange: recentRange), isDemo: isDemo,
+                    database: database ?? .shared, height: effectiveChartHeight
+                )
             } else {
-                algorithmControls
+                if !isEssentials || showsHistoryControls { algorithmControls }
                 windowPager(selectedPage: selectedPage)
                 if isLoadingHistory {
                     Text("Loading saved readings…").fleetFont(.caption2).foregroundStyle(chartSecondary)
@@ -155,10 +208,10 @@ struct FleetHistoryCard: View {
             }
         }
         .fleetCard(
-            padding: FleetSurfaceSpacing.cardInset,
+            padding: numberFirst ? 10 : FleetSurfaceSpacing.cardInset,
             fill: FleetTheme.surface,
-            border: isMinerDetail ? FleetTheme.controlBorder.opacity(0.35) : .clear,
-            cornerRadius: isMinerDetail ? 24 : 16
+            border: numberFirst ? .clear : (isMinerDetail ? FleetTheme.controlBorder.opacity(0.35) : FleetTheme.separator),
+            cornerRadius: isMinerDetail && !numberFirst ? 24 : 16
         )
         .padding(.horizontal, 0)
         .onChange(of: activeKind) { _, _ in
@@ -176,16 +229,10 @@ struct FleetHistoryCard: View {
         .onChange(of: historySignatures) { _, _ in
             validateSelection()
         }
-        .task(id: FleetHistoryLoadIdentity(window: selectedWindow, devices: devices.map(\.id))) {
+        .task(id: showsSavedSensor ? nil : FleetHistoryLoadIdentity(window: selectedWindow, devices: devices.map(\.id))) {
+            guard !showsSavedSensor else { return }
             await loadHistoricalData(for: selectedWindow)
         }
-    }
-
-    private var chartTitle: some View {
-        Text("Hashrate trend")
-            .fleetFont(.caption, weight: .semibold)
-            .foregroundStyle(chartInk)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var emptyState: some View {
@@ -210,28 +257,28 @@ struct FleetHistoryCard: View {
             // Native Mac displays one page directly. Let its content determine its height,
             // rather than feeding its measured height back into its own frame. The fixed
             // height below exists only because the iOS paging TabView has no intrinsic height.
-            periodPage(for: selectedWindow, selectedPage: selectedPage)
-                .frame(minHeight: effectiveBaseContentHeight)
-                .clipped()
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("dashboard.historyWindow.\(selectedWindow.identifier)")
+            staticHistoryPage(selectedPage: selectedPage)
             #else
-            TabView(selection: $selectedWindow) {
-                ForEach(HistoryWindow.allCases) { window in
-                    periodPage(for: window, selectedPage: window == selectedWindow ? selectedPage : nil)
-                        .tag(window)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("dashboard.historyWindow.\(window.identifier)")
+            if isEssentials || dynamicTypeSize.isAccessibilitySize {
+                staticHistoryPage(selectedPage: selectedPage)
+            } else {
+                TabView(selection: $selectedWindow) {
+                    ForEach(HistoryWindow.allCases) { window in
+                        periodPage(for: window, selectedPage: window == selectedWindow ? selectedPage : nil)
+                            .tag(window)
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier("dashboard.historyWindow.\(window.identifier)")
+                    }
                 }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // Only the paging container needs a measured, explicit height. Do not attach this
-            // state-writing preference observer to the native Mac page's layout graph.
-            .frame(height: max(effectiveMeasuredPageHeight, effectiveBaseContentHeight))
-            .onPreferenceChange(HistoryPageHeightPreferenceKey.self) { height in
-                let rounded = height.rounded(.up)
-                if rounded > 0, abs(rounded - measuredPageHeight) >= 1 {
-                    measuredPageHeight = rounded
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                // Limit the plot, not the page. Selection details, legends, and empty states
+                // must keep their full height even on a compact dashboard.
+                .frame(height: max(measuredPageHeight, effectiveBaseContentHeight))
+                .onPreferenceChange(HistoryPageHeightPreferenceKey.self) { height in
+                    let rounded = height.rounded(.up)
+                    if rounded > 0, abs(rounded - measuredPageHeight) >= 1 {
+                        measuredPageHeight = rounded
+                    }
                 }
             }
             #endif
@@ -242,9 +289,13 @@ struct FleetHistoryCard: View {
             (isDemo ? "Simulated" : "Recorded") +
                 (isFleetView ? " fleet hashrate history" : " hashrate history by miner")
         )
-        .accessibilityHint(FleetLayout.isMac
-            ? "Choose a time range to switch daily, weekly, monthly, and yearly windows"
-            : "Swipe to switch daily, weekly, monthly, and yearly windows")
+    }
+
+    private func staticHistoryPage(selectedPage: PageData?) -> some View {
+        periodPage(for: selectedWindow, selectedPage: selectedPage)
+            .frame(minHeight: effectiveBaseContentHeight)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("dashboard.historyWindow.\(selectedWindow.identifier)")
     }
 
     @ViewBuilder
@@ -363,24 +414,16 @@ struct FleetHistoryCard: View {
     }
 
     private func selection(for histories: [MinerHistorySeries], window: HistoryWindow) -> FleetChartSelection? {
-        guard let rawSelectedDate else {
-            return nil
-        }
+        guard let rawSelectedDate else { return nil }
         return FleetChartSelection.resolve(
-            at: rawSelectedDate,
-            in: histories,
-            tolerance: window.selectionTolerance,
-            clusterTolerance: 60
+            at: rawSelectedDate, in: histories, tolerance: window.selectionTolerance, clusterTolerance: 60
         )
     }
 
     private func validateSelection() {
         guard let raw = rawSelectedDate else { return }
-        let currentSeries = series(for: selectedWindow)
         if !FleetChartSelection.isSelectionValid(
-            at: raw,
-            in: currentSeries,
-            tolerance: selectedWindow.selectionTolerance
+            at: raw, in: series(for: selectedWindow), tolerance: selectedWindow.selectionTolerance
         ) {
             rawSelectedDate = nil
         }
@@ -390,13 +433,10 @@ struct FleetHistoryCard: View {
         FleetHistoryPresentation.meanReading(in: histories).map { FleetFormat.hashrateWithUnit($0) }
     }
 
-    func displayUnit(for window: HistoryWindow) -> HashrateUnit {
-        displayUnit(forHistories: series(for: window))
-    }
+    func displayUnit(for window: HistoryWindow) -> HashrateUnit { displayUnit(forHistories: series(for: window)) }
 
     func displayUnit(forHistories histories: [MinerHistorySeries]) -> HashrateUnit {
-        guard let maxGHs = histories.lazy.flatMap(\.points).map(\.value)
-            .filter({ $0.isFinite && $0 >= 0 }).max() else {
+        guard let maxGHs = histories.lazy.flatMap(\.points).map(\.value).filter({ $0.isFinite && $0 >= 0 }).max() else {
             return activeKind == .cpu ? .hashesPerSecond : .gigaHashesPerSecond
         }
         return FleetFormat.hashrateDisplayUnit(forGHs: maxGHs)
@@ -406,35 +446,25 @@ struct FleetHistoryCard: View {
         let now = Date()
         let interval = window == .daily ? recentRange.interval : window.interval
         return chartDevices.compactMap { device in
-            let sourceInterval = window == .daily
-                ? max(interval, FleetRecentRange.day.interval)
-                : interval
+            let sourceInterval = window == .daily ? max(interval, FleetRecentRange.day.interval) : interval
             let sourcePoints = FleetHistorySource.mergedPoints(
-                stored: databaseSeries[device.id] ?? [],
-                current: window == .daily ? snapshots[device.id]?.history ?? [] : [],
-                since: now.addingTimeInterval(-sourceInterval),
-                until: now
+                stored: databaseSeries[device.id] ?? [], current: window == .daily ? snapshots[device.id]?.history ?? [] : [],
+                since: now.addingTimeInterval(-sourceInterval), until: now
             )
             let anchor = window == .daily ? sourcePoints.last?.date ?? now : now
             let cutoff = anchor.addingTimeInterval(-interval)
             let points = sourcePoints.filter { $0.date >= cutoff && $0.date <= anchor }
             guard !points.isEmpty else { return nil }
             let duplicateName = devices.contains { $0.id != device.id && $0.name == device.name }
-            let label = duplicateName ? "\(device.name) · \(device.address)" : device.name
-            return MinerHistorySeries(id: device.id, name: label, points: points)
+            return MinerHistorySeries(id: device.id, name: duplicateName ? "\(device.name) · \(device.address)" : device.name, points: points)
         }
     }
 
     private func loadHistoricalData(for window: HistoryWindow) async {
-        guard !isDemo else {
-            normalizeRecentRange()
-            return
-        }
+        guard !isDemo else { normalizeRecentRange(); return }
         isLoadingHistory = true
         defer { if !Task.isCancelled { isLoadingHistory = false } }
         let now = Date()
-        // Load the full recent day once. The 15m and 1h controls filter this local cache
-        // rather than issuing new miner requests or discarding saved readings on relaunch.
         let results = await FleetHistorySource.load(
             devices: devices, since: now.addingTimeInterval(-window.interval), until: now, database: database ?? .shared
         )
@@ -443,4 +473,5 @@ struct FleetHistoryCard: View {
         databaseSeriesRevision += 1
         normalizeRecentRange()
     }
+
 }

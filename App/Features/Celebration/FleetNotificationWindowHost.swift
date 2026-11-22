@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 
 /// A scene-owned, non-key window keeps alerts above sheets and pushed screens. Empty space
-/// passes through to the app, so an alert never steals the keyboard or blocks unrelated controls.
+/// passes through to the app. Only a full-screen record ends editing in the presenting scene.
 struct FleetNotificationWindowHost<Content: View>: UIViewRepresentable {
     let isEnabled: Bool
     let capturesAllTouches: Bool
@@ -60,6 +60,8 @@ struct FleetNotificationWindowHost<Content: View>: UIViewRepresentable {
 
         private func updateWindow() {
             guard let window else { return }
+            let isModal = isEnabled && capturesAllTouches
+            let opensModal = isModal && (window.isHidden || !window.capturesAllTouches)
             let root = AnyView(
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -76,10 +78,18 @@ struct FleetNotificationWindowHost<Content: View>: UIViewRepresentable {
                 host.view.backgroundColor = .clear
                 window.rootViewController = host
             }
-            window.capturesAllTouches = capturesAllTouches
-            window.rootViewController?.view.accessibilityViewIsModal = capturesAllTouches
+            window.capturesAllTouches = isModal
+            window.rootViewController?.view.accessibilityViewIsModal = isModal
             window.isHidden = !isEnabled
-            FleetInAppSurface.celebrationVisible = isEnabled && capturesAllTouches
+            FleetInAppSurface.celebrationVisible = isModal
+            if opensModal {
+                // Keep the overlay non-key and clear the existing responder, not the form or sheet.
+                // Wait one MainActor turn so focus updates do not occur during updateUIView.
+                Task { @MainActor [weak window] in
+                    guard let window, !window.isHidden, window.capturesAllTouches else { return }
+                    window.windowScene?.keyWindow?.endEditing(true)
+                }
+            }
         }
 
         func detach() {

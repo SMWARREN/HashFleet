@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared status presentation for the card and its independent action column.
+/// The icon and title convey the same state, without requiring the status color.
 struct FleetMinerStatusBadge: View {
     let state: FleetMinerPresentationState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,7 +20,16 @@ struct FleetMinerStatusBadge: View {
     }
 
     var body: some View {
-        let badge = FleetStatusBadge(title: state.title, color: state.color)
+        let badge = HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .foregroundStyle(state.color)
+                .accessibilityHidden(true)
+            Text(state.title)
+                .foregroundStyle(FleetTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .fleetFont(.footnote, weight: .semibold)
+        .accessibilityElement(children: .combine)
         Group {
             if state == .live && !reduceMotion && Self.breathesWhileLive {
                 badge.phaseAnimator([1.0, 1.1, 1.0]) { content, scale in
@@ -34,5 +43,15 @@ struct FleetMinerStatusBadge: View {
         .fleetStatusTransitionPulse(isOnline: state.isOperational, color: state.color, reduceMotion: reduceMotion)
         .contentTransition(.opacity)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: state)
+    }
+
+    private var symbol: String {
+        switch state {
+        case .sample: "sparkles"
+        case .loading, .connecting, .reconnecting: "clock"
+        case .live: "bolt.circle"
+        case .online: "checkmark.circle"
+        case .stale, .unreachable: "exclamationmark.triangle"
+        }
     }
 }

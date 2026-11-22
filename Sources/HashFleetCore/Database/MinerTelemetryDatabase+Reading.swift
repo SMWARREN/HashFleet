@@ -1,6 +1,13 @@
 import Foundation
 import GRDB
 
+/// Recorded miner sensor readings averaged within one time bucket. Missing is not zero.
+public struct MinerSensorHistorySample: Sendable {
+    public let date: Date
+    public let temperature: Double?
+    public let power: Double?
+}
+
 // MARK: - Reading Writes & Queries
 
 extension MinerTelemetryDatabase {
@@ -137,4 +144,36 @@ extension MinerTelemetryDatabase {
         }
     }
 
+    /// Returns up to 180 nonempty buckets. No buckets or zero values are created for gaps.
+    public func getSensorHistory(minerId: String, since: Date, until: Date) async -> [MinerSensorHistorySample] {
+        let start = ceil(since.timeIntervalSince1970)
+        let end = floor(until.timeIntervalSince1970)
+        guard start.isFinite, end.isFinite, start <= end,
+              start >= Double(Int64.min), end < Double(Int64.max) else { return [] }
+        let bucketSeconds = max(1, Int64(ceil((end - start + 1) / 180)))
+        do {
+            let queue = await preparedQueue()
+            return try await queue?.read { db in
+                let rows = try Row.fetchAll(db, sql: """
+                    SELECT MIN(timestamp) AS observed,
+                           AVG(CASE WHEN temp >= 0 THEN temp END) AS temperature,
+                           AVG(CASE WHEN power >= 0 THEN power END) AS watts
+                    FROM miner_readings
+                    WHERE miner_id = ? AND timestamp BETWEEN ? AND ? AND (temp >= 0 OR power >= 0)
+                    GROUP BY CAST((timestamp - ?) / ? AS INTEGER)
+                    ORDER BY observed
+                    """, arguments: [minerId, Int64(start), Int64(end), Int64(start), bucketSeconds])
+                return rows.compactMap { row in
+                    let temperature = (row["temperature"] as Double?).flatMap { $0.isFinite ? $0 : nil }
+                    let power = (row["watts"] as Double?).flatMap { $0.isFinite ? $0 : nil }
+                    guard temperature != nil || power != nil else { return nil }
+                    return MinerSensorHistorySample(date: Date(timeIntervalSince1970: row["observed"] as Double),
+                                                    temperature: temperature, power: power)
+                }
+            } ?? []
+        } catch {
+            print("Failed to read sensor history: \(error)")
+            return []
+        }
+    }
 }

@@ -17,7 +17,7 @@ struct DashboardRenderingCoverageTests {
             NavigationStack { DashboardView(store: fixture.store, insights: fixture.insights) }, height: 1_600)
         #expect(fixture.store.devices == originalDevices)
         if demo {
-            #expect(rendered.visibleText.contains("SAMPLE FLEET HASHRATE"))
+            #expect(rendered.visibleText.contains("Sample fleet hashrate"))
         } else {
             #expect(rendered.visibleText.localizedCaseInsensitiveContains("miner"))
             #expect(fixture.store.devices.isEmpty)
@@ -185,7 +185,7 @@ struct DashboardRenderingCoverageTests {
                 #expect(!rendered.visibleText.contains("did not report a hashrate"))
             }
         }
-        #expect(rendered.visibleText.contains("FLEET HASHRATE"))
+        #expect(rendered.visibleText.contains("Fleet hashrate"))
         #expect(rendered.visibleText.contains("3 of 4 online"))
     }
 
@@ -195,7 +195,7 @@ struct DashboardRenderingCoverageTests {
         let rendered = try await FleetViewRenderHarness.render(card)
         // The visible unit is W. The expanded Watts sentence belongs to native AX coverage.
         #expect(rendered.visibleText.contains("Total Power"))
-        #expect(rendered.visibleText.contains("150 W"))
+        #expect(rendered.visibleText.localizedCaseInsensitiveContains("150 W"))
         #expect(rendered.visibleText.contains("Reported by all miners"))
     }
 

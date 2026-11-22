@@ -130,35 +130,116 @@ struct FleetHeroCard: View {
     let liveFallbackCount: Int
     var sourceTitle: String = "SHA-256"
     var compact: Bool = false
-    /// Each miner's share of the headline hashrate. Shown only with two or more hashing miners.
-    var shareSlices: [FleetHashrateShare.Slice] = []
-    @ScaledMetric(relativeTo: .title2) private var valueSize = 32.0
+    var numberFirst: Bool = false
+    @ScaledMetric(relativeTo: .title2) private var valueSize = 38.0
+    @ScaledMetric(relativeTo: .largeTitle) private var numberFirstSize = 44.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 4 : 6) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(isDemo ? "SAMPLE FLEET HASHRATE" : "FLEET HASHRATE")
-                    .fleetFont(.caption2, weight: .semibold, design: .monospaced)
-                    .tracking(0.8)
-                    .foregroundStyle(FleetTheme.panelAccent)
+        if numberFirst {
+            numberFirstContent
+        } else {
+            panelContent
+        }
+    }
+
+    private var numberFirstContent: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            heroHeading
+            if let note = FleetReadingCaption.hashrate(hashrate) {
+                Text(note)
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.panelSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
-                if !dynamicTypeSize.isAccessibilitySize {
-                    FleetLoadAnimatedArt(
-                        loop: .fleetCluster,
-                        size: CGSize(width: 72, height: 50),
-                        accessibilityIdentifier: "dashboard.fleetArtwork"
-                    )
+                    .accessibilityIdentifier("dashboard.fleetHashrateNote")
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    sourceLabel
+                    powerStatus
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 6) {
+                    sourceLabel
+                    powerStatus
                 }
             }
-            Text(sourceTitle)
-                .fleetFont(compact ? .caption2 : .caption, weight: .medium)
-                .foregroundStyle(FleetTheme.panelSecondary)
-                .accessibilityIdentifier("dashboard.hashrateSource")
+            .foregroundStyle(FleetTheme.panelSecondary)
+        }
+        .foregroundStyle(FleetTheme.panelInk)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fleetCard(padding: compact ? 14 : 18, fill: FleetTheme.charcoal, border: .clear)
+    }
+
+    private var panelContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            heroHeading
+            if !isInitialLoading, let note = FleetReadingCaption.hashrate(hashrate) {
+                Text(note)
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.panelSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("dashboard.fleetHashrateNote")
+            }
+            Rectangle()
+                .fill(FleetTheme.panelSecondary.opacity(0.35))
+                .frame(height: 1)
+                .accessibilityHidden(true)
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                HStack(spacing: 12) {
+                    fleetStatus
+                    powerStatus
+                    Spacer(minLength: 0)
+                    refreshStatus
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 6) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            fleetStatus
+                            powerStatus
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        VStack(alignment: .leading, spacing: 6) {
+                            fleetStatus
+                            powerStatus
+                        }
+                    }
+                    refreshStatus
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .foregroundStyle(FleetTheme.panelInk)
+        .fleetCard(padding: compact ? 16 : 18,
+                   fill: FleetTheme.charcoal, border: .clear)
+    }
+
+    private var heroHeading: some View {
+        HStack(alignment: .top, spacing: 8) {
+            headline
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer(minLength: 0)
+                FleetLoadAnimatedArt(
+                    loop: .fleetCluster,
+                    size: CGSize(width: 72, height: 50),
+                    accessibilityIdentifier: "dashboard.fleetArtwork"
+                )
+            }
+        }
+    }
+
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: numberFirst ? 2 : 4) {
+            Text(isDemo && !numberFirst ? "Sample fleet hashrate" : "Fleet hashrate")
+                .fleetFont(numberFirst ? .subheadline : .headline, weight: numberFirst ? .semibold : nil)
+                .foregroundStyle(FleetTheme.panelAccent)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if !numberFirst { sourceLabel }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     rateValue
                     rateUnit
                 }
@@ -170,39 +251,14 @@ struct FleetHeroCard: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibleRate)
             .accessibilityIdentifier("dashboard.fleetHashrate")
-            if !isInitialLoading, let note = FleetReadingCaption.hashrate(hashrate) {
-                Text(note)
-                    .fleetFont(.caption)
-                    .foregroundStyle(FleetTheme.panelSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("dashboard.fleetHashrateNote")
-            }
-            if !isInitialLoading, shareSlices.count >= 2 {
-                FleetHashrateShareStrip(slices: shareSlices)
-                    .padding(.vertical, compact ? 4 : 6)
-            }
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        fleetStatus
-                        powerStatus
-                    }
-                    Spacer(minLength: 4)
-                    refreshStatus
-                }
-                HStack(alignment: .top, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        fleetStatus
-                        powerStatus
-                    }
-                    Spacer(minLength: 4)
-                    refreshStatus
-                }
-            }
         }
-        .foregroundStyle(FleetTheme.panelInk)
-        .fleetCard(padding: compact ? 14 : 18,
-                   fill: FleetTheme.charcoal, border: .clear)
+    }
+
+    private var sourceLabel: some View {
+        Text(sourceTitle)
+            .fleetFont(numberFirst ? .caption : .footnote, weight: .medium)
+            .foregroundStyle(FleetTheme.panelSecondary)
+            .accessibilityIdentifier("dashboard.hashrateSource")
     }
 
     /// A subtotal must never look like a whole-fleet reading, and no reading must never look like
@@ -229,15 +285,16 @@ struct FleetHeroCard: View {
                 tint: FleetTheme.panelSecondary
             )
             .accessibilityIdentifier("dashboard.hashrate.loading")
-        } else {
-            Text(hashrate.hasReading ? FleetFormat.hashrate(hashrate.value) : "—")
-                .font(.system(size: min(valueSize, compact ? 72 : 90), weight: .semibold, design: .rounded))
-                .tracking(-0.5)
+        } else if hashrate.hasReading {
+            let value = FleetFormat.hashrate(hashrate.value)
+            Text(value)
+                .font(.system(size: numberFirst ? min(numberFirstSize, 48) : min(valueSize, compact ? 80 : 90),
+                              weight: numberFirst ? .bold : .semibold, design: numberFirst ? .default : .rounded))
                 .monospacedDigit()
-                .fleetHeadlineNumericUpdate(
-                    hashrate.hasReading ? FleetFormat.hashrate(hashrate.value) : "—",
-                    reduceMotion: reduceMotion
-                )
+                .fleetHeadlineNumericUpdate(value, reduceMotion: reduceMotion)
+        } else {
+            Text("Not reported")
+                .fleetFont(.title3, weight: .semibold)
         }
     }
 
@@ -245,7 +302,7 @@ struct FleetHeroCard: View {
     private var rateUnit: some View {
         if !isInitialLoading, hashrate.hasReading {
             Text(FleetFormat.hashrateUnit(hashrate.value))
-                .fleetFont(.title3, design: .monospaced)
+                .fleetFont(numberFirst ? .callout : .title3, weight: .medium)
                 .foregroundStyle(FleetTheme.panelSecondary)
         }
     }
@@ -256,12 +313,11 @@ struct FleetHeroCard: View {
         return Label {
             Text(value).fleetNumericUpdate(value, reduceMotion: reduceMotion)
         } icon: {
-            Image(systemName: isDemo ? "sparkles" : "circle.fill")
+            Image(systemName: isDemo ? "sparkles" : "circle.grid.2x2")
+                .accessibilityHidden(true)
         }
-        .fleetFont(.caption, weight: .medium)
-        .foregroundStyle(FleetTheme.panelInk)
-        .fleetPillPadding()
-        .background(FleetTheme.panelInk.opacity(0.07), in: Capsule())
+        .fleetFont(.footnote, weight: .semibold)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("dashboard.fleetStatus")
     }
 
@@ -269,15 +325,15 @@ struct FleetHeroCard: View {
     private var powerStatus: some View {
         if !isInitialLoading, power.hasReading {
             let value = "\(FleetFormat.number(power.value)) W\(power.isPartial ? " subtotal" : "")"
+            let text = numberFirst ? "Power: \(value)" : value
             Label {
-                Text(value).fleetNumericUpdate(value, reduceMotion: reduceMotion)
+                Text(text).fleetNumericUpdate(value, reduceMotion: reduceMotion)
             } icon: {
-                Image(systemName: "bolt.fill")
+                Image(systemName: "bolt")
+                    .accessibilityHidden(true)
             }
-            .fleetFont(.caption, weight: .medium)
-            .foregroundStyle(FleetTheme.panelInk)
-            .fleetPillPadding()
-            .background(FleetTheme.panelInk.opacity(0.07), in: Capsule())
+            .fleetFont(numberFirst ? .caption : .footnote, weight: .semibold)
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityLabel(
                 "\(power.isPartial ? "Reported power subtotal" : "Fleet power"), \(FleetFormat.number(power.value)) watts"
             )
@@ -296,8 +352,8 @@ struct FleetHeroCard: View {
                 ProgressView().tint(FleetTheme.panelInk).controlSize(.mini)
             }
             Text(presentation.text)
-                .fleetFont(presentation.usesMonospacedCaption ? .caption2 : .caption,
-                           design: presentation.usesMonospacedCaption ? .monospaced : .default)
+                .fleetFont(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("dashboard.refreshMode")
         }
         .foregroundStyle(FleetTheme.panelSecondary)
@@ -315,33 +371,35 @@ struct FleetMetricCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .fleetFont(.caption2, weight: .medium, design: .monospaced)
-                    .tracking(0.8)
-                    .foregroundStyle(FleetTheme.secondary)
+                    .fleetFont(.headline)
+                    .foregroundStyle(FleetTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Image(systemName: symbol)
-                    .fleetFont(.caption2)
+                    .fleetFont(.subheadline)
                     .foregroundStyle(FleetTheme.secondary)
                     .accessibilityHidden(true)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    metricValue; metricUnit
+                    metricValue
+                    metricUnit
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    metricValue; metricUnit
+                    metricValue
+                    metricUnit
                 }
             }
             Text(caption)
-                .fleetFont(.caption)
+                .fleetFont(.footnote)
                 .foregroundStyle(FleetTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
-        .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+        .fleetCard(padding: FleetSurfaceSpacing.cardInset, border: FleetTheme.separator)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), \(accessibleValue). \(caption)")
         .accessibilityIdentifier(identifier)
@@ -349,7 +407,7 @@ struct FleetMetricCard: View {
 
     private var metricValue: some View {
         Text(value)
-            .fleetFont(.title3, weight: .semibold)
+            .fleetFont(.title2, weight: .semibold)
             .monospacedDigit()
             .fleetNumericUpdate(value, reduceMotion: reduceMotion)
     }
@@ -357,7 +415,7 @@ struct FleetMetricCard: View {
     @ViewBuilder
     private var metricUnit: some View {
         if !unit.isEmpty {
-            Text(unit).fleetFont(.subheadline, design: .monospaced).foregroundStyle(FleetTheme.secondary)
+            Text(unit).fleetFont(.subheadline, weight: .medium).foregroundStyle(FleetTheme.secondary)
         }
     }
 }

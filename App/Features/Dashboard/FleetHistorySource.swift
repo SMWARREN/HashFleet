@@ -9,6 +9,14 @@ enum FleetRecentRange: String, CaseIterable, Identifiable {
     case day = "24h"
 
     var id: String { rawValue }
+    var rangeTitle: String {
+        switch self {
+        case .oneMinute: "Last minute"
+        case .fifteenMinutes: "Last 15 minutes"
+        case .hour: "Last hour"
+        case .day: "Last 24 hours"
+        }
+    }
     var identifier: String {
         switch self {
         case .oneMinute: "oneMinute"

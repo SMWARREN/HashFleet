@@ -231,10 +231,10 @@ extension MinerDetailView {
     }
 
     @ViewBuilder
-    func heroConditions(_ info: MinerInfo) -> some View {
+    func heroConditions(_ info: MinerInfo, compact: Bool = false) -> some View {
         // The two readings an owner checks first, promoted beside the hashrate.
         let temp = MinerHeroReading(
-            title: store.isDemo ? "TEMPERATURE (SAMPLE)" : "TEMPERATURE",
+            title: compact ? "Temperature" : (store.isDemo ? "TEMPERATURE (SAMPLE)" : "TEMPERATURE"),
             symbol: "thermometer.medium",
             value: FleetFormat.sensor(info, keys: "temp"),
             unit: "°C",
@@ -242,7 +242,7 @@ extension MinerDetailView {
             id: "detail.hero.temperature"
         )
         let power = MinerHeroReading(
-            title: store.isDemo ? "POWER (SAMPLE)" : "POWER",
+            title: compact ? "Power" : (store.isDemo ? "POWER (SAMPLE)" : "POWER"),
             symbol: "bolt.fill",
             value: FleetFormat.sensor(info, keys: "power"),
             unit: "W",
@@ -250,31 +250,39 @@ extension MinerDetailView {
             id: "detail.hero.power"
         )
         if dynamicTypeSize.isAccessibilitySize {
-            heroCondition(temp)
-            heroCondition(power)
+            heroCondition(temp, compact: compact)
+            heroCondition(power, compact: compact)
         } else {
-            HStack(alignment: .top, spacing: 12) {
-                heroCondition(temp)
-                heroCondition(power)
+            HStack(alignment: .top, spacing: compact ? 10 : 12) {
+                heroCondition(temp, compact: compact)
+                heroCondition(power, compact: compact)
             }
             // Keep the pair the same height when one title wraps to two lines.
             .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    func heroCondition(_ reading: MinerHeroReading) -> some View {
+    @ViewBuilder private func heroCondition(_ reading: MinerHeroReading, compact: Bool) -> some View {
+        if !compact || reading.value != nil {
+            heroConditionCard(reading, compact: compact)
+        }
+    }
+
+    private func heroConditionCard(_ reading: MinerHeroReading, compact: Bool) -> some View {
         let display =
             reading.value.map { $0.formatted(.number.precision(.fractionLength(0...1))) }
             ?? "Not reported"
-        return VStack(alignment: .leading, spacing: 8) {
+        let spokenUnit = reading.unit == "°C" ? "degrees Celsius" : "watts"
+        return VStack(alignment: .leading, spacing: compact ? 3 : 8) {
             Label(reading.title, systemImage: reading.symbol)
-                .fleetFont(.caption2, weight: .medium, design: .monospaced)
+                .fleetFont(compact ? .caption : .caption2, weight: compact ? .semibold : .medium,
+                           design: compact ? .default : .monospaced)
                 .foregroundStyle(FleetTheme.accent)
-                .lineLimit(1)
+                .lineLimit(compact && dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 .minimumScaleFactor(0.55)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(display)
-                    .fleetFont(.title, weight: .semibold, design: .rounded)
+                    .fleetFont(compact ? .title2 : .title, weight: .semibold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(FleetTheme.ink)
                     .lineLimit(1)
@@ -284,13 +292,15 @@ extension MinerDetailView {
                     Text(reading.unit).fleetFont(.subheadline).foregroundStyle(FleetTheme.secondary)
                 }
             }
-            Text(reading.caption).fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
-                .lineLimit(2)
+            Text(reading.caption).fleetFont(compact ? .caption2 : .caption).foregroundStyle(FleetTheme.secondary)
+                .lineLimit(compact && dynamicTypeSize.isAccessibilitySize ? nil : 2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+        .fleetCard(padding: compact ? 10 : FleetSurfaceSpacing.cardInset,
+                   cornerRadius: compact ? 16 : 24)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(reading.accessibilityLabel(display: display))
+        .accessibilityLabel(compact ? "\(reading.title), \(reading.caption) (sample)" : reading.accessibilityLabel(display: display))
+        .accessibilityValue(compact ? "\(display) \(spokenUnit)" : "")
         .accessibilityIdentifier(reading.id)
     }
 }

@@ -8,6 +8,7 @@ struct CKPoolLookupView: View {
     @State private var submittedAddress: String?
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var addressFocused: Bool
+    private let addressAnchor = "poolLookup.address"
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 15)) { timeline in
@@ -26,8 +27,9 @@ struct CKPoolLookupView: View {
                             .focused($addressFocused)
                             .submitLabel(.done)
                             .onSubmit { addressFocused = false }
-                            .accessibilityIdentifier("poolLookup.address")
+                            .accessibilityIdentifier(addressAnchor)
                             .privacySensitive()
+                            .id(addressAnchor)
                         Text(
                             "Tapping Look up sends only this address to raw.stats.ckpool.org over HTTPS. "
                                 + "CKPool will see it and your internet IP. Nothing is read from your miner settings, "
@@ -45,7 +47,7 @@ struct CKPoolLookupView: View {
                                 Text("Look up CKPool statistics")
                             }.frame(maxWidth: .infinity, minHeight: 40)
                         }
-                        .buttonStyle(.borderedProminent).foregroundStyle(FleetTheme.buttonInk)
+                        .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
                         .disabled(
                             !externalDataEnabled || insights.isDemo
                                 || address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -74,9 +76,12 @@ struct CKPoolLookupView: View {
                 }
                 .fleetPageContainer(compactMaxWidth: FleetLayout.listContentWidth)
             }
+            .fleetEditingScroll()
+            .fleetRevealEditingField(addressFocused ? addressAnchor : nil)
         }
         .background(FleetTheme.canvas).foregroundStyle(FleetTheme.ink)
         .navigationTitle("CKPool lookup").navigationBarTitleDisplayMode(.inline)
+        .fleetEditingDone(addressFocused, identifier: "poolLookup.keyboardDone") { addressFocused = false }
         .onChange(of: address) { _, _ in
             insights.clearLookup(); submittedAddress = nil
         }

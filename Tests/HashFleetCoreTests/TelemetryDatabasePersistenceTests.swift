@@ -6,6 +6,28 @@ import GRDB
 final class TelemetryDatabasePersistenceTests: XCTestCase {
 
     @MainActor
+    func testSensorHistoryAveragesSavedSamplesAndPreservesMissingValues() async throws {
+        let db = MinerTelemetryDatabase(databaseQueue: try DatabaseQueue())
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let end = start.addingTimeInterval(1_799)
+        for (offset, temp, power): (TimeInterval, Double?, Double?) in [
+            (-1, 99, 99), (1, 40, nil), (2, 44, 0), (110, -1, -1), (120, nil, nil),
+            (375, nil, 24), (1_799, 55, nil), (1_800, 99, 99)
+        ] {
+            db.recordReading(minerId: "sensor-fixture", timestamp: start.addingTimeInterval(offset),
+                             reading: MinerReadingInput(power: power, temp: temp))
+        }
+        db.recordReading(minerId: "other", timestamp: start, reading: MinerReadingInput(power: 90, temp: 90))
+        await db.flushReadings()
+        let readings = await db.getSensorHistory(minerId: "sensor-fixture", since: start, until: end)
+        XCTAssertEqual(readings.map(\.date), [1, 375, 1_799].map { start.addingTimeInterval($0) })
+        XCTAssertEqual(readings.map(\.temperature), [42, nil, 55])
+        XCTAssertEqual(readings.map(\.power), [0, 24, nil])
+        let reversed = await db.getSensorHistory(minerId: "sensor-fixture", since: end, until: start)
+        XCTAssertTrue(reversed.isEmpty)
+    }
+
+    @MainActor
     func testDatabaseWritesAndReadsPersist() async throws {
         // Create in-memory database for testing
         let dbQueue = try DatabaseQueue()

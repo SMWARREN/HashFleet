@@ -11,54 +11,76 @@ extension DashboardView {
     /// runtimes do not reproduce it. The erasure is limited to the grid container, so individual
     /// cards and their identity remain unchanged.
     internal func minerCardsContainer(
-        availableWidth: CGFloat,
         columns: Int,
         gridItems: [GridItem],
         devices: [MinerDevice]
     ) -> AnyView {
+        if usesNumberFirstOverview {
+            return AnyView(numberFirstMinerList(devices: devices))
+        }
         if FleetLayout.isMac {
             return AnyView(
                 FleetMinerDetailGrid(
-                    maximumColumns: dynamicTypeSize.isAccessibilitySize ? 1 : columns,
+                    maximumColumns: columns,
                     minimumColumnWidth: 320, spacing: FleetLayout.cardGridSpacing,
                     balancesFourItems: false
                 ) {
-                    dashboardMinerCards(availableWidth: availableWidth, devices: devices)
+                    dashboardMinerCards(devices: devices)
                 }
             )
         }
 
         return AnyView(
             LazyVGrid(columns: gridItems, spacing: FleetLayout.cardGridSpacing) {
-                dashboardMinerCards(availableWidth: availableWidth, devices: devices)
+                dashboardMinerCards(devices: devices)
             }
         )
     }
 
-    internal func dashboardMinerCards(availableWidth: CGFloat, devices: [MinerDevice]) -> some View {
+    @ViewBuilder private func numberFirstMinerList(devices: [MinerDevice]) -> some View {
+        if !devices.isEmpty {
+            LazyVStack(spacing: 0) {
+                ForEach(devices) { device in
+                    let expanded = minerExpansion[device.id] ?? !numberFirstCompactCards
+                    if device.id != devices.first?.id {
+                        Rectangle().fill(FleetTheme.separator)
+                            .frame(height: 1)
+                            .accessibilityHidden(true)
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        minerCardLink(device, expanded: expanded)
+                        minerCardControls(device, expanded: expanded)
+                    }
+                    .padding(.top, 8)
+                }
+            }
+            .padding(.horizontal, 12)
+            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private func dashboardMinerCards(devices: [MinerDevice]) -> some View {
         ForEach(devices) { device in
-            minerCard(device, availableWidth: availableWidth)
+            minerCard(device)
                 .fleetMinerCardScrollTransition(reduceMotion: reduceMotion)
         }
     }
 
-    internal func minerCard(_ device: MinerDevice, availableWidth: CGFloat) -> some View {
+    private func minerCard(_ device: MinerDevice) -> some View {
         let expanded = minerExpansion[device.id] ?? !store.preferences.compactCards
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
-        // Keep one link and one Menu. Alternate ViewThatFits branches can replace the
-        // presenting Menu when changing live-error content changes the card's ideal width.
-        return layout {
+        return VStack(alignment: .leading, spacing: 8) {
             minerCardLink(device, expanded: expanded)
-            VStack(alignment: .trailing, spacing: 4) {
-                minerCardExpandButton(device, expanded: expanded)
-                minerCardSettingsButton(device)
-            }
-            .fixedSize(horizontal: true, vertical: false)
+            Rectangle()
+                .fill(FleetTheme.separator)
+                .frame(height: 1)
+                .accessibilityHidden(true)
+            minerCardControls(device, expanded: expanded)
         }
         .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
-        .fleetCard(padding: FleetLayout.cardPadding, fill: FleetTheme.raised)
+        .padding(.horizontal, FleetLayout.cardPadding)
+        .padding(.top, FleetLayout.cardPadding)
+        .padding(.bottom, 4)
+        .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator)
         .transition(
             reduceMotion
                 ? .identity
@@ -89,6 +111,7 @@ extension DashboardView {
                     liveConnectionError: store.liveConnectionErrors[device.id],
                     isLive: store.liveConnectedDeviceIDs.contains(device.id)
                 )
+                .environment(\.dynamicTypeSize, dynamicTypeSize)
                 .fleetMinerNavigationTransition(sourceID: device.id, in: minerTransitionNamespace, enabled: !reduceMotion)
             } label: {
                 minerCardNavigationLabel(device, expanded: expanded)
@@ -108,27 +131,24 @@ extension DashboardView {
             store: store,
             insights: insights,
             device: device,
-            compact: !expanded
+            compact: !expanded,
+            numberFirst: usesNumberFirstOverview
         )
         .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
         .contentShape(Rectangle())
     }
 
-    internal func minerCardControls(_ device: MinerDevice, expanded: Bool, horizontal: Bool = false) -> some View {
-        let layout = horizontal
-            ? AnyLayout(HStackLayout(spacing: 8))
-            : AnyLayout(VStackLayout(spacing: 4))
+    private func minerCardControls(_ device: MinerDevice, expanded: Bool) -> some View {
+        let stacksActions = overviewTypeSize >= .xxxLarge
+        let layout = stacksActions
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+        // Keep each button's identity while the readings load or the type size changes.
         return layout {
-            if horizontal {
-                minerCardSettingsButton(device)
-                minerCardExpandButton(device, expanded: expanded)
-            } else {
-                minerCardExpandButton(device, expanded: expanded)
-                minerCardSettingsButton(device)
-            }
+            minerCardExpandButton(device, expanded: expanded)
+            if !stacksActions { Spacer(minLength: 4) }
+            minerCardSettingsButton(device)
         }
-        .foregroundStyle(FleetTheme.accent)
-        .frame(maxWidth: horizontal ? .infinity : nil, alignment: .trailing)
     }
 
     private func minerCardSettingsButton(_ device: MinerDevice) -> some View {
@@ -151,11 +171,7 @@ extension DashboardView {
                 }
             }
         } label: {
-            Image(systemName: "slider.horizontal.3")
-                .fleetFont(.caption2, weight: .semibold)
-                .frame(width: 34, height: 34)
-                .background(FleetTheme.accent.opacity(0.10), in: Capsule())
-                .frame(width: 44, height: 44)
+            minerCardActionLabel("Controls", symbol: "slider.horizontal.3")
         }
         .buttonStyle(.plain)
         .fleetDesignedMenu()
@@ -170,16 +186,26 @@ extension DashboardView {
                 minerExpansion[device.id] = !expanded
             }
         } label: {
-            Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                .fleetFont(.subheadline, weight: .semibold)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+            minerCardActionLabel(expanded ? "Fewer readings" : "More readings",
+                                 symbol: expanded ? "chevron.up" : "chevron.down")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(expanded ? "Collapse" : "Expand") \(device.name) card")
         .accessibilityValue(expanded ? "Expanded" : "Collapsed")
-        .accessibilityHint("Hashrate, status and power stay visible.")
+        .accessibilityHint(usesNumberFirstOverview ? "Hashrate, status, temperature and power stay visible."
+                                                   : "Hashrate, status and power stay visible.")
         .accessibilityIdentifier("dashboard.card.expand.\(device.id.uuidString)")
+    }
+
+    private func minerCardActionLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .fleetFont(usesNumberFirstOverview ? .caption : .footnote, weight: .semibold)
+            .foregroundStyle(FleetTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 4)
+            .padding(.vertical, usesNumberFirstOverview ? 4 : 8)
+            .frame(minWidth: 48, minHeight: 48, alignment: .leading)
+            .contentShape(Rectangle())
     }
 
     private func minerSettingsButton(
@@ -208,6 +234,7 @@ struct FleetObservedMinerOverviewCard: View {
     let insights: MiningInsightsStore
     let device: MinerDevice
     let compact: Bool
+    var numberFirst = false
 
     var body: some View {
         MinerOverviewCard(
@@ -217,7 +244,8 @@ struct FleetObservedMinerOverviewCard: View {
             compact: compact,
             isLive: store.liveConnectedDeviceIDs.contains(device.id),
             liveConnectionError: store.liveConnectionErrors[device.id],
-            marketData: insights.coinMarkets
+            marketData: insights.coinMarkets,
+            numberFirst: numberFirst
         )
     }
 }

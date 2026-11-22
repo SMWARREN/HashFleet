@@ -120,7 +120,11 @@ final class FleetStore {
         // If a checkpoint exists from a mid-demo relaunch, restore it before creating preferences
         Self.restorePreferencesFromCheckpointIfNeeded(defaults: defaults)
 
-        preferences = FleetPreferences(defaults: defaults)
+        preferences = FleetPreferences(
+            defaults: defaults,
+            hasSavedFleet: defaults.object(forKey: Self.storageKey) != nil
+                || defaults.object(forKey: Self.snapshotCacheKey) != nil
+        )
         temperatureAlerts = FleetTemperatureAlertPreferences(defaults: defaults)
         powerAlerts = FleetPowerAlertPreferences(defaults: defaults)
         capabilities = MinerCapabilitiesStore(session: session)

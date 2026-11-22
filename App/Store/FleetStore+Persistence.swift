@@ -9,6 +9,25 @@ extension FleetStore {
     static let preferenceCheckpointKey = "app.hashfleet.demo.preference-checkpoint.v1"
     private static let absentPreferenceKeysCheckpointKey = "__app.hashfleet.demo.absentPreferenceKeys"
 
+    #if DEBUG
+    /// UI acceptance of an already configured miner must not depend on re-running the
+    /// separate first-run Bonjour consent flow. This fixture is loopback-only, in a test suite.
+    static func seedLoopbackReviewFixture(defaults: UserDefaults, arguments: [String]) {
+        let prefix = "--ui-test-loopback-review-port="
+        guard arguments.contains("--ui-testing"),
+              !arguments.contains("--ui-test-preserve-storage"),
+              let argument = arguments.first(where: { $0.hasPrefix(prefix) }),
+              let port = UInt16(argument.dropFirst(prefix.count)), port != 0
+        else { return }
+        let fixture = MinerDevice(name: "Loopback review fixture", address: "127.0.0.1:\(port)")
+        defaults.set(try? JSONEncoder().encode([fixture]), forKey: storageKey)
+        if arguments.contains("--ui-test-loopback-manual-refresh") {
+            // Only the test-owned loopback miner disables the background WebSocket retry loop.
+            defaults.set(false, forKey: FleetPreferences.Keys.realtimeMonitoring)
+        }
+    }
+    #endif
+
     func loadDemo() {
         guard !isDemo else { return }
         cancelRefresh()
@@ -437,7 +456,8 @@ extension FleetStore {
     private func checkpointPreferences() {
         var checkpoint: [String: Any] = [:]
 
-        // Capture all preference keys from FleetPreferences.Keys
+        // Dashboard view is deliberately not checkpointed: choosing a layout while exploring the
+        // demo is an app-wide UI decision, not a demo setting for a miner.
         let prefKeys = [
             FleetPreferences.Keys.appearance,
             FleetPreferences.Keys.sort,

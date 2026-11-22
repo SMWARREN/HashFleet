@@ -27,6 +27,98 @@ private final class InstalledObservationHostingController<Content: View>: UIHost
 @Suite("Installed Chart Observation", .serialized)
 @MainActor
 struct FleetHistoryInstalledObservationTests {
+    @Test(arguments: [true, false])
+    func previewTimestampLabelsUpdateWithoutMoving(essentials: Bool) async throws {
+        let feed = MountedFleetHistoryFeed()
+        let device = MinerDevice(name: "Chart fixture", address: "chart-fixture.invalid")
+        feed.devices = [device]
+        let hour = try #require(Calendar.current.dateInterval(of: .hour, for: .now))
+        let anchor = hour.start.addingTimeInterval(-45 * 60 + 15)
+        let offsets: [TimeInterval] = [-55, -40, -25, -10, 0]
+        let axisFormat = Date.FormatStyle.dateTime.hour().minute().second()
+
+        func publish(step: Int) -> (first: Date, last: Date) {
+            let last = anchor.addingTimeInterval(Double(step * 7))
+            let points = offsets.enumerated().map { index, offset in
+                HashratePoint(date: last.addingTimeInterval(offset), value: 900 + Double(index * 21 + step * 8))
+            }
+            feed.snapshots = [device.id: MinerSnapshot(updatedAt: last, history: points)]
+            return (last.addingTimeInterval(offsets[0]), last)
+        }
+
+        func clockDigits(_ text: String) -> String { text.filter { $0.isNumber || $0 == ":" } }
+        func timestamp(_ date: Date, in capture: FleetRenderedView) throws -> CGRect {
+            let digits = clockDigits(date.formatted(axisFormat))
+            return try #require(capture.recognition.words.first {
+                clockDigits($0.text) == digits
+            }, "The plotted sample time \(digits) must be visible; read \(capture.visibleText)").bounds
+        }
+
+        let initial = publish(step: 0)
+        _ = try await FleetViewRenderHarness.render(
+            PreviewHistoryTimestampFixture(feed: feed, essentials: essentials), width: 375, height: 268,
+            readiness: { capture in
+                capture.recognition.words.contains { clockDigits($0.text) == clockDigits(initial.last.formatted(axisFormat)) }
+            }, inspection: { view in
+                let initialCapture = try await FleetViewRenderHarness.capture(view, named: "chart-times-start.png")
+                let initialFirst = try timestamp(initial.first, in: initialCapture)
+                let initialLast = try timestamp(initial.last, in: initialCapture)
+                #expect(initialFirst.maxX < initialLast.minX)
+                let tolerance = 3 * view.traitCollection.displayScale
+                // Vision can recognize the exact digits but sometimes return a box for only
+                // part of a word. Use the source pixels for the position and visibility checks.
+                let row = initialFirst.union(initialLast).insetBy(dx: 0, dy: -tolerance * 2).integral
+                let firstInk = try Self.timestampInk(in: initialCapture, row: row, trailing: false)
+                let lastInk = try Self.timestampInk(in: initialCapture, row: row, trailing: true)
+                for step in 1...4 {
+                    let current = withAnimation(.easeInOut(duration: 0.65)) { publish(step: step) }
+                    // Capture after layout, while an inherited 650ms animation could still be active.
+                    try await Task.sleep(for: .milliseconds(115))
+                    let frame = try await FleetViewRenderHarness.capture(view, named: "chart-times-tick-\(step).png")
+                    _ = try timestamp(current.first, in: frame)
+                    _ = try timestamp(current.last, in: frame)
+                    let first = try Self.timestampInk(in: frame, row: row, trailing: false)
+                    let last = try Self.timestampInk(in: frame, row: row, trailing: true)
+                    #expect(abs(first.minX - firstInk.minX) <= tolerance)
+                    #expect(abs(last.maxX - lastInk.maxX) <= tolerance)
+                    #expect(abs(first.midY - firstInk.midY) <= tolerance)
+                    #expect(abs(last.midY - lastInk.midY) <= tolerance)
+                }
+            }
+        )
+    }
+
+    private static func timestampInk(in capture: FleetRenderedView, row: CGRect, trailing: Bool) throws -> CGRect {
+        let image = try #require(UIImage(data: capture.pngData)?.cgImage)
+        let minX = trailing ? image.width / 2 : image.width / 6
+        let maxX = trailing ? image.width : image.width / 2
+        let region = CGRect(x: CGFloat(minX), y: row.minY, width: CGFloat(maxX - minX), height: row.height)
+        let crop = try #require(image.cropping(to: region))
+        return try #require(timestampInkBounds(in: crop), "Timestamp must remain visibly painted during the update")
+    }
+
+    private static func timestampInkBounds(in image: CGImage) -> CGRect? {
+        var rgba = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        return rgba.withUnsafeMutableBytes { bytes in
+            guard let context = CGContext(data: bytes.baseAddress, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let pixels = bytes.bindMemory(to: UInt8.self)
+            var bounds = CGRect.null
+            for y in 0..<image.height {
+                for x in 0..<image.width {
+                    let index = (y * image.width + x) * 4
+                    let (red, green, blue) = (Int(pixels[index]), Int(pixels[index + 1]), Int(pixels[index + 2]))
+                    // Neutral, readable caption ink, not the dim grid or gold series.
+                    if red >= 115, max(red, green, blue) - min(red, green, blue) < 42 {
+                        bounds = bounds.union(CGRect(x: x, y: y, width: 1, height: 1))
+                    }
+                }
+            }
+            return bounds.isNull ? nil : bounds
+        }
+    }
 
     private static func observationDevices() -> [MinerDevice] {
         (1...20).map { idx in
@@ -388,6 +480,23 @@ struct FleetHistoryInstalledObservationTests {
         }
 
         #expect(diagnostics.count == 12, "Must complete all 12 observation steps")
+    }
+}
+
+private struct PreviewHistoryTimestampFixture: View {
+    let feed: MountedFleetHistoryFeed
+    let essentials: Bool
+
+    var body: some View {
+        FleetHistoryCard(
+            devices: feed.devices, snapshots: feed.snapshots, isDemo: true,
+            initialRecentRange: .oneMinute, isCompactDashboard: true,
+            dashboardMode: essentials ? .essentials : .full, numberFirst: true
+        )
+        .padding(16)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(FleetTheme.canvas)
+        .environment(\.dynamicTypeSize, essentials ? .large : .xLarge)
     }
 }
 #endif

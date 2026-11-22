@@ -123,6 +123,29 @@ enum DemoFleet {
             raw["expectedHashrate"] = .number(rate)
             raw["version"] = .string("Demo ASIC register fixture")
         }
+        if NumberFirstPreview.minerDetail {
+            if arguments.contains("--ui-test-preview-detail-limited") {
+                // Missing fields are intentionally absent rather than replaced with zero readings.
+                return ["hostname": .string(device.name), "hashRate": .number(rate)]
+            }
+            raw["version"] = .string(NumberFirstPreview.sampleFirmwareVersion)
+            if NumberFirstPreview.cooling, !arguments.contains("--ui-test-preview-cooling-partial") {
+                // Synthetic configured values for the offline editor, separate from reported fan duty.
+                raw["manualFanSpeed"] = .integer(60)
+                raw["minFanSpeed"] = .integer(25)
+            }
+            if NumberFirstPreview.settingsHub, !arguments.contains("--ui-test-preview-settings-hub-no-display") {
+                // Explicit stored settings for this preview, not defaults inferred from board type.
+                raw["rotation"] = .integer(0)
+                raw["invertscreen"] = .integer(0)
+                raw["displayTimeout"] = .integer(5)
+            }
+            if NumberFirstPreview.tuning, !arguments.contains("--ui-test-preview-tuning-no-measurements") {
+                // Independent, simulated current readings. Neither field is a configured setting.
+                raw["actualFrequency"] = .number(index == 2 ? 521 : 570)
+                raw["coreVoltageActual"] = .integer(1128)
+            }
+        }
         return raw
     }
 

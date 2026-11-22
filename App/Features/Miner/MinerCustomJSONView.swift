@@ -18,6 +18,7 @@ struct MinerCustomJSONView: View {
 
     @State private var draft = MinerCustomJSONDraft()
     @FocusState private var editorFocused: Bool
+    private let editorAnchor = "custom_json.editor"
     @State private var errorMessage: String?
     @State private var showingFileImporter = false
     @State private var importNotice: String?
@@ -46,6 +47,7 @@ struct MinerCustomJSONView: View {
             actionSection
             reviewTriggerSection
         }
+        .fleetRevealEditingField(editorFocused ? editorAnchor : nil)
         .navigationTitle("Custom JSON")
         .navigationBarTitleDisplayMode(.inline)
         .scrollContentBackground(.hidden)
@@ -103,11 +105,12 @@ struct MinerCustomJSONView: View {
             TextEditor(text: $draft.rawText)
                 .focused($editorFocused)
                 .fleetFont(.caption, design: .monospaced)
-                .frame(minHeight: 220)
+                .fleetMultilineInputHeight(220, editing: editorFocused)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityLabel("Custom JSON payload editor")
-                .accessibilityIdentifier("custom_json.editor")
+                .accessibilityIdentifier(editorAnchor)
+                .id(editorAnchor)
 
             if let errorMessage {
                 Text(errorMessage)

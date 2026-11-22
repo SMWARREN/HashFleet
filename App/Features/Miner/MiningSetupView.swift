@@ -191,8 +191,7 @@ public struct MiningSetupView: View {
                     onSelectPreset(preset)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent).foregroundStyle(FleetTheme.buttonInk)
-                .tint(FleetTheme.accent)
+                .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
                 .accessibilityIdentifier("miningSetup.usePreset.\(preset.id)")
             }
 

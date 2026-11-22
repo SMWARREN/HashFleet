@@ -8,16 +8,27 @@ import HashFleetCore
 /// the same board-wide setpoint. Values beyond the reported reference are allowed for deliberate
 /// overclock review, but turn red and remain subject to the existing final APPLY gate.
 struct MinerTuningSessionView: View {
+    struct InlineAdvanced {
+        let isExpanded: Binding<Bool>
+        let isBusy: Binding<Bool>
+        let jumpToReview: () -> Void
+    }
+
     let device: MinerDevice
     @Bindable var store: FleetStore
     var insights: MiningInsightsStore?
+    private let reviewPresentation: Binding<Bool>?
+    private let inlineAdvanced: InlineAdvanced?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     #if !os(macOS)
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     #endif
-    @State private var setpoints = MinerTuningSetpointState()
+    @State private(set) var setpoints = MinerTuningSetpointState()
     @State private var riskAcknowledged = false
     @State private var isApplying = false
     @State private var reviewedPayload: JSONValue?
@@ -27,16 +38,28 @@ struct MinerTuningSessionView: View {
     @State private var statusMessage: String?
     @State private var controlMode: MinerTuningControlMode = .easy
     @State private var showEasyDetails = false
-    @State private var focusedEasyFields: Set<MinerTuningEasyField> = []
+    @FocusState private var focusedEasyField: MinerTuningEasyField?
     @State private var invalidEasyFields: Set<MinerTuningEasyField> = []
     @State private var easyResetGeneration = 0
+
+    private var isStandaloneEssentials: Bool {
+        #if os(iOS)
+        inlineAdvanced == nil && reviewPresentation == nil && horizontalSizeClass == .compact
+            && store.preferences.dashboardMode == .essentials
+        #else
+        false
+        #endif
+    }
+    var compactAdvanced: Bool { inlineAdvanced != nil || isStandaloneEssentials }
+    private var isActive: Bool { inlineAdvanced?.isExpanded.wrappedValue ?? true }
+    var editsLocked: Bool { isApplying || showApplyConfirmation }
 
     private var isEditingCustomValue: Bool {
         #if os(macOS)
         // No software keyboard covers the review bar on Mac, and focus can linger indefinitely.
         false
         #else
-        !focusedEasyFields.isEmpty
+        focusedEasyField != nil
         #endif
     }
     /// Valid typing is staged immediately on Mac, so only invalid text blocks mode changes or Apply.
@@ -48,108 +71,36 @@ struct MinerTuningSessionView: View {
         #endif
     }
 
-    init(device: MinerDevice, store: FleetStore, insights: MiningInsightsStore? = nil) {
+    init(device: MinerDevice, store: FleetStore, insights: MiningInsightsStore? = nil,
+         reviewPresentation: Binding<Bool>? = nil, inlineAdvanced: InlineAdvanced? = nil) {
         self.device = device
         self.store = store
         self.insights = insights
-    }
-
-    private var info: MinerInfo? { store.snapshot(for: device.id)?.info }
-
-    /// Self-contained title identity so every entry point (quick link, card gear, dashboard,
-    /// settings hub) shows the miner name and coin instead of relying on an inherited environment.
-    private var navigationIdentity: MinerNavigationIdentity {
-        let context = MinerMiningContext.resolve(info: info)
-        let coin = context.pool?.coin
-        return MinerNavigationIdentity(
-            deviceName: device.name,
-            poolName: context.pool == nil ? nil : context.providerLabel,
-            coin: coin,
-            market: coin.flatMap { insights?.coinMarkets[$0] }
-        )
-    }
-
-    private var capabilityReport: MinerCapabilityReport? {
-        store.capabilities.reports[device.id]
-    }
-
-    private var reference: MinerTuningReference? {
-        guard let asic = capabilityReport?.asic else { return nil }
-        return try? MinerTuningReference(json: asic)
-    }
-
-    private var configuredFrequency: Double? { MinerTuningSessionMath.validFrequency(info?.raw["frequency"]?.doubleValue) }
-    private var actualFrequency: Double? { MinerTuningSessionMath.validFrequency(info?.raw["actualFrequency"]?.doubleValue) }
-    private var configuredVoltage: Double? { MinerTuningSessionMath.validVoltage(info?.raw["coreVoltage"]?.doubleValue) }
-    private var measuredVoltage: Double? { MinerTuningSessionMath.validMeasuredVoltage(diagnostics.electrical.actualCoreVoltageMV) }
-
-    private var chipCount: Int {
-        max(1, MinerTuningSessionMath.chipCount(reference: reference, info: info) ?? 1)
-    }
-
-    private var chipCountWasReported: Bool {
-        MinerTuningSessionMath.chipCount(reference: reference, info: info) != nil
-    }
-
-    private var diagnostics: MinerDiagnosticsModel {
-        MinerDiagnosticsModel(info: info ?? MinerInfo(raw: [:]))
-    }
-
-    private var coreReadings: [MinerTuningCoreReading] {
-        MinerTuningSessionMath.coreReadings(
-            count: chipCount,
-            primaryTemperature: diagnostics.thermal.primaryChipTempCelsius,
-            secondaryTemperature: diagnostics.thermal.secondaryChipTempCelsius,
-            voltageMillivolts: diagnostics.electrical.actualCoreVoltageMV
-                ?? diagnostics.electrical.configuredCoreVoltageMV
-        )
-    }
-
-    private var referenceMaximum: Double? { MinerTuningSessionMath.referenceMaximum(reference) }
-
-    private var isBeyondReference: Bool {
-        MinerTuningSessionMath.isBeyondReference(frequency, reference: reference)
-    }
-
-    private var controlRange: ClosedRange<Double> {
-        MinerTuningSessionMath.controlRange(
-            current: setpoints.frequencyBaseline ?? 1, reference: reference
-        )
-    }
-
-    private var voltageReferenceMaximum: Double? { MinerTuningSessionMath.voltageReferenceMaximum(reference) }
-
-    private var isVoltageBeyondReference: Bool {
-        MinerTuningSessionMath.isVoltageBeyondReference(coreVoltage, reference: reference)
-    }
-
-    private var voltageRange: ClosedRange<Double> {
-        MinerTuningSessionMath.voltageControlRange(
-            current: setpoints.voltageBaseline ?? 1,
-            reference: reference
-        )
+        self.reviewPresentation = reviewPresentation
+        self.inlineAdvanced = inlineAdvanced
+        _controlMode = State(initialValue: reviewPresentation == nil && inlineAdvanced == nil ? .easy : .advanced)
     }
 
     /// True when either dial is past the firmware's reported reference.
-    private var isAnyBeyondReference: Bool { isBeyondReference || isVoltageBeyondReference }
+    var isAnyBeyondReference: Bool { isBeyondReference || isVoltageBeyondReference }
 
-    private var frequency: Double { setpoints.frequency ?? 0 }
-    private var coreVoltage: Double { setpoints.coreVoltage ?? 0 }
-    private var frequencyBinding: Binding<Double> {
+    var frequency: Double { setpoints.frequency ?? 0 }
+    var coreVoltage: Double { setpoints.coreVoltage ?? 0 }
+    var frequencyBinding: Binding<Double> {
         Binding(get: { frequency }, set: {
             setpoints.editFrequency($0)
             error = nil
             statusMessage = nil
         })
     }
-    private var voltageBinding: Binding<Double> {
+    var voltageBinding: Binding<Double> {
         Binding(get: { coreVoltage }, set: {
             setpoints.editVoltage($0)
             error = nil
             statusMessage = nil
         })
     }
-    private var voltageRestriction: String? {
+    var voltageRestriction: String? {
         MinerTuningHardwarePolicy.restriction(
             device: device, voltage: setpoints.voltageEdited ? setpoints.coreVoltage : nil, info: info
         )
@@ -163,8 +114,10 @@ struct MinerTuningSessionView: View {
 
     private var canWrite: Bool {
         !isDemo
+            && isActive
             && store.visibleDevices.contains(where: { $0.id == device.id && $0.address == device.address })
             && MinerWriteAvailability.allows(store.snapshot(for: device.id))
+            && (inlineAdvanced == nil || info.map { NumberFirstPreview.minerAvailability($0, device: device, store: store).tuning } == true)
     }
 
     private var isOffline: Bool {
@@ -203,87 +156,7 @@ struct MinerTuningSessionView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if controlMode == .easy {
-                        modePicker
-                        easyControlsSection
-                        if !pinsEasyReview {
-                            timedReview.id("tuningSession.applySection")
-                        }
-                        easyDetails(proxy: proxy)
-                    } else {
-                        TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
-                            MinerTuningSessionHeader(
-                                deviceName: device.name,
-                                isDemo: isDemo,
-                                isOffline: isOffline,
-                                chipCount: chipCount,
-                                chipCountWasReported: chipCountWasReported,
-                                controlMode: controlMode
-                            )
-                        }
-                        modePicker
-                        safetyCard
-                        advancedControlsSection
-                        liveContextCard
-                        MinerTuningReferenceCard(reference: reference, isDemo: isDemo)
-                        LazyVStack(alignment: .leading, spacing: 16) {
-                            asicSection(proxy: proxy)
-                            #if os(macOS)
-                            reviewSection
-                            .id("tuningSession.applySection")
-                            #else
-                            TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
-                                reviewSection
-                            }
-                            .id("tuningSession.applySection")
-                            #endif
-                        }
-                        MinerTuningJournalCard(journal: journal)
-                    }
-                }
-                .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
-            }
-            .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if controlMode == .easy && pinsEasyReview && !isEditingCustomValue {
-                    timedReview
-                        .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
-                        .background(FleetTheme.canvas)
-                        .accessibilityIdentifier("tuningSession.easyActionBar")
-                }
-            }
-            .background(FleetTheme.canvas)
-            .foregroundStyle(FleetTheme.ink)
-            .navigationTitle("Frequency & voltage")
-            .fleetPerformanceScreen("Frequency & voltage")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    MinerNavigationTitle(pageTitle: "Frequency & voltage")
-                }
-                ToolbarItem(placement: FleetToolbarLocation.trailing) {
-                    Button("Restore", systemImage: "arrow.counterclockwise") { restoreDraft() }
-                        .labelStyle(.iconOnly)
-                        .disabled((!hasStagedChange && !hasUnfinishedEasyInput) || isApplying || showApplyConfirmation)
-                        .accessibilityLabel("Reset draft")
-                        .accessibilityIdentifier("tuningSession.reset")
-                }
-                ToolbarItem(placement: FleetToolbarLocation.trailing) {
-                    Button {
-                        if controlMode == .easy { showEasyDetails = true }
-                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(controlMode == .easy ? "tuningSession.easyDetails" : "tuningSession.applySection", anchor: .top)
-                        }
-                    } label: {
-                        Image(systemName: "arrow.down.to.line.compact")
-                    }
-                    .accessibilityLabel("Review JSON and apply")
-                    .accessibilityIdentifier("tuningSession.jump.apply")
-                }
-            }
+        presentedContent
             .tint(FleetTheme.accent)
             .environment(\.minerNavigationIdentity, navigationIdentity)
             .alert("Apply tuning change?", isPresented: $showApplyConfirmation) {
@@ -297,8 +170,17 @@ struct MinerTuningSessionView: View {
             }
             .onAppear {
                 riskAcknowledged = UserDefaults.standard.bool(forKey: acknowledgementKey)
-                loadJournal()
+                if isActive { loadJournal() }
                 loadSetpointsIfAvailable()
+            }
+            .onChange(of: isActive) { _, active in
+                if active {
+                    loadJournal()
+                    loadSetpointsIfAvailable()
+                }
+            }
+            .onChange(of: editsLocked) { _, locked in
+                inlineAdvanced?.isBusy.wrappedValue = locked
             }
             .onChange(of: snapshotDate) { _, _ in
                 loadSetpointsIfAvailable()
@@ -309,12 +191,121 @@ struct MinerTuningSessionView: View {
             .onChange(of: capabilityReport?.checkedAt) { _, _ in
                 loadSetpointsIfAvailable()
             }
-            .task(id: device.id) {
-                guard !isDemo, capabilityReport?.asic == nil else { return }
+            .task(id: isActive ? device.id : nil) {
+                guard isActive, !isDemo, capabilityReport?.asic == nil else { return }
                 await store.capabilities.check(device: device, isDemo: false)
                 loadSetpointsIfAvailable()
             }
+    }
+
+    @ViewBuilder private var presentedContent: some View {
+        if let inlineAdvanced {
+            if isActive {
+                compactAdvancedContent
+                    .toolbar {
+                        ToolbarItem(placement: FleetToolbarLocation.trailing) { resetButton }
+                        ToolbarItem(placement: FleetToolbarLocation.trailing) {
+                            reviewShortcut(action: inlineAdvanced.jumpToReview)
+                        }
+                    }
+            }
+        } else {
+            sessionPage
+        }
+    }
+
+    private var sessionPage: some View {
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                if isStandaloneEssentials && pinsEasyReview {
+                    advancedSwitch
+                        .padding(.horizontal, FleetLayout.pagePadding)
+                        .padding(.vertical, 8)
+                        .fleetReadableWidth()
+                        .background(FleetTheme.canvas)
+                }
+                sessionScroll(proxy: proxy)
+            }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("tuningSession.screen")
+            .background(FleetTheme.canvas)
+            .foregroundStyle(FleetTheme.ink)
+            .navigationTitle("Frequency & voltage")
+            .fleetPerformanceScreen("Frequency & voltage")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    MinerNavigationTitle(pageTitle: "Frequency & voltage")
+                }
+                ToolbarItem(placement: FleetToolbarLocation.trailing) {
+                    resetButton
+                }
+                if !isEditingCustomValue || FleetLayout.isMac {
+                    ToolbarItem(placement: FleetToolbarLocation.trailing) {
+                        reviewShortcut {
+                            if controlMode == .easy { showEasyDetails = true }
+                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                                proxy.scrollTo(controlMode == .easy ? "tuningSession.easyDetails" : "tuningSession.applySection", anchor: .top)
+                            }
+                        }
+                    }
+                }
+            }
+            .fleetEditingDone(
+                isEditingCustomValue,
+                identifier: "\(easyControlPrefix(focusedEasyField ?? .frequency)).keyboardDone"
+            ) { focusedEasyField = nil }
+        }
+    }
+
+    private func sessionScroll(proxy: ScrollViewProxy) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: compactAdvanced ? 12 : 16) {
+                if isStandaloneEssentials && !pinsEasyReview { advancedSwitch }
+                if controlMode == .easy {
+                    if !isStandaloneEssentials { modePicker }
+                    easyControlsSection
+                    if !pinsEasyReview {
+                        timedReview.id("tuningSession.applySection")
+                    }
+                    easyDetails(proxy: proxy)
+                } else if isStandaloneEssentials {
+                    compactAdvancedContent
+                } else {
+                    TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
+                        MinerTuningSessionHeader(
+                            deviceName: device.name,
+                            isDemo: isDemo,
+                            isOffline: isOffline,
+                            chipCount: chipCount,
+                            chipCountWasReported: chipCountWasReported,
+                            controlMode: controlMode
+                        )
+                    }
+                    modePicker
+                    safetyCard
+                    advancedControlsSection
+                    liveContextCard
+                    MinerTuningReferenceCard(reference: reference, isDemo: isDemo)
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        asicSection(proxy: proxy)
+                        timedReview.id("tuningSession.applySection")
+                    }
+                    MinerTuningJournalCard(journal: journal)
+                }
+            }
+            .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
+        }
+        .scrollIndicators(.hidden)
+        .fleetEditingScroll()
+        .fleetRevealEditingField(focusedEasyField, using: proxy)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if controlMode == .easy && pinsEasyReview && !isEditingCustomValue {
+                timedReview
+                    .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
+                    .background(FleetTheme.canvas)
+                    .accessibilityIdentifier("tuningSession.easyActionBar")
+            }
         }
     }
 }
@@ -324,8 +315,52 @@ extension MinerTuningSessionView {
         "app.hashfleet.tuningRiskAcknowledged.\(device.id.uuidString)"
     }
 
+    private var advancedSwitch: some View {
+        MinerTuningAdvancedSwitch(isOn: Binding(
+            get: { controlMode == .advanced },
+            set: { controlMode = $0 ? .advanced : .easy }
+        ))
+        .disabled(editsLocked || hasUnfinishedEasyInput)
+    }
+
+    private var resetButton: some View {
+        Button("Reset draft", systemImage: "arrow.counterclockwise") { restoreDraft() }
+            .labelStyle(.iconOnly)
+            .disabled((!hasStagedChange && !hasUnfinishedEasyInput) || editsLocked)
+            .accessibilityIdentifier("tuningSession.reset")
+    }
+
+    private func reviewShortcut(action: @escaping () -> Void) -> some View {
+        Button("Review JSON and apply", systemImage: "arrow.down.to.line.compact", action: action)
+            .labelStyle(.iconOnly)
+            .accessibilityIdentifier("tuningSession.jump.apply")
+    }
+
+    private var compactAdvancedContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TimelineView(.periodic(from: .now, by: MinerSnapshotFreshness.refreshInterval)) { _ in
+                if isDemo || !canWrite {
+                    Label(isDemo ? "Demo · no changes are sent" : "Read only · tuning changes unavailable",
+                          systemImage: "lock.fill")
+                        .fleetFont(.footnote)
+                        .foregroundStyle(FleetTheme.warning)
+                        .accessibilityIdentifier("tuningSession.writeRestriction")
+                }
+            }
+            safetyCard
+            advancedControlsSection
+            timedReview.id("tuningSession.applySection")
+        }
+    }
+
     private var modePicker: some View {
-        Picker("Tuner mode", selection: $controlMode) {
+        Picker("Tuner mode", selection: Binding(get: { controlMode }, set: { mode in
+            if let reviewPresentation, mode == .easy {
+                reviewPresentation.wrappedValue = false
+            } else {
+                controlMode = mode
+            }
+        })) {
             ForEach(MinerTuningControlMode.allCases, id: \.self) { mode in
                 Text(mode.displayName).tag(mode)
             }
@@ -366,16 +401,18 @@ extension MinerTuningSessionView {
             isBeyondReference: field == .frequency ? isBeyondReference : isVoltageBeyondReference,
             isRestricted: field == .voltage && voltageRestriction != nil,
             isEnabled: field == .frequency ? setpoints.frequency != nil : setpoints.coreVoltage != nil,
-            accessibilityPrefix: field == .frequency ? "tuningSession.master" : "tuningSession.voltage",
+            accessibilityPrefix: easyControlPrefix(field),
             valueIdentifier: field == .frequency ? "tuningSession.frequencyValue" : "tuningSession.voltageValue",
             resetGeneration: easyResetGeneration,
-            onFocusChanged: { focused in
-                if focused { focusedEasyFields.insert(field) } else { focusedEasyFields.remove(field) }
-            },
+            sessionFocus: $focusedEasyField,
             onValidityChanged: { valid in
                 if valid { invalidEasyFields.remove(field) } else { invalidEasyFields.insert(field) }
             }
         )
+    }
+
+    private func easyControlPrefix(_ field: MinerTuningEasyField) -> String {
+        field == .frequency ? "tuningSession.master" : "tuningSession.voltage"
     }
 
     private func easyDetails(proxy: ScrollViewProxy) -> some View {
@@ -398,87 +435,19 @@ extension MinerTuningSessionView {
         .disabled(isApplying || showApplyConfirmation)
     }
 
-    /// Car-style instrument cluster: frequency "tach" beside a core-voltage gauge, with a strip
-    /// that compares what is staged against what the miner runs now.
-    private var advancedControlsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MinerTuningDialPair(
-                frequency: MinerTuningDial(
-                    title: "Frequency",
-                    unit: "MHz",
-                    setpoint: frequencyBinding,
-                    range: controlRange,
-                    liveValue: actualFrequency,
-                    configuredValue: configuredFrequency,
-                    referenceMaximum: referenceMaximum,
-                    isBeyondReference: isBeyondReference,
-                    isEnabled: setpoints.frequency != nil,
-                    referenceOptions: reference?.frequencyOptions ?? [],
-                    step: 1,
-                    coarseStep: 10,
-                    accessibilityPrefix: "tuningSession.master",
-                    valueIdentifier: "tuningSession.frequencyValue"
-                ),
-                voltage: MinerTuningDial(
-                    title: "Core voltage",
-                    unit: "mV",
-                    setpoint: voltageBinding,
-                    range: voltageRange,
-                    liveValue: measuredVoltage,
-                    configuredValue: configuredVoltage,
-                    referenceMaximum: voltageReferenceMaximum,
-                    isBeyondReference: isVoltageBeyondReference,
-                    isRestricted: voltageRestriction != nil,
-                    isEnabled: setpoints.coreVoltage != nil,
-                    referenceOptions: reference?.voltageOptions ?? [],
-                    step: 5,
-                    coarseStep: 25,
-                    accessibilityPrefix: "tuningSession.voltage",
-                    valueIdentifier: "tuningSession.voltageValue"
-                )
-            )
-            .disabled(isApplying || showApplyConfirmation)
-            if setpoints.frequency != nil && setpoints.coreVoltage != nil {
-                MinerTuningDeltaStrip(
-                    stagedFrequency: frequency,
-                    configuredFrequency: configuredFrequency,
-                    stagedVoltage: coreVoltage,
-                    configuredVoltage: configuredVoltage
-                )
-            }
-            Text(
-                "Frequency and core voltage are board-wide. Only the dials you move are sent, and nothing is sent while you drag."
-            )
-            .fleetFont(.caption)
-            .foregroundStyle(FleetTheme.secondary)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tuningSession.advancedControlsSection")
-    }
-
-    private func asicSection(proxy: ScrollViewProxy) -> some View {
-        MinerTuningASICRail(
-            proxy: proxy,
-            chipCount: chipCount, coreReadings: coreReadings,
-            frequency: setpoints.frequency,
-            stagedVoltage: setpoints.coreVoltage,
-            referenceMaximum: referenceMaximum,
-            isAnyBeyondReference: isAnyBeyondReference
-        )
-    }
-
     private var safetyCard: some View {
         MinerTuningSafetyCard(
             riskAcknowledged: $riskAcknowledged,
             isBeyondReference: isAnyBeyondReference,
             hasReference: referenceMaximum != nil || voltageReferenceMaximum != nil,
-            voltageRestriction: voltageRestriction
+            voltageRestriction: voltageRestriction,
+            compact: compactAdvanced
         )
     }
 
     private var reviewSection: some View {
         MinerTuningReview(
-            mode: controlMode, summary: changeSummary, stagedJSON: stagedJSON,
+            mode: controlMode, compactAdvanced: compactAdvanced, summary: changeSummary, stagedJSON: stagedJSON,
             riskAcknowledged: $riskAcknowledged, isBeyondReference: isAnyBeyondReference,
             voltageRestriction: voltageRestriction, isDemo: isDemo, isOffline: isOffline,
             isApplying: isApplying,
@@ -512,7 +481,7 @@ extension MinerTuningSessionView {
         setpoints.restore(configuredFrequency: configuredFrequency, configuredVoltage: configuredVoltage, reference: reference)
         easyResetGeneration += 1
         invalidEasyFields.removeAll()
-        focusedEasyFields.removeAll()
+        focusedEasyField = nil
         error = nil
         statusMessage = nil
     }
@@ -580,18 +549,5 @@ extension MinerTuningSessionView {
         if changed.frequency { parts.append(formattedFrequency(frequency)) }
         if changed.coreVoltage { parts.append(formattedVoltage(coreVoltage)) }
         return parts.joined(separator: " and ")
-    }
-
-    private var liveContextCard: some View {
-        MinerTuningLiveContextCard(
-            configuredFrequency: formattedFrequency(configuredFrequency), measuredFrequency: formattedFrequency(actualFrequency),
-            configuredVoltage: formattedVoltage(configuredVoltage), measuredVoltage: formattedVoltage(measuredVoltage),
-            asicErrors: hardwareErrorText, isChecking: store.capabilities.checking.contains(device.id)
-        )
-    }
-
-    private var hardwareErrorText: String {
-        guard let info else { return "Not reported" }
-        return MinerShareSummary(info: info).firmwareErrorPercentageDisplay ?? "Not reported"
     }
 }

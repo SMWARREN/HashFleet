@@ -59,6 +59,7 @@ extension MinerSettingsView {
     }
 
     func reviewQuickChanges() {
+        editingFocus.wrappedValue = nil
         do {
             let review = try MinerSettingsReview(
                 original: info,
@@ -136,6 +137,7 @@ extension MinerSettingsView {
     func proposalPage<Content: View>(
         _ title: String,
         subtitle: String,
+        showsSaveFeedback: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
         ScrollView {
@@ -162,12 +164,19 @@ extension MinerSettingsView {
                         .fleetFont(.footnote).foregroundStyle(FleetTheme.secondary)
                 }
                 if offlineReadOnly { MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id)) }
-                if let error { Text(error).fleetFont(.footnote).foregroundStyle(FleetTheme.warning) }
-                directSaveStatus
+                if showsSaveFeedback {
+                    if let error { Text(error).fleetFont(.footnote).foregroundStyle(FleetTheme.warning) }
+                    directSaveStatus
+                }
                 content()
                     .disabled(offlineReadOnly)
             }
             .fleetPageContainer(compactMaxWidth: FleetLayout.readableWidth)
+        }
+        .fleetEditingScroll()
+        .fleetRevealEditingField(editingFocus.wrappedValue)
+        .fleetEditingDone(editingFocus.wrappedValue != nil, identifier: "settings.keyboardDone") {
+            editingFocus.wrappedValue = nil
         }
         .scrollIndicators(.hidden)
         .navigationTitle(title)
@@ -188,11 +197,8 @@ extension MinerSettingsView {
     func proposalReviewButton(_ title: String, action: @escaping () -> Void) -> some View {
         let isSave = title.hasPrefix("Save")
         return Button(title, action: action)
-            .buttonStyle(.borderedProminent)
-            .tint(isSave ? FleetTheme.accent : FleetTheme.raised)
-            .foregroundStyle(isSave ? FleetTheme.buttonInk : FleetTheme.secondary)
+            .buttonStyle(FleetPrimaryButtonStyle(tone: isSave ? .accent : .secondary, size: .compact, fullWidth: true))
             .disabled(isSaving)
-            .frame(maxWidth: .infinity)
             .padding(.top, 5)
     }
 }

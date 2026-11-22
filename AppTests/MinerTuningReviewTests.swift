@@ -64,8 +64,20 @@ struct MinerTuningReviewTests {
         #expect(empty.visibleText.contains("One confirmation"))
     }
 
+    @Test func essentialsAdvancedKeepsExactPayloadAndActionWithoutRepeatedInstructions() async throws {
+        let rendered = try await FleetViewRenderHarness.render(
+            review(mode: .advanced, compactAdvanced: true, json: "frequency: 510"), width: 390, height: 600
+        )
+        #expect(rendered.visibleText.contains("Review changes"))
+        #expect(rendered.visibleText.contains("frequency: 510"))
+        #expect(rendered.visibleText.contains("Apply tuning change"))
+        #expect(!rendered.visibleText.contains("One settings update"))
+        #expect(!rendered.visibleText.contains("shows the payload but never writes"))
+    }
+
     private func review(
         mode: MinerTuningControlMode = .easy,
+        compactAdvanced: Bool = false,
         summary: String = "Frequency: 500 → 510 MHz",
         json: String? = "frequency: 510",
         restriction: String? = nil,
@@ -76,7 +88,7 @@ struct MinerTuningReviewTests {
         status: String? = nil
     ) -> some View {
         MinerTuningReview(
-            mode: mode, summary: summary, stagedJSON: json,
+            mode: mode, compactAdvanced: compactAdvanced, summary: summary, stagedJSON: json,
             riskAcknowledged: .constant(false), isBeyondReference: beyondReference,
             voltageRestriction: restriction, isDemo: demo, isOffline: offline,
             isApplying: false, canApply: false, error: error, statusMessage: status,

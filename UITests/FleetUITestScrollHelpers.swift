@@ -1,5 +1,23 @@
 import XCTest
 
+/// Wait for keyboard and scrolling animations, then measure the whole focused input.
+/// A hittable caret is not enough: the bottom of the box must clear the keyboard.
+@MainActor
+func assertFleetEditingFieldAboveKeyboard(
+    _ field: XCUIElement, in app: XCUIApplication, navigation: XCUIElement? = nil,
+    clearance: CGFloat = 16, file: StaticString = #filePath, line: UInt = #line
+) {
+    let keyboard = app.keyboards.firstMatch
+    let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+        guard keyboard.exists, field.exists, field.isHittable, !field.frame.isEmpty else { return false }
+        let top = navigation.flatMap { $0.exists ? $0.frame.maxY : nil } ?? app.frame.minY
+        return field.frame.minY >= top && field.frame.maxY + clearance <= keyboard.frame.minY
+    }, object: nil)
+    XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed,
+                   "Expected the whole input above the keyboard: \(field.identifier), input: \(field.frame), keyboard: \(keyboard.frame)",
+                   file: file, line: line)
+}
+
 /// iOS 27's native Section menu presents the same visible button without forwarding its
 /// SwiftUI identifier. Match that exact public label too, never a hidden/test-only route.
 @MainActor
@@ -21,9 +39,12 @@ func selectAdvancedTuningControls(in app: XCUIApplication) {
 /// Scrolls through the public interface without accidentally changing a tuning dial.
 /// Both dashboard and unified-workspace tests use the same strict viewport check.
 @MainActor
-func revealFleetControl(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true) {
+func revealFleetControl(
+    _ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = true,
+    below pinnedHeader: XCUIElement? = nil
+) {
     let appFrame = app.frame
-    let top = app.navigationBars.firstMatch.frame.maxY + 4
+    let top = max(app.navigationBars.firstMatch.frame.maxY + 4, (pinnedHeader?.frame.maxY ?? 0) + 8)
     let tabBar = app.tabBars.firstMatch
     let bottom = tabBar.exists ? tabBar.frame.minY - 4 : appFrame.maxY - 24
     let viewport = CGRect(x: appFrame.minX, y: top, width: appFrame.width, height: bottom - top)

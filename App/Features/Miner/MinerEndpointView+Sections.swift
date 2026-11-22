@@ -4,19 +4,27 @@ import HashFleetCore
 extension MinerEndpointView {
     var overview: some View {
         FleetSettingsSection {
-            Text("\(resolvedEndpoint.method) \(resolvedEndpoint.path)")
-                .fleetFont(.callout, design: .monospaced)
-                .textSelection(.enabled)
-            LabeledContent("Target", value: device.address)
-            Label(model.capability, systemImage: "questionmark.circle")
+            if let effect = simpleCommandEffect {
+                Text(effect).fleetFont(.body)
+                LabeledContent("Miner", value: device.name)
+                Text("You can review the action before anything is sent. Not all firmware supports this action.")
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.secondary)
+            } else {
+                Text("\(resolvedEndpoint.method) \(resolvedEndpoint.path)")
+                    .fleetFont(.callout, design: .monospaced)
+                    .textSelection(.enabled)
+                LabeledContent("Target", value: device.address)
+                Label(model.capability, systemImage: "questionmark.circle")
+                    .fleetFont(.footnote)
+                    .foregroundStyle(FleetTheme.secondary)
+                Text(
+                    "An upstream catalog entry is not a capability guarantee. Older or custom firmware "
+                        + "may return 404, 405 or another firmware error. Requests are never retried as a "
+                        + "different endpoint."
+                )
                 .fleetFont(.footnote)
-                .foregroundStyle(FleetTheme.secondary)
-            Text(
-                "An upstream catalog entry is not a capability guarantee. Older or custom firmware "
-                    + "may return 404, 405 or another firmware error. Requests are never retried as a "
-                    + "different endpoint."
-            )
-            .fleetFont(.footnote)
+            }
         }
         .listRowBackground(FleetTheme.surface)
     }
@@ -40,9 +48,14 @@ extension MinerEndpointView {
     var statisticsSection: some View {
         FleetSettingsSection("Statistics query") {
             TextField("columns (comma-separated, optional)", text: $columns)
+                .focused(editingFocus, equals: .columns)
+                .submitLabel(.done)
+                .onSubmit { editingFocus.wrappedValue = nil }
                 .fleetFont(.callout, design: .monospaced)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .accessibilityIdentifier("endpoint.columns")
+                .id(EditingField.columns)
             Text(
                 "Examples: hashrate,hashrate_1m,asicTemp,vrTemp,power,fanSpeed,fanRpm,wifiRssi. "
                     + "Leave empty to use firmware defaults. Column names are case-sensitive."
@@ -55,18 +68,21 @@ extension MinerEndpointView {
 
     var querySection: some View {
         FleetSettingsSection {
-            DisclosureGroup("Additional query parameters") {
+            DisclosureGroup(simpleCommandEffect == nil ? "Additional query parameters" : "Advanced request options") {
                 Text(
                     "One name=value per line. Values are URL-encoded by the client. Only add "
                         + "parameters your firmware documents."
                 )
                 .fleetFont(.footnote)
                 TextEditor(text: $extraQuery)
+                    .focused(editingFocus, equals: .query)
                     .fleetFont(.caption, design: .monospaced)
-                    .frame(minHeight: 80)
+                    .fleetMultilineInputHeight(80, editing: editingFocus.wrappedValue == .query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .accessibilityLabel("Additional query parameters, one name equals value per line")
+                    .accessibilityIdentifier("endpoint.query")
+                    .id(EditingField.query)
             }
         }.disabled(model.isRunning)
             .listRowBackground(FleetTheme.surface)
@@ -81,12 +97,14 @@ extension MinerEndpointView {
             .fleetFont(.footnote)
             .foregroundStyle(FleetTheme.secondary)
             TextEditor(text: $jsonText)
+                .focused(editingFocus, equals: .json)
                 .fleetFont(.caption, design: .monospaced)
-                .frame(minHeight: 230)
+                .fleetMultilineInputHeight(230, editing: editingFocus.wrappedValue == .json)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityLabel("JSON request body")
                 .accessibilityIdentifier("endpoint.json")
+                .id(EditingField.json)
             if endpoint == .settings {
                 DisclosureGroup("All upstream PATCH fields") {
                     Text(MinerSettingsReference.fields)

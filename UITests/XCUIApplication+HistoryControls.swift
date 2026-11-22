@@ -3,7 +3,9 @@ import XCTest
 /// Uses the actual native options menu, preserving longer recorded-history acceptance.
 @MainActor
 extension XCUIApplication {
-    func chooseSavedHistoryWindow(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
+    func chooseSavedHistoryWindow(
+        _ identifier: String, beforeSelection: (() -> Void)? = nil, file: StaticString = #filePath, line: UInt = #line
+    ) {
         let options = buttons["dashboard.historyDisplay"].firstMatch
         for _ in 0..<12 {
             if options.exists && options.isHittable { break }
@@ -48,6 +50,7 @@ extension XCUIApplication {
         // authored controls retain their explicit 44pt target, while the native row's
         // interaction is verified by the real tap that follows.
         XCTAssertGreaterThanOrEqual(range.frame.height, 38, file: file, line: line)
+        beforeSelection?()
         range.tap()
     }
 }

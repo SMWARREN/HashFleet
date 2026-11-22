@@ -32,10 +32,19 @@ extension MinerSettingsView {
                 .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
             }
             TextField("Stratum server", text: $poolURL)
+                .focused(editingFocus, equals: .poolURL)
+                .submitLabel(.next)
+                .onSubmit { editingFocus.wrappedValue = .poolPort }
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .textFieldStyle(.roundedBorder)
-            TextField("Port", text: $poolPort).keyboardType(.numberPad)
+                .accessibilityIdentifier("settings.pools.server")
+                .id(EditingField.poolURL)
+            TextField("Port", text: $poolPort)
+                .focused(editingFocus, equals: .poolPort)
+                .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("settings.pools.port")
+                .id(EditingField.poolPort)
             poolCoinIdentity(draftPoolCoin)
                 .accessibilityIdentifier("settings.pools.draftCoin")
             Text(
@@ -44,9 +53,13 @@ extension MinerSettingsView {
             )
             .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
             TextField("User / worker", text: $poolUser)
+                .focused(editingFocus, equals: .poolUser)
+                .submitLabel(poolPasswordMode == .replace ? .next : .done)
+                .onSubmit { editingFocus.wrappedValue = poolPasswordMode == .replace ? .poolPassword : nil }
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("settings.pools.user")
+                .id(EditingField.poolUser)
             fieldNote("user", label: "the pool worker or payout address")
             if draftPoolCoin == .dgb, poolPort == "8004" || poolPort == "7004" || poolPort == "9004" {
                 Text(
@@ -73,9 +86,13 @@ extension MinerSettingsView {
             .accessibilityIdentifier("settings.pools.passwordMode")
             if poolPasswordMode == .replace {
                 SecureField("Replacement password", text: $poolPassword)
+                    .focused(editingFocus, equals: .poolPassword)
+                    .submitLabel(.done)
+                    .onSubmit { editingFocus.wrappedValue = nil }
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("settings.pools.password")
+                    .id(EditingField.poolPassword)
                 fieldNote("password", label: "the replacement stratum pool password")
             } else if poolPasswordMode == .clear {
                 Label("The reviewed request will send an empty password.", systemImage: "exclamationmark.triangle")

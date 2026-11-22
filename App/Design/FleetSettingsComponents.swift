@@ -2,18 +2,61 @@ import SwiftUI
 import HashFleetCore
 
 struct FleetPrimaryButtonStyle: ButtonStyle {
-    var onDarkSurface = false
+    enum Tone: CaseIterable { case accent, darkPanel, secondary }
+    enum Size { case compact, comfortable }
 
+    struct Palette {
+        let ink: Color
+        let fill: Color
+
+        static func resolve(_ tone: Tone, isEnabled: Bool) -> Self {
+            guard isEnabled else {
+                return Self(ink: FleetTheme.secondary, fill: FleetTheme.surface)
+            }
+            switch tone {
+            case .accent:
+                return Self(ink: FleetTheme.buttonInk, fill: FleetTheme.accent)
+            case .darkPanel:
+                return Self(ink: FleetTheme.charcoal, fill: FleetTheme.panelAccent)
+            case .secondary:
+                return Self(ink: FleetTheme.ink, fill: FleetTheme.raised)
+            }
+        }
+    }
+
+    var tone: Tone = .accent
+    var size: Size = .comfortable
+    var fullWidth = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    /// Keep native button semantics, but choose text and fill together rather than letting
+    /// the current system's prominent style choose the foreground from the ambient tint.
     func makeBody(configuration: Configuration) -> some View {
+        let palette = Palette.resolve(tone, isEnabled: isEnabled)
+        let comfortable = size == .comfortable
+        let shape = RoundedRectangle(cornerRadius: comfortable ? 18 : 12)
         configuration.label
-            .fleetFont(.headline)
-            .frame(maxWidth: .infinity, minHeight: 24)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .foregroundStyle(onDarkSurface ? Color.black : FleetTheme.buttonInk)
-            .background(onDarkSurface ? FleetTheme.panelAccent : FleetTheme.accent,
-                        in: RoundedRectangle(cornerRadius: 18))
-            .opacity(configuration.isPressed ? 0.8 : 1)
+            .fleetFont(comfortable ? .headline : .subheadline, weight: .semibold)
+            .symbolRenderingMode(.monochrome)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, comfortable ? 20 : 12)
+            .padding(.vertical, comfortable ? 16 : 6)
+            .frame(minWidth: 44, maxWidth: fullWidth || comfortable ? .infinity : nil,
+                   minHeight: comfortable ? 56 : 44)
+            .foregroundStyle(palette.ink)
+            .tint(palette.ink)
+            .background(palette.fill, in: shape)
+            .overlay {
+                if !isEnabled {
+                    shape.strokeBorder(FleetTheme.controlBorder, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                } else if configuration.isPressed {
+                    shape.inset(by: 2).strokeBorder(palette.ink, lineWidth: 2)
+                } else if tone == .secondary {
+                    shape.strokeBorder(FleetTheme.controlBorder)
+                }
+            }
+            .contentShape(Rectangle())
     }
 }
 
@@ -77,6 +120,25 @@ struct FleetSettingsCardHeader: View {
     }
 }
 
+/// Retain the idle label's size so an active button does not jump during a save.
+struct FleetPendingButtonLabel: View {
+    let title: String
+    let pendingTitle: String
+    let isPending: Bool
+
+    var body: some View {
+        ZStack {
+            Text(title).opacity(isPending ? 0 : 1)
+            if isPending {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small).accessibilityHidden(true)
+                    Text(pendingTitle)
+                }
+            }
+        }
+    }
+}
+
 /// Full-width review button. Every write still passes through the existing
 /// review and confirmation flow; this only styles the entry point.
 struct FleetReviewButton: View {
@@ -90,17 +152,12 @@ struct FleetReviewButton: View {
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(FleetTheme.buttonInk)
                 }
                 Text(isLoading ? "Working…" : title)
             }
             .fleetFont(.headline)
-            .frame(maxWidth: .infinity, minHeight: 44)
         }
-            .buttonStyle(.borderedProminent)
-            .tint(FleetTheme.accent)
-            .foregroundStyle(FleetTheme.buttonInk)
-            .frame(maxWidth: .infinity)
+            .buttonStyle(FleetPrimaryButtonStyle(size: .compact, fullWidth: true))
             .padding(.top, 5)
             .disabled(isLoading)
             .accessibilityValue(isLoading ? "In progress" : "Ready")

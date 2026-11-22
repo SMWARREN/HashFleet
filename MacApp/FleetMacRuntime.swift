@@ -45,6 +45,10 @@ final class FleetMacRuntime {
             defaults.set(true, forKey: FleetPreferences.Keys.systemAppearanceMigration)
             defaults.set(arguments.contains("--ui-test-light-appearance") ? "light" : "dark",
                          forKey: FleetPreferences.Keys.appearance)
+            #if DEBUG
+            FleetStore.seedLoopbackReviewFixture(defaults: defaults, arguments: arguments)
+            FleetPreferences.seedDashboardTestFixture(defaults: defaults, arguments: arguments)
+            #endif
         } else {
             defaults = .standard
         }

@@ -316,10 +316,10 @@ struct MinerReportedAlerts: Equatable, Sendable {
     let messages: [String]
     var isEmpty: Bool { messages.isEmpty }
 
-    init?(info: MinerInfo) {
+    init?(info: MinerInfo, includesPause: Bool = true) {
         var found: [String] = []
 
-        if info.raw["miningPaused"]?.boolValue == true {
+        if includesPause, info.raw["miningPaused"]?.boolValue == true {
             found.append("Mining is paused by the miner. Hashes and shares are currently suspended.")
         }
         if info.raw["overheat_mode"]?.boolValue == true {

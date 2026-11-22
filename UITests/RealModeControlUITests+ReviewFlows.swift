@@ -2,6 +2,169 @@ import XCTest
 
 /// Staged-review and confirmation flows for RealModeControlUITests.
 extension RealModeControlUITests {
+    #if HASHFLEET_LIVE_REVIEW
+    func testCompactSettingsKeyboardKeepsHostnameAndDisplayDraftsWithoutSaving() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let server = try LoopbackMinerServer()
+        server.setInfoResponse(status: 200, json: #"""
+        {"hostname":"loopback-before","version":"fixture-forms","macAddr":"02:00:00:00:00:01",
+         "ASICModel":"BM1370","hashRate":1234,"power":19.5,"temp":51,"frequency":500,"coreVoltage":1100,
+         "statsFrequency":60,"displayTimeout":5,"rotation":0,"invertscreen":0}
+        """#)
+        let app = XCUIApplication()
+        defer { app.terminate(); server.stop() }
+        try launchWithConfiguredReviewFixture(app, server: server, extraArguments: ["--ui-test-dashboard-essentials"])
+        let miner = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'dashboard.miner.'")).firstMatch
+        reveal(miner, in: app)
+        assertBecomesOnline(miner)
+        miner.tap()
+        let settings = app.buttons["detail.previewControls.settings"]
+        reveal(settings, in: app)
+        settings.tap()
+        let general = app.buttons["settings.preview.general"]
+        XCTAssertTrue(general.waitForExistence(timeout: 5))
+        general.tap()
+        let generalBar = app.navigationBars["General"]
+        XCTAssertTrue(generalBar.waitForExistence(timeout: 5))
+        let hostname = app.textFields["settings.general.hostname"]
+        reveal(hostname, in: app)
+        replaceText(hostname, with: "keyboard-fixture", in: app)
+        assertFleetEditingFieldAboveKeyboard(hostname, in: app, navigation: generalBar)
+        hostname.typeText("\n")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(hostname.value as? String, "keyboard-fixture")
+        XCTAssertTrue(server.writes.isEmpty)
+        generalBar.buttons["BackButton"].tap()
+        let display = app.buttons["settings.preview.display"]
+        XCTAssertTrue(display.waitForExistence(timeout: 5))
+        display.tap()
+        let displayBar = app.navigationBars["Display"]
+        XCTAssertTrue(displayBar.waitForExistence(timeout: 5))
+        let timeout = app.textFields["settings.display.timeout"]
+        reveal(timeout, in: app)
+        XCTAssertEqual(timeout.value as? String, "5")
+        timeout.tap()
+        // Either caret edge produces 55. This checks native typing and dismissal,
+        // rather than depending on a tap landing after a right-aligned digit.
+        timeout.typeText("5")
+        assertFleetEditingFieldAboveKeyboard(timeout, in: app, navigation: displayBar)
+        let done = displayBar.buttons["settings.keyboardDone"]
+        XCTAssertTrue(done.isHittable)
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(timeout.value as? String, "55")
+        XCTAssertFalse(app.alerts["Display settings saved"].exists)
+        XCTAssertTrue(server.writes.isEmpty)
+    }
+
+    func testCompactEssentialsAdvancedRequiresExplicitConfirmation() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let server = try LoopbackMinerServer()
+        server.setInfoResponse(status: 200, json: #"""
+        {"hostname":"tuning-fixture","version":"fixture-tuning","macAddr":"02:00:00:00:00:01",
+         "ASICModel":"BM1370","hashRate":1234,"power":19.5,"temp":51,"frequency":500,"coreVoltage":1100}
+        """#)
+        let app = XCUIApplication()
+        defer { app.terminate(); server.stop() }
+        try launchWithConfiguredReviewFixture(app, server: server, extraArguments: [
+            "--ui-test-dashboard-essentials", "--ui-test-loopback-manual-refresh"
+        ])
+        let miner = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'dashboard.miner.'")).firstMatch
+        assertBecomesOnline(miner)
+        revealFleetControl(miner, in: app)
+        miner.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(app.navigationBars["Loopback review fixture"].waitForExistence(timeout: 8))
+        let tuning = app.buttons["detail.previewControls.tuning"]
+        revealFleetControl(tuning, in: app)
+        tuning.tap()
+        let advanced = app.switches["tuningSession.advancedToggle"]
+        XCTAssertTrue(advanced.waitForExistence(timeout: 5))
+        XCTAssertTrue(advanced.isHittable)
+        XCTAssertEqual(advanced.value as? String, "0")
+        advanced.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertEqual(advanced.value as? String, "1")
+
+        let risk = app.switches["tuningSession.riskAcknowledgement"]
+        revealFleetControl(risk, in: app, below: advanced)
+        let riskTarget = risk.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5))
+        if risk.value as? String == "1" { riskTarget.tap() }
+        XCTAssertEqual(risk.value as? String, "0")
+        let step = app.buttons["tuningSession.master.plus10"]
+        revealFleetControl(step, in: app)
+        step.tap()
+        let jump = app.buttons["tuningSession.jump.apply"]
+        jump.tap()
+        let apply = app.buttons["tuningSession.apply"]
+        revealFleetControl(apply, in: app, requireHittable: false)
+        XCTAssertFalse(apply.isEnabled, "Risk acknowledgement must still gate the compact tuner.")
+
+        revealFleetControl(risk, in: app, below: advanced)
+        riskTarget.tap()
+        XCTAssertEqual(risk.value as? String, "1")
+        jump.tap()
+        revealFleetControl(apply, in: app)
+        XCTAssertTrue(apply.isEnabled)
+        apply.tap()
+        let confirmation = app.alerts["Apply tuning change?"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        let preview = confirmation.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "\"frequency\""))
+            .firstMatch
+        XCTAssertTrue(preview.exists)
+        XCTAssertTrue(preview.label.contains("510"))
+        XCTAssertFalse(preview.label.contains("coreVoltage"))
+        XCTAssertTrue(server.writes.isEmpty, "Opening the review must not write.")
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(advanced.isHittable)
+        XCTAssertTrue(advanced.isEnabled)
+        assertNoWrites(server, for: 1)
+    }
+
+    func testEssentialsControlsMenuShowsInlineAdvancedSwitch() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let server = try LoopbackMinerServer()
+        server.setInfoResponse(status: 200, json: #"""
+        {"hostname":"tuning-fixture","version":"fixture-tuning","macAddr":"02:00:00:00:00:01",
+         "ASICModel":"BM1370","hashRate":1234,"power":19.5,"temp":51,"frequency":500,"coreVoltage":1100}
+        """#)
+        let app = XCUIApplication()
+        defer { app.terminate(); server.stop() }
+        try launchWithConfiguredReviewFixture(app, server: server, extraArguments: ["--ui-test-dashboard-essentials"])
+        let controls = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'dashboard.card.settings.'")).firstMatch
+        revealFleetControl(controls, in: app)
+        controls.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let tuner = fleetTuningSessionMenuItem(in: app)
+        XCTAssertTrue(tuner.waitForExistence(timeout: 5))
+        tuner.tap()
+
+        let navigation = app.navigationBars["Frequency & voltage"]
+        XCTAssertTrue(navigation.waitForExistence(timeout: 5))
+        let advanced = app.switches["tuningSession.advancedToggle"]
+        XCTAssertTrue(advanced.isHittable)
+        XCTAssertEqual(advanced.value as? String, "0")
+        let easyField = app.textFields["tuningSession.master.customInput"]
+        XCTAssertTrue(easyField.exists)
+        let target = advanced.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5))
+        target.tap()
+        let dial = app.descendants(matching: .any)["tuningSession.master.dial"].firstMatch
+        XCTAssertTrue(dial.waitForExistence(timeout: 5))
+        XCTAssertEqual(advanced.value as? String, "1")
+        XCTAssertFalse(app.segmentedControls["tuningSession.controlMode"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["tuningSession.liveContext"].exists)
+        XCTAssertFalse(easyField.exists)
+        target.tap()
+        XCTAssertTrue(easyField.waitForExistence(timeout: 5))
+        XCTAssertFalse(dial.exists)
+        XCTAssertEqual(advanced.value as? String, "0")
+        navigation.buttons["BackButton"].tap()
+        XCTAssertTrue(app.navigationBars["Hash Fleet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(server.writes.isEmpty, "Neither toggling nor navigating authorizes a miner update.")
+    }
+    #endif
+
     /// Navigation actions remain reachable without installing a keyboard-accessory toolbar.
     /// Inspect the actual editor both before focus and after entering the complete draft.
     func assertCustomJSONEditorLayout(app: XCUIApplication, editor: XCUIElement, phase: String) {
@@ -13,6 +176,9 @@ extension RealModeControlUITests {
         XCTAssertTrue(frame.width.isFinite && frame.height.isFinite, "Editor frame must be finite \(phase).")
         XCTAssertGreaterThan(frame.width, 0, "Editor width must be positive \(phase).")
         XCTAssertGreaterThan(frame.height, 0, "Editor height must be positive \(phase).")
+        if phase == "after text entry" {
+            assertFleetEditingFieldAboveKeyboard(editor, in: app, navigation: navigation)
+        }
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Custom JSON navigation actions and editor \(phase)"
         screenshot.lifetime = .keepAlways
@@ -39,6 +205,14 @@ extension RealModeControlUITests {
         let stagedText = try XCTUnwrap(stagedEditor.value as? String)
         XCTAssertTrue(stagedText.contains("customFeature"))
         XCTAssertTrue(stagedText.contains("18446744073709551615"), "Unknown integer fields must retain all digits")
+        stagedEditor.tap()
+        let requestBar = app.navigationBars["Update settings"]
+        assertFleetEditingFieldAboveKeyboard(stagedEditor, in: app, navigation: requestBar)
+        let doneEditingRequest = requestBar.buttons["endpoint.keyboardDone"]
+        XCTAssertTrue(doneEditingRequest.isHittable)
+        doneEditingRequest.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(stagedEditor.value as? String, stagedText)
         let review = app.buttons["endpoint.send"]
         reveal(review, in: app)
         review.tap()
@@ -52,8 +226,55 @@ extension RealModeControlUITests {
         screenshot.name = "Custom firmware JSON typed review with exact UInt64"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        app.navigationBars["Review before sending"].buttons["Cancel"].tap()
+        let nav = app.navigationBars["Review before sending"]
+        token.tap()
+        token.typeText("APP")
+        assertFleetEditingFieldAboveKeyboard(token, in: app, navigation: nav)
+        let doneEditing = nav.buttons["confirmation.keyboardDone"]
+        XCTAssertTrue(doneEditing.isHittable)
+        doneEditing.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(token.value as? String, "APP")
+        let apply = app.buttons["confirmation.apply"]
+        reveal(apply, in: app)
+        XCTAssertFalse(apply.isEnabled, "Keyboard Done must not authorize or send a partial token")
+        let cancel = nav.buttons["confirmation.cancel"]
+        XCTAssertTrue(cancel.isHittable)
+        cancel.tap()
         assertNoWrites(server, for: 0.5)
+    }
+
+    func testCustomJSONKeyboardKeepsTheEditorClearInLandscape() throws {
+        continueAfterFailure = false
+        let device = XCUIDevice.shared
+        device.orientation = .portrait
+        let server = try LoopbackMinerServer()
+        let app = XCUIApplication()
+        defer { app.terminate(); server.stop(); device.orientation = .portrait }
+        try launchWithConfiguredReviewFixture(app, server: server)
+        let miner = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'dashboard.miner.'")).firstMatch
+        reveal(miner, in: app)
+        assertBecomesOnline(miner)
+        miner.tap()
+        let custom = app.buttons["detail.customJSON"]
+        reveal(custom, in: app)
+        custom.tap()
+        let nav = app.navigationBars["Custom JSON"]
+        XCTAssertTrue(nav.waitForExistence(timeout: 5))
+        device.orientation = .landscapeLeft
+        XCTAssertGreaterThan(app.frame.width, app.frame.height)
+        let editor = app.textViews["custom_json.editor"]
+        reveal(editor, in: app)
+        let draft = #"{"fixture":1}"#
+        replaceText(editor, with: draft, in: app)
+        assertFleetEditingFieldAboveKeyboard(editor, in: app, navigation: nav)
+        recordScreenshot("Custom JSON entire editor visible in landscape", app: app)
+        let done = nav.buttons["custom_json.done"]
+        XCTAssertTrue(done.isHittable)
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(editor.value as? String, draft)
+        XCTAssertTrue(server.writes.isEmpty)
     }
 
     /// The unified settings hub keeps safe hostname changes on the native form. The tuning

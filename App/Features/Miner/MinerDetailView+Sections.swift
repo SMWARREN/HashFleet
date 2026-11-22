@@ -94,16 +94,18 @@ extension MinerDetailView {
             xmrigControlLink
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                let controlHeader = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                    : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+                controlHeader {
                     Label("CONTROL MINER", systemImage: "slider.horizontal.3")
-                        .font(FleetTheme.mono())
+                        .fleetFont(.caption, weight: .semibold, design: .monospaced)
                         .foregroundStyle(FleetTheme.accent)
-                    Spacer(minLength: 8)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
                     Text("Review changes before sending")
-                        .fleetFont(.caption2)
+                        .fleetFont(.caption)
                         .foregroundStyle(FleetTheme.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 // The proposal leads with the navigation tiles so Tuning and Cooling stay reachable in
                 // the first viewport. The quick endpoint actions keep the same controls just below.
@@ -180,10 +182,9 @@ extension MinerDetailView {
     /// the existing endpoint forms; none of these links sends a command by itself.
     var quickActions: some View {
         FleetMinerDetailGrid(maximumColumns: quickActionColumnLimit, minimumColumnWidth: 130, spacing: 8) {
-            quickAction(.identify, symbol: "light.beacon.max", id: "detail.quick.identify")
-            quickAction(.pause, symbol: "pause", id: "detail.quick.pause")
-            quickAction(.resume, symbol: "play", id: "detail.quick.resume")
-            quickAction(.restart, symbol: "arrow.clockwise", id: "detail.quick.restart")
+            ForEach(MinerDetailQuickAction.allCases, id: \.self) { action in
+                quickAction(action)
+            }
         }
         // Do not give this Layout a parent identifier. SwiftUI propagates it to the
         // links and hides their individual identifiers from accessibility clients.
@@ -276,7 +277,7 @@ extension MinerDetailView {
             // Tuning is the unified workspace. Route directly to it from the detail screen so
             // the board-wide controls keep their local state and do not inherit the settings hub's
             // category lifecycle or navigation identity.
-            MinerTuningSessionView(device: currentDevice, store: store, insights: insights)
+            MinerTuningPreviewRoute(device: currentDevice, store: store, insights: insights)
         } else {
             MinerSettingsView(
                 device: currentDevice,
@@ -314,6 +315,8 @@ extension MinerDetailView {
         VStack(alignment: .leading, spacing: 12) {
             if isXMRig {
                 xmrigControlLink
+            } else if dashboardMode == .essentials {
+                essentialsAPITools
             } else {
                 NavigationLink {
                     settingsDestination(nil)
@@ -322,26 +325,8 @@ extension MinerDetailView {
                             symbol: "slider.horizontal.3")
                 }
                 .accessibilityIdentifier("detail.toolsSettings")
-                NavigationLink {
-                    MinerCompatibilityView(device: device, store: store, insights: insights)
-                } label: {
-                    toolRow("Check compatibility", subtitle: "What this firmware actually supports",
-                            symbol: "checkmark.seal")
-                }
-                .accessibilityIdentifier("detail.compatibility")
-                if let info {
-                    NavigationLink {
-                        ScrollView {
-                            MinerDiagnosticsView(model: MinerDiagnosticsModel(info: info))
-                                .padding(20)
-                        }
-                        .background(FleetTheme.canvas)
-                        .navigationTitle("Diagnostics")
-                    } label: {
-                        toolRow("Diagnostics", subtitle: "Clocks, cooling, energy and pool state", symbol: "stethoscope")
-                    }
-                    .accessibilityIdentifier("detail.diagnostics")
-                }
+                compatibilityLink
+                diagnosticsLink
                 advancedTools
             }
             fleetManagementControls
@@ -351,28 +336,89 @@ extension MinerDetailView {
 
     var advancedTools: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Label("Tools & firmware", systemImage: "wrench.and.screwdriver")
-                    .fleetFont(.headline)
-            }
-            .foregroundStyle(FleetTheme.accent)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier("detail.advancedSection")
+            Label("API, diagnostics & firmware", systemImage: "wrench.and.screwdriver")
+                .fleetFont(.headline)
+                .foregroundStyle(FleetTheme.accent)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("detail.advancedSection")
             Text("Inspect the API and explore detailed readings. Commands still require review.")
                 .fleetFont(.caption)
                 .foregroundStyle(FleetTheme.secondary)
-            NavigationLink {
-                MinerEndpointCatalogView(device: device, store: store, insights: insights)
+            rawAPITools
+        }
+        .padding(.top, 8)
+    }
+
+    var essentialsAPITools: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                showsAdvancedTools.toggle()
             } label: {
-                toolRow("Endpoint explorer", subtitle: "Every read, write and firmware operation", symbol: "terminal")
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("API, diagnostics & firmware").fleetFont(.headline).foregroundStyle(FleetTheme.ink)
+                        Text("Raw API, firmware checks, and detailed readings")
+                            .fleetFont(.subheadline).foregroundStyle(FleetTheme.secondary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Image(systemName: showsAdvancedTools ? "chevron.up" : "chevron.down")
+                        .foregroundStyle(FleetTheme.secondary)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .accessibilityIdentifier("detail.endpointExplorer")
+            .buttonStyle(.plain)
+            .accessibilityValue(showsAdvancedTools ? "Expanded" : "Collapsed")
+            .accessibilityIdentifier("detail.apiToolsDisclosure")
+            if showsAdvancedTools {
+                AnyView(rawAPITools)
+                diagnosticsLink
+                compatibilityLink
+            }
+        }
+        .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+    }
+
+    private var compatibilityLink: some View {
+        NavigationLink {
+            MinerCompatibilityView(device: device, store: store, insights: insights)
+        } label: {
+            toolRow("Check compatibility", subtitle: "What this firmware actually supports", symbol: "checkmark.seal")
+        }
+        .accessibilityIdentifier("detail.compatibility")
+    }
+
+    @ViewBuilder private var diagnosticsLink: some View {
+        if let info {
+            NavigationLink {
+                ScrollView {
+                    MinerDiagnosticsView(model: MinerDiagnosticsModel(info: info)).padding(20)
+                }
+                .background(FleetTheme.canvas)
+                .navigationTitle("Diagnostics")
+            } label: {
+                toolRow("Diagnostics", subtitle: "Clocks, cooling, energy and pool state", symbol: "stethoscope")
+            }
+            .accessibilityIdentifier("detail.diagnostics")
+        }
+    }
+
+    private var rawAPITools: some View {
+        VStack(alignment: .leading, spacing: 10) {
             NavigationLink {
                 MinerEndpointView(device: device, store: store, endpoint: .info, insights: insights)
             } label: {
                 toolRow("Raw API", subtitle: "Read the miner's system-info response", symbol: "curlybraces")
             }
             .accessibilityIdentifier("detail.rawAPI")
+            NavigationLink {
+                MinerEndpointCatalogView(device: device, store: store, insights: insights)
+            } label: {
+                toolRow("Endpoint explorer", subtitle: "Every read, write and firmware operation", symbol: "terminal")
+            }
+            .accessibilityIdentifier("detail.endpointExplorer")
             NavigationLink {
                 MinerCustomJSONRoute(device: device, store: store, insights: insights)
             } label: {
@@ -386,7 +432,6 @@ extension MinerDetailView {
             }
             .accessibilityIdentifier("detail.liveConsole")
         }
-        .padding(.top, 8)
     }
 
     var fleetManagementControls: some View {
@@ -398,11 +443,7 @@ extension MinerDetailView {
                 .fleetFont(.caption)
                 .foregroundStyle(FleetTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Button {
-                renameDraft = currentDevice.name
-                renameError = nil
-                showsRenamePrompt = true
-            } label: {
+            Button(action: promptToRenameMiner) {
                 toolRow("Rename in app", subtitle: "Change the local display name", symbol: "pencil")
             }
             .buttonStyle(.plain)
@@ -427,7 +468,26 @@ extension MinerDetailView {
             }
         }
         .fleetCard(padding: FleetSurfaceSpacing.cardInset)
-        .alert("Rename miner", isPresented: $showsRenamePrompt) {
+    }
+
+    func promptToRenameMiner() {
+        renameDraft = currentDevice.name
+        renameError = nil
+        showsRenamePrompt = true
+    }
+}
+
+/// Host the toolbar and card's shared dialogs even when the controls card isn't mounted.
+struct MinerLocalManagementDialogs: ViewModifier {
+    let device: MinerDevice
+    let store: FleetStore
+    @Binding var showsRename: Bool
+    @Binding var renameDraft: String
+    @Binding var renameError: String?
+    @Binding var showsRemoval: Bool
+
+    func body(content: Content) -> some View {
+        content.alert("Rename miner", isPresented: $showsRename) {
             TextField("Name (optional)", text: $renameDraft)
                 .textInputAutocapitalization(.words)
             Button("Save") { renameMiner() }
@@ -444,11 +504,11 @@ extension MinerDetailView {
             Text(renameError ?? "The local name could not be saved.")
         }
         .confirmationDialog(
-            "Remove \(currentDevice.name) from Hash Fleet?",
-            isPresented: $showsRemoveConfirmation,
+            "Remove \(device.name) from Hash Fleet?",
+            isPresented: $showsRemoval,
             titleVisibility: .visible
         ) {
-            MinerRemoveFromFleetButton(store: store, device: currentDevice)
+            MinerRemoveFromFleetButton(store: store, device: device)
             // Adaptive popovers can omit role-cancel buttons. Keep an explicit safe option.
             Button("Keep miner") {}
         } message: {
@@ -457,9 +517,9 @@ extension MinerDetailView {
         }
     }
 
-    func renameMiner() {
+    private func renameMiner() {
         do {
-            try store.rename(currentDevice, name: renameDraft)
+            try store.rename(device, name: renameDraft)
         } catch {
             renameError = error.localizedDescription
         }
