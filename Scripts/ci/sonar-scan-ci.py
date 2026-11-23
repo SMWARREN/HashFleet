@@ -243,6 +243,11 @@ def _collect_coverage_flags(coverage_dir: Path, root: Path) -> list[str]:
         cov_reports.append(str(mac_cov.relative_to(root)))
         print(f"Adding Mac app coverage: {mac_cov.relative_to(root)}")
 
+    php_cov = coverage_dir / "php-coverage.xml"
+    if php_cov.exists():
+        cov_reports.append(str(php_cov.relative_to(root)))
+        print(f"Adding PHP server coverage: {php_cov.relative_to(root)}")
+
     if cov_reports:
         flags.append(f"-Dsonar.coverageReportPaths={','.join(cov_reports)}")
 

@@ -265,6 +265,11 @@ jobs:
             Tools.test_prepare_hash_fleet_wan_workflow \
             Tools.test_art_tooling_coverage
           python3 -m coverage xml -o build/coverage/python-coverage.xml
+      - name: Run offline PHP server tests with coverage
+        run: |
+          mkdir -p build/coverage
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/w -w /w php:8.3-cli bash -c \
+            'pecl install xdebug >/dev/null 2>&1 && docker-php-ext-enable xdebug && XDEBUG_MODE=coverage php Server/tests/coverage.php build/coverage/php-coverage.xml'
       - name: Run SonarQube analysis in Docker with coverage
         run: |
           python3 Scripts/ci/sonar-scan-ci.py

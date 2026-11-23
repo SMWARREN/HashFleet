@@ -27,8 +27,9 @@ class NormalizeJsonTests(unittest.TestCase):
         self.assertTrue(out['miners'][0]['device']['id'].startswith('00000000-0000-4000-8000-'))
 
     def test_unknown_authority_rejected(self):
+        payload = self.payload(['127.0.0.1:9999'])
         with self.assertRaises(RuntimeError):
-            FIX.normalize_json(self.payload(['127.0.0.1:9999']), PORTS)
+            FIX.normalize_json(payload, PORTS)
 
 
 class NormalizeTableTests(unittest.TestCase):
@@ -47,8 +48,9 @@ class NormalizeTableTests(unittest.TestCase):
     def test_bad_rows_rejected(self):
         with self.assertRaises(RuntimeError):
             FIX.normalize_table('a\nb\nc\n127.0.0.1:1 short', PORTS)
+        unknown = 'a\nb\nc\n' + self.row('127.0.0.1:7777')
         with self.assertRaises(RuntimeError):
-            FIX.normalize_table('a\nb\nc\n' + self.row('127.0.0.1:7777'), PORTS)
+            FIX.normalize_table(unknown, PORTS)
 
 
 class NormalizeTtyTests(unittest.TestCase):

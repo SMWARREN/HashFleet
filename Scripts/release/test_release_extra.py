@@ -61,8 +61,9 @@ class CheckedRunTests(unittest.TestCase):
             with self.assertRaises(ValueError, msg=key):
                 r.checked_run(run, gate)
         for jobs in ([], [{'name': 'CI required', 'conclusion': 'failure'}]):
+            run = good_run()
             with self.assertRaises(ValueError):
-                r.checked_run(good_run(), jobs)
+                r.checked_run(run, jobs)
 
 
 class UpdatePackagesTests(unittest.TestCase):
@@ -78,14 +79,19 @@ class UpdatePackagesTests(unittest.TestCase):
     def test_rejects_bad_inputs(self):
         with self.assertRaises(ValueError):
             r.update_packages(CASK, FORMULA, '1.0.1', {'x': HASH})
+        bad_hashes = {n: 'nothex' for n in r.asset_names('1.0.1')}
         with self.assertRaises(ValueError):
-            r.update_packages(CASK, FORMULA, '1.0.1', {n: 'nothex' for n in r.asset_names('1.0.1')})
+            r.update_packages(CASK, FORMULA, '1.0.1', bad_hashes)
+        old_hashes = {n: HASH for n in r.asset_names('0.9.0')}
         with self.assertRaises(ValueError):
-            r.update_packages(CASK, FORMULA, '0.9.0', {n: HASH for n in r.asset_names('0.9.0')})
+            r.update_packages(CASK, FORMULA, '0.9.0', old_hashes)
+        hashes = self.hashes()
+        odd_version = CASK.replace('version "1.0.0"', 'version "x"')
         with self.assertRaises(ValueError):
-            r.update_packages(CASK.replace('version "1.0.0"', 'version "x"'), FORMULA, '1.0.1', self.hashes())
+            r.update_packages(odd_version, FORMULA, '1.0.1', hashes)
+        odd_url = CASK.replace('#{version}/HashFleet', 'zzz/HashFleet')
         with self.assertRaises(ValueError):
-            r.update_packages(CASK.replace('#{version}/HashFleet', 'zzz/HashFleet'), FORMULA, '1.0.1', self.hashes())
+            r.update_packages(odd_url, FORMULA, '1.0.1', hashes)
 
 
 class RemoteHashesTests(unittest.TestCase):
