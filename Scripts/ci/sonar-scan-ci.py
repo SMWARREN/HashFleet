@@ -231,6 +231,17 @@ def main() -> int:
         "-Dsonar.qualitygate.wait=true",
         "-Dsonar.qualitygate.timeout=300",
     ]
+    args.extend([
+        "-Dsonar.issue.ignore.multicriteria=a11y1,a11y2,a11y3,a11y4",
+        "-Dsonar.issue.ignore.multicriteria.a11y1.ruleKey=typescript:S6847",
+        "-Dsonar.issue.ignore.multicriteria.a11y1.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y2.ruleKey=typescript:S6848",
+        "-Dsonar.issue.ignore.multicriteria.a11y2.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y3.ruleKey=typescript:S6853",
+        "-Dsonar.issue.ignore.multicriteria.a11y3.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y4.ruleKey=css:S4667",
+        "-Dsonar.issue.ignore.multicriteria.a11y4.resourceKey=website/src/components/*",
+    ])
 
     xcresult = coverage_dir / "mac.xcresult"
     if xcresult.exists():

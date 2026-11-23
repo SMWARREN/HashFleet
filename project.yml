@@ -49,6 +49,7 @@ schemes:
       config: Debug
       targets:
         - HashFleetMacTests
+        - HashFleetAppMacTests
       gatherCoverageData: true
     profile:
       config: Release
@@ -141,6 +142,8 @@ targets:
       - path: AppTests/DeduplicateDevicesByMACFailureTests.swift
       - path: AppTests/DeduplicateDevicesByMACFailureTests+Transfers.swift
       - path: AppTests/FleetBackgroundPublicationTests.swift
+      - path: AppTests/FleetHistoryPageCacheMetadataTests.swift
+      - path: AppTests/FleetPagePresentationTypeBoundaryTests.swift
     dependencies:
       - target: HashFleetMac
       - package: HashFleetCore
@@ -150,6 +153,91 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.mac.tests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Hash Fleet.app/Contents/MacOS/Hash Fleet"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  HashFleetAppMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: AppTests
+        excludes:
+          - Fixtures
+          - AnimatedWebPTests.swift
+          - DashboardRenderingCoverageTests.swift
+          - DeduplicateDevicesByMACFailureTests+Transfers.swift
+          - DeduplicateDevicesByMACFailureTests.swift
+          - DeveloperTipJarServiceTests.swift
+          - FirmwareTelemetrySparklineTests.swift
+          - FleetActivityDeliveryTests.swift
+          - FleetActivityOrderingTests.swift
+          - FleetActivityPresentationTests.swift
+          - FleetActivityRefreshHandoffTests.swift
+          - FleetAutomaticWidgetTimelineTests.swift
+          - FleetBackgroundPublicationTests.swift
+          - FleetCelebrationTests.swift
+          - FleetChartChurnTests.swift
+          - FleetDeviceCopyTests.swift
+          - FleetFirmwareTelemetryRenderTests.swift
+          - FleetGlancePresentationConsistencyTests.swift
+          - FleetGlanceTests.swift
+          - FleetGlanceWidgetTests.swift
+          - FleetGlanceWorkflowTests.swift
+          - FleetHistoryInstalledObservationTests.swift
+          - FleetHistoryMountedChurnTests.swift
+          - FleetHistoryPageCacheMetadataTests.swift
+          - FleetHistoryRenderingTests.swift
+          - FleetLocalNotificationsSystemTests.swift
+          - FleetMinerDetailGridTests.swift
+          - FleetMountedChartAXProbe.swift
+          - FleetNotificationSettingsTests.swift
+          - FleetNotificationTestDeliveryTests.swift
+          - FleetNotificationWindowTests.swift
+          - FleetNumericMotionTests.swift
+          - FleetPagePresentationTypeBoundaryTests.swift
+          - FleetPreferencesSortingTests.swift
+          - FleetPreferencesTests.swift
+          - FleetRoundedSurfaceSpacingTests.swift
+          - FleetScheduledNotificationServiceTests.swift
+          - FleetSocketLifecycleTests.swift
+          - FleetSocketPeerCloseTests.swift
+          - FleetStartupMaintenanceTests.swift
+          - FleetSupplementalRenderingCoverageTests.swift
+          - FleetSystemFeatureBrandingTests.swift
+          - FleetTextRecognition.swift
+          - FleetTextRecognitionTests.swift
+          - FleetTypographyTests.swift
+          - FleetViewRenderHarness.swift
+          - FleetWatchSetupSelectionTests.swift
+          - FleetWidgetBrandingTests.swift
+          - FleetWidgetRefreshIntegrationTests+Loading.swift
+          - FleetWidgetRefreshIntegrationTests.swift
+          - FleetWidgetRefreshLifecycleTests.swift
+          - LaunchBrandTests.swift
+          - MinerDetailRenderingCoverageTests.swift
+          - MinerLiveAndXMRigIsolationCoverageTests.swift
+          - MinerOperationAuthorizationTests.swift
+          - MinerSettingsRenderingCoverageTests.swift
+          - MinerTimedFreshnessTests.swift
+          - MinerToolsRenderingCoverageTests.swift
+          - MinerTuningEasyControlsTests.swift
+          - MinerTuningReviewTests.swift
+          - PoolLookupSourceRenderingCoverageTests.swift
+          - PreferencesRenderingCoverageTests.swift
+          - StoredHistoryPresentationTests+MountedCards.swift
+          - UtilityRenderingCoverageTests.swift
+          - WidgetActivityComponentCoverageTests.swift
+          - WidgetRenderingCoverageTests.swift
+      - path: UITests/LoopbackMinerServer.swift
+    dependencies:
+      - target: HashFleetMac
+      - package: HashFleetCore
+      - package: GRDB.swift
+        product: GRDB
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.mac.apptests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Hash Fleet.app/Contents/MacOS/Hash Fleet"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        OTHER_SWIFT_FLAGS: "$(inherited) -module-alias HashFleet=HashFleetMac"
   HashFleetMenuBar:
     type: application
     platform: macOS

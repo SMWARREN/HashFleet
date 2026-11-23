@@ -237,11 +237,21 @@ jobs:
           merge-multiple: true
       - name: Run Python unit tests with coverage
         run: |
-          python3 -m coverage run --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest discover -s Scripts/release -p 'test_*.py'
-          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' Scripts/tests/test_package_hashfleet_mac.py
-          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' Scripts/tests/test_native_add_miner_completion.py
-          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' website/Tools/test_capture_dashboard.py
-          python3 -m coverage run --append --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest Tools.test_sonar_scope Tools.test_xccov_to_generic
+          export PYTHONPATH="Scripts/release${PYTHONPATH:+:$PYTHONPATH}"
+          python3 -m coverage run --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest \
+            Scripts/release/test_release.py \
+            Scripts/tests/test_package_hashfleet_mac.py \
+            Scripts/tests/test_native_add_miner_completion.py \
+            Scripts/tests/test_crypto_support.py \
+            website/Tools/test_capture_dashboard.py \
+            Tools.test_sonar_scope \
+            Tools.test_xccov_to_generic \
+            Tools.test_swiftpm_coverage \
+            Tools.test_layout_guardrails \
+            Tools.test_sonar_project_recipe \
+            Tools.test_sonar_scan \
+            Tools.test_native_mac_smoke \
+            Tools.test_native_mac_tour_smoke
           python3 -m coverage xml -o build/coverage/python-coverage.xml
       - name: Run SonarQube analysis in Docker with coverage
         run: |
