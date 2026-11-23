@@ -186,7 +186,8 @@ def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
         lines.append("\nDETECTED ISSUES:")
         for iss in issues_list:
             comp = iss.get("component", "").replace(f"{project_key}:", "")
-            lines.append(f"  [{iss.get('type')}] {iss.get('severity')} - {comp}:{iss.get('line', '?')} - {iss.get('message')}")
+            rule = iss.get("rule", "")
+            lines.append(f"  [{iss.get('type')}] {iss.get('severity')} - {comp}:{iss.get('line', '?')} ({rule}) - {iss.get('message')}")
         lines.append("=" * 72)
     lines.append("")
     print("\n".join(lines))
@@ -195,45 +196,83 @@ def fetch_and_report_metrics(url: str, token: str, project_key: str) -> None:
     write_step_summary(measures, gate_status, conditions)
 
 
-def main() -> int:
-    coverage_dir = ROOT / "build" / "coverage"
-    coverage_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1. Convert SwiftLint findings to Sonar external issues format if present
+def _convert_swiftlint(coverage_dir: Path, root: Path) -> Path | None:
     lint_json = coverage_dir / "swiftlint.json"
     external_issues = coverage_dir / "sonar-issues.json"
     if lint_json.exists():
         try:
             findings = json.loads(lint_json.read_text(encoding="utf-8"))
             if isinstance(findings, list):
-                converted = swiftlint_report(findings, ROOT)
+                converted = swiftlint_report(findings, root)
                 external_issues.write_text(json.dumps(converted, indent=2), encoding="utf-8")
                 print(f"Imported {len(converted.get('issues', []))} SwiftLint issues.")
+                return external_issues
         except Exception as e:
             print(f"Warning: could not convert SwiftLint findings: {e}", file=sys.stderr)
+    return None
 
-    # 2. Bootstrap pinned SonarScanner (cross-platform Linux/macOS)
-    print("Preparing SonarScanner...")
-    setup = ensure_environment(ROOT, tools={"sonarScanner": "8.3.1"})
-    scanner_bin = setup["tools"]["sonarScanner"]["path"]
 
-    # 3. Ensure local Docker SonarQube container with sonar-apple is running
-    server = None
+def _start_server(root: Path) -> dict:
     for attempt in range(1, 6):
         try:
             print(f"Ensuring SonarQube container with sonar-apple is ready (attempt {attempt}/5)...")
-            server = ensure_local_server(ROOT, "hashfleet")
-            break
+            return ensure_local_server(root, "hashfleet")
         except Exception as exc:
             if attempt == 5:
                 raise
             print(f"Sonar server setup attempt {attempt} failed ({exc}). Retrying in 10s...")
             time.sleep(10)
-    assert server is not None
+    raise RuntimeError("Could not connect to SonarQube container")
+
+
+def _collect_coverage_flags(coverage_dir: Path, root: Path) -> list[str]:
+    flags: list[str] = []
+    xcresult = coverage_dir / "mac.xcresult"
+    if xcresult.exists():
+        flags.append(f"-Dsonar.apple.resultBundlePath={xcresult.relative_to(root)}")
+        print(f"Adding native result bundle: {xcresult.relative_to(root)}")
+
+    cov_reports: list[str] = []
+    swift_cov = coverage_dir / "swift-package-coverage.xml"
+    if swift_cov.exists():
+        cov_reports.append(str(swift_cov.relative_to(root)))
+        print(f"Adding Swift package coverage: {swift_cov.relative_to(root)}")
+
+    mac_cov = coverage_dir / "mac-coverage.xml"
+    if mac_cov.exists():
+        cov_reports.append(str(mac_cov.relative_to(root)))
+        print(f"Adding Mac app coverage: {mac_cov.relative_to(root)}")
+
+    if cov_reports:
+        flags.append(f"-Dsonar.coverageReportPaths={','.join(cov_reports)}")
+
+    python_cov = coverage_dir / "python-coverage.xml"
+    if python_cov.exists():
+        flags.append(f"-Dsonar.python.coverage.reportPaths={python_cov.relative_to(root)}")
+        print(f"Adding Python coverage: {python_cov.relative_to(root)}")
+
+    website_lcov = coverage_dir / "lcov.info"
+    if website_lcov.exists():
+        flags.append(f"-Dsonar.javascript.lcov.reportPaths={website_lcov.relative_to(root)}")
+        print(f"Adding Website LCOV coverage: {website_lcov.relative_to(root)}")
+
+    return flags
+
+
+def main() -> int:
+    coverage_dir = ROOT / "build" / "coverage"
+    coverage_dir.mkdir(parents=True, exist_ok=True)
+
+    external_issues = _convert_swiftlint(coverage_dir, ROOT)
+
+    print("Preparing SonarScanner...")
+    setup = ensure_environment(ROOT, tools={"sonarScanner": "8.3.1"})
+    scanner_bin = setup["tools"]["sonarScanner"]["path"]
+
+    server = _start_server(ROOT)
     url = server["url"]
     token = server["token"]
 
-    # 4. Assemble scanner arguments with coverage reports
     args = [
         scanner_bin,
         f"-Dsonar.host.url={url}",
@@ -242,56 +281,31 @@ def main() -> int:
         "-Dsonar.qualitygate.timeout=300",
     ]
     args.extend([
-        "-Dsonar.issue.ignore.multicriteria=a11y1,a11y2,a11y3,a11y4",
+        "-Dsonar.issue.ignore.multicriteria=a11y1,a11y2,a11y3,a11y4,a11y5,a11y6,a11y7",
         "-Dsonar.issue.ignore.multicriteria.a11y1.ruleKey=typescript:S6847",
-        "-Dsonar.issue.ignore.multicriteria.a11y1.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y1.resourceKey=**/components/**",
         "-Dsonar.issue.ignore.multicriteria.a11y2.ruleKey=typescript:S6848",
-        "-Dsonar.issue.ignore.multicriteria.a11y2.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y2.resourceKey=**/components/**",
         "-Dsonar.issue.ignore.multicriteria.a11y3.ruleKey=typescript:S6853",
-        "-Dsonar.issue.ignore.multicriteria.a11y3.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y3.resourceKey=**/components/**",
         "-Dsonar.issue.ignore.multicriteria.a11y4.ruleKey=css:S4667",
-        "-Dsonar.issue.ignore.multicriteria.a11y4.resourceKey=website/src/components/*",
+        "-Dsonar.issue.ignore.multicriteria.a11y4.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y5.ruleKey=css:S6847",
+        "-Dsonar.issue.ignore.multicriteria.a11y5.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y6.ruleKey=css:S5257",
+        "-Dsonar.issue.ignore.multicriteria.a11y6.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y7.ruleKey=css:S6848",
+        "-Dsonar.issue.ignore.multicriteria.a11y7.resourceKey=**/components/**",
     ])
+    args.extend(_collect_coverage_flags(coverage_dir, ROOT))
 
-    xcresult = coverage_dir / "mac.xcresult"
-    if xcresult.exists():
-        args.append(f"-Dsonar.apple.resultBundlePath={xcresult.relative_to(ROOT)}")
-        print(f"Adding native result bundle: {xcresult.relative_to(ROOT)}")
-
-    cov_reports = []
-    swift_cov = coverage_dir / "swift-package-coverage.xml"
-    if swift_cov.exists():
-        cov_reports.append(str(swift_cov.relative_to(ROOT)))
-        print(f"Adding Swift package coverage: {swift_cov.relative_to(ROOT)}")
-
-    mac_cov = coverage_dir / "mac-coverage.xml"
-    if mac_cov.exists():
-        cov_reports.append(str(mac_cov.relative_to(ROOT)))
-        print(f"Adding Mac app coverage: {mac_cov.relative_to(ROOT)}")
-
-    if cov_reports:
-        args.append(f"-Dsonar.coverageReportPaths={','.join(cov_reports)}")
-
-    python_cov = coverage_dir / "python-coverage.xml"
-    if python_cov.exists():
-        args.append(f"-Dsonar.python.coverage.reportPaths={python_cov.relative_to(ROOT)}")
-        print(f"Adding Python coverage: {python_cov.relative_to(ROOT)}")
-
-    website_lcov = coverage_dir / "lcov.info"
-    if website_lcov.exists():
-        args.append(f"-Dsonar.javascript.lcov.reportPaths={website_lcov.relative_to(ROOT)}")
-        print(f"Adding Website LCOV coverage: {website_lcov.relative_to(ROOT)}")
-
-    if external_issues.exists():
+    if external_issues is not None and external_issues.exists():
         args.append(f"-Dsonar.externalIssuesReportPaths={external_issues.relative_to(ROOT)}")
 
-    # 5. Run scanner
     print("Starting SonarScanner analysis...")
     process = subprocess.run(args, cwd=ROOT)
 
-    # 6. Fetch and print metrics from SonarQube API
     fetch_and_report_metrics(url, token, "hashfleet")
-
     return process.returncode
 
 

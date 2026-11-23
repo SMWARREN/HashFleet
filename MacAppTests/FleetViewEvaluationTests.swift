@@ -195,7 +195,11 @@ struct FleetViewEvaluationTests {
         let insights = MiningInsightsStore()
         insights.setDemo(true)
 
-        evaluate(NetworkInsightsView(fleet: store, insights: insights))
+        let networkView = NetworkInsightsView(fleet: store, insights: insights)
+        evaluate(networkView)
+        if let network = insights.network {
+            evaluate(networkView.soloCard(network, now: Date()))
+        }
         evaluate(PoolStatsHubView(fleet: store))
         evaluate(CKPoolLookupView(insights: insights))
     }
@@ -253,6 +257,13 @@ struct FleetViewEvaluationTests {
             evaluate(BitsySays(mood: mood, message: "Testing \(mood.rawValue)"))
         }
         evaluate(FleetPerformanceSettingsView())
+
+        let (store, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+        let runtime = FleetMacRuntime(defaults: defaults, isTesting: true)
+        evaluate(FleetMacMenuBarContent(runtime: runtime, openDestination: { _ in }))
+        let controller = FleetMacStatusItemController(runtime: runtime, openDestination: { _ in })
+        controller.stop()
     }
 
     @Test func evaluateDashboardSplitView() {
