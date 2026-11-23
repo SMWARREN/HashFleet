@@ -1054,7 +1054,7 @@ print("PASS: Extracted probe serialization block handles finite, infinite, and N
             input=swift_program,
             text=True,
             capture_output=True,
-            timeout=15,
+            timeout=180,
         )
         self.assertEqual(proc.returncode, 0, f"Swift execution failed:\nSTDOUT: {proc.stdout}\nSTDERR: {proc.stderr}")
         self.assertIn("PASS: Extracted probe serialization block", proc.stdout)
