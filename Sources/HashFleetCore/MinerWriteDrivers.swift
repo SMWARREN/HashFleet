@@ -122,6 +122,8 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canSetVoltage: true,
                 canSetWorkmode: true,
                 canRestart: true,
+                canShutdown: true,
+                canIdentify: true,
                 fanMinPct: 15
             )
         case "canaannano3":
@@ -393,16 +395,32 @@ extension MinerFirmwareAdapter {
     }
 
     /// Sets the Canaan Avalon performance workmode (`0` = Low, `1` = Mid, `2` = High).
+    /// Nano 3s firmware takes `workmode,set,<n>` (MinerWatch). A10-series firmware takes
+    /// `workmode,<n>` (Canaan A10 API manual 2.4), so retry that form when the first is rejected.
     public func setWorkmode(_ mode: Int) async throws -> Bool {
         guard (0...2).contains(mode) else { return false }
         switch resolvedFamilyName {
         case "canaannano3":
             return try await callCanaanAscset("0,worklevel,set,\(mode)")
         case "canaan":
-            return try await callCanaanAscset("0,workmode,set,\(mode)")
+            if try await callCanaanAscset("0,workmode,set,\(mode)") { return true }
+            return try await callCanaanAscset("0,workmode,\(mode)")
         default:
             return false
         }
+    }
+
+    /// Avalon front LED locator (A10 manual 2.3): `led,1-1` on, `led,1-0` off.
+    public func setLocatorLED(_ on: Bool) async throws -> Bool {
+        guard resolvedFamilyName == "canaan" else { return false }
+        return try await callCanaanAscset("0,led,1-\(on ? 1 : 0)")
+    }
+
+    /// Avalon hash-board power off (A10 manual 2.8): `hashpower,0`. Control board and fans stay on;
+    /// a reboot is required to resume hashing.
+    public func powerOffHashBoards() async throws -> Bool {
+        guard resolvedFamilyName == "canaan" else { return false }
+        return try await callCanaanAscset("0,hashpower,0")
     }
 
     /// Reboots/restarts the miner.
@@ -475,7 +493,10 @@ extension MinerFirmwareAdapter {
         if family == "warpaxe" {
             return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/off", json: nil)
         }
-        guard family == "nerdqaxe" || family == "nerdoctaxe" else { return false }
+        guard family == "nerdqaxe" || family == "nerdoctaxe" else {
+            if family == "canaan" { return try await powerOffHashBoards() }
+            return false
+        }
         return try await sendCustomHTTP(method: "POST", path: "/api/system/shutdown", json: nil)
     }
 
@@ -489,6 +510,9 @@ extension MinerFirmwareAdapter {
             )
         case "bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/identify", json: nil)
+        case "canaan":
+            // Light the front LED so the unit can be found (A10 manual 2.3).
+            return try await setLocatorLED(true)
         default:
             return false
         }

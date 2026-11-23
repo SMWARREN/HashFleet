@@ -17,8 +17,15 @@ extension MinerSettingsView {
                 } else if offlineReadOnly {
                     MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id))
                 }
-                if !categories.isEmpty || canRestart || liveRestart.receipt != nil {
+                if !categories.isEmpty || canRestart || liveRestart.receipt != nil || showsAvalonControls(availability) {
                     compactHubGroup("Controls") {
+                        if showsAvalonControls(availability) {
+                            compactHubLink("Avalon controls", subtitle: avalonControlsSubtitle, icon: "slider.horizontal.3",
+                                           id: "settings.preview.avalon") {
+                                MinerAvalonControlsPage(device: device, store: store)
+                            }
+                            if !categories.isEmpty || canRestart { compactHubDivider }
+                        }
                         ForEach(categories) { category in
                             compactCategory(category)
                             if category != categories.last || canRestart { compactHubDivider }
@@ -203,5 +210,18 @@ extension MinerSettingsView {
         .background(FleetTheme.canvas)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension MinerSettingsView {
+    /// Canaan Avalon miners (port 4028) get their own controls page: work mode, fan, frequency,
+    /// LED locator and hash power, all from Canaan's API manual and MinerWatch's driver.
+    func showsAvalonControls(_ availability: MinerNumberFirstAvailability) -> Bool {
+        ["canaan", "canaannano3"].contains(availability.driverCapabilities.family)
+            && availability.rawAPI && !availability.driverCapabilities.isReadOnly
+    }
+
+    var avalonControlsSubtitle: String {
+        device.firmwareFamily == "canaannano3" ? "Work level" : "Work mode, fan, frequency, LED, hash power"
     }
 }

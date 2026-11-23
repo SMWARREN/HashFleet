@@ -169,6 +169,22 @@ extension MinerFirmwareAdapter {
                 throw MinerAPIError.http(statusCode: 502, message: "Canaan reboot command failed", body: Data())
             }
             return Data(#"{"STATUS":"S"}"#.utf8)
+        case .identify:
+            guard try await identify() else {
+                throw MinerAPIError.http(statusCode: 502, message: "Avalon LED command failed", body: Data())
+            }
+            return Data(#"{"STATUS":"S"}"#.utf8)
+        case .pause:
+            // Avalon hash-board power off (hashpower,0). Resume = reboot.
+            guard try await shutdown() else {
+                throw MinerAPIError.http(statusCode: 502, message: "Avalon hash power off failed", body: Data())
+            }
+            return Data(#"{"STATUS":"S"}"#.utf8)
+        case .resume:
+            guard try await restart() else {
+                throw MinerAPIError.http(statusCode: 502, message: "Canaan reboot command failed", body: Data())
+            }
+            return Data(#"{"STATUS":"S"}"#.utf8)
         case .settings:
             guard let body,
                   let json = try? JSONDecoder().decode(JSONValue.self, from: body),
@@ -226,6 +242,16 @@ extension MinerFirmwareAdapter {
         }
         if let wm = MinerDriverParse.optInt(dict["workmode"]) {
             guard try await setWorkmode(wm) else { return false }
+            appliedAny = true
+        }
+        if dict["led"] != nil {
+            guard try await setLocatorLED(MinerDriverParse.coerceFlag(dict["led"])) else { return false }
+            appliedAny = true
+        }
+        if dict["hashpower"] != nil {
+            // Only switching hash power OFF is a command (A10 `hashpower,0`). Turning it back on
+            // requires a reboot, which the caller sends as the separate restart action.
+            guard !MinerDriverParse.coerceFlag(dict["hashpower"]), try await powerOffHashBoards() else { return false }
             appliedAny = true
         }
         return appliedAny

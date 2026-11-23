@@ -112,6 +112,63 @@ struct MinerCanaanEdgeCaseTests {
         #expect(MinerEndpoint.info.timeout == 15)
     }
 
+
+    @Test func avalonA10ManualCommands() async throws {
+        let sent = Sent()
+        var rejectSetForm = true
+        let reject = RejectFlag()
+        let transport: CgminerClient.Transport = { _, _, _, payload in
+            let obj = try JSONDecoder().decode([String: String].self, from: payload)
+            let line = "\(obj["command"] ?? "")|\(obj["parameter"] ?? "")"
+            sent.add(line)
+            if reject.on, line.contains("workmode,set") {
+                return Data(#"{"STATUS":[{"STATUS":"E","Msg":"invalid"}]}"#.utf8)
+            }
+            return Data(#"{"STATUS":[{"STATUS":"I","Msg":"ASC 0 set info"}]}"#.utf8)
+        }
+        _ = rejectSetForm
+        let device = MinerDevice(name: "a10", address: "192.0.2.10:4028", firmwareFamily: "canaan")
+        let adapter = MinerFirmwareAdapter(device: device, cgminerTransport: transport)
+        #expect(try await adapter.setWorkmode(1))         // A10 falls back to workmode,1
+        reject.on = false
+        #expect(try await adapter.setLocatorLED(true))
+        #expect(try await adapter.setLocatorLED(false))
+        #expect(try await adapter.identify())
+        #expect(try await adapter.shutdown())
+        #expect(sent.all == [
+            "ascset|0,workmode,set,1", "ascset|0,workmode,1",
+            "ascset|0,led,1-1", "ascset|0,led,1-0", "ascset|0,led,1-1", "ascset|0,hashpower,0"
+        ])
+        let caps = MinerDriverCapabilities.forFamily("canaan", info: nil)
+        #expect(caps.canIdentify && caps.canShutdown && caps.canSetWorkmode && caps.canSetFan)
+    }
+
+    @Test func avalonSettingsBodyTranslatesLedAndHashpower() async throws {
+        let sent = Sent()
+        let transport: CgminerClient.Transport = { _, _, _, payload in
+            let obj = try JSONDecoder().decode([String: String].self, from: payload)
+            sent.add("\(obj["command"] ?? "")|\(obj["parameter"] ?? "")")
+            return Data(#"{"STATUS":[{"STATUS":"S"}]}"#.utf8)
+        }
+        let device = MinerDevice(name: "a", address: "192.0.2.11:4028", firmwareFamily: "canaan")
+        let adapter = MinerFirmwareAdapter(device: device, cgminerTransport: transport)
+        _ = try await adapter.execute(.settings, body: Data(#"{"led":1}"#.utf8))
+        _ = try await adapter.execute(.settings, body: Data(#"{"hashpower":0}"#.utf8))
+        await #expect(throws: (any Error).self) {
+            _ = try await adapter.execute(.settings, body: Data(#"{"hashpower":1}"#.utf8))
+        }
+        #expect(sent.all == ["ascset|0,led,1-1", "ascset|0,hashpower,0"])
+    }
+
+    private final class RejectFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = true
+        var on: Bool {
+            get { lock.lock(); defer { lock.unlock() }; return value }
+            set { lock.lock(); value = newValue; lock.unlock() }
+        }
+    }
+
     private final class Sent: @unchecked Sendable {
         private let lock = NSLock()
         private var items: [String] = []

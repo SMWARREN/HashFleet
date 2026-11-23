@@ -27,6 +27,20 @@ struct AddMinerView: View {
     var body: some View {
         FleetPageNavigationStack { form }
         .presentationBackground(FleetTheme.canvas)
+        #if os(iOS)
+        // The scan takes the whole screen while it runs, then returns to the results list.
+        .fullScreenCover(isPresented: Binding(
+            get: { discovery.isScanning },
+            set: { presented in if !presented, discovery.isScanning { discovery.cancel() } }
+        )) {
+            AddMinerFullScreenScan(
+                probedHosts: discovery.probedHosts,
+                hostCount: discoveryHostCount,
+                candidates: discovery.candidates,
+                onCancel: { discovery.cancel() }
+            )
+        }
+        #endif
     }
 
     private var form: some View {
@@ -329,7 +343,7 @@ struct AddMinerView: View {
         return "Continue"
     }
 
-    private var discoveryHostCount: Int {
+    var discoveryHostCount: Int {
         guard case .scanning(let count) = discovery.state else { return 254 }
         return count
     }

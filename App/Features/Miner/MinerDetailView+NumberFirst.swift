@@ -71,6 +71,7 @@ struct MinerNumberFirstAvailability {
     func showsSettingsHub(in mode: FleetPreferences.DashboardMode, usesEssentialsPools: Bool = false) -> Bool {
         !settingsCategories(usesEssentialsPools: usesEssentialsPools).isEmpty
             || quickActions.contains(.restart) || (mode == .full && rawAPI)
+            || (rawAPI && hasFreshLiveFields && ["canaan", "canaannano3"].contains(driverCapabilities.family))
     }
 
     private static func hasText(_ value: JSONValue?) -> Bool {
