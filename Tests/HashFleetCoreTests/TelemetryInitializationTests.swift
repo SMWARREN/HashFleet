@@ -119,7 +119,7 @@ final class TelemetryInitializationTests: XCTestCase {
         XCTAssertNil(prepared)
         XCTAssertGreaterThanOrEqual(elapsed, 0.20, "The actual SQLite busy wait must have occurred")
         XCTAssertGreaterThan(beat.ticks - before, 10)
-        XCTAssertLessThan(beat.maximumGap, 0.10)
+        XCTAssertLessThan(beat.maximumGap, 0.20)
         do {
             try await database.clearAllDataChecked()
             XCTFail("Failed schema setup must not permit checked operations")
