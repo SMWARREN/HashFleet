@@ -272,6 +272,18 @@ struct SettingsAndRoutingEvaluationTests {
             evaluate(general.coolingPage)
             evaluate(general.displayPage)
         }
+
+        let settings = MinerSettingsView(device: device, store: store, insights: insights)
+        settings.submit(.settings, json: .object(["hostname": .string("Desk")]))
+        #expect(settings.saveAlert?.message.contains("Demo mode") == true)
+        settings.submit(.settings, object: ["statsFrequency": 30])
+        settings.submit(.settings, json: .object(["coreVoltage": .integer(1150)]))
+        settings.submit(.restart, json: .object(["hostname": .string("Desk")]))
+        #expect(settings.savesDirectly)
+        #expect(settings.everydayTitle(review: "Review", save: "Save") == "Save")
+        #expect(MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: .object(["rotation": .integer(90)])))
+        #expect(!MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: .object(["stratumURL": .string("pool")])))
+        evaluate(settings.directSaveStatus)
     }
 
     // MARK: - FleetBackupView
