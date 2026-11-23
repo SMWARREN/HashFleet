@@ -246,6 +246,7 @@ jobs:
             website/Tools/test_capture_dashboard.py \
             website/Tools/test_capture_cli_fixtures.py \
             website/Tools/test_capture_cli_dashboard_extra.py \
+            website/Tools/test_capture_cli_dashboard_flow.py \
             Scripts/release/test_release_extra.py \
             Scripts/tests/test_build_bundle.py \
             Scripts/tests/test_sonar_scan_ci.py \
