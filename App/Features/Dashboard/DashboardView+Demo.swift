@@ -2,11 +2,7 @@ import SwiftUI
 import HashFleetCore
 
 enum NumberFirstPreview {
-    #if HASHFLEET_LIVE_REVIEW && os(iOS)
     static let usesLivePhoneLayouts = true
-    #else
-    static let usesLivePhoneLayouts = false
-    #endif
 
     #if DEBUG && os(iOS) && targetEnvironment(simulator)
     private static let arguments = Set(ProcessInfo.processInfo.arguments)
