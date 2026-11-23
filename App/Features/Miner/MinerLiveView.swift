@@ -108,6 +108,12 @@ final class MinerLiveModel {
         }
     }
 
+    /// Records one already-received frame through the same formatter and field merger
+    /// used by the socket loop. It does not open a connection.
+    func recordReceived(_ data: Data, endpoint: MinerEndpoint) {
+        handleMessage(.text(String(decoding: data, as: UTF8.self)), endpoint: endpoint)
+    }
+
     func disconnect() {
         generation = UUID()
         task?.cancel()
