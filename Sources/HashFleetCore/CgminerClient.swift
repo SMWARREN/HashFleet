@@ -139,6 +139,13 @@ public struct CgminerClient: Sendable {
         if !items[0].contains("=") {
             section["_section"] = .string(items[0])
             items.removeFirst()
+        } else if let eq = items[0].firstIndex(of: "=") {
+            // A10 text replies open sections as `STATUS=S,...` / `STATS=0,...` / `POOL=0,...`.
+            // An all-caps first key names the section; its value is kept as a field too.
+            let key = items[0][..<eq].trimmingCharacters(in: .whitespaces)
+            if !key.isEmpty, key.allSatisfy({ $0.isUppercase && $0.isLetter }) {
+                section["_section"] = .string(key)
+            }
         }
 
         for item in items {

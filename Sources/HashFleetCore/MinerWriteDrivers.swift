@@ -124,6 +124,14 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canRestart: true,
                 fanMinPct: 15
             )
+        case "canaannano3":
+            // Original Avalon Nano 3 (nano-cli dialect): work level + reboot only. It rejects
+            // fan-spd / frequency / voltage, so those controls stay hidden.
+            return MinerDriverCapabilities(
+                family: "canaannano3",
+                canSetWorkmode: true,
+                canRestart: true
+            )
         case "braiins", "luxos":
             return MinerDriverCapabilities(family: normalized)
         case "bitfortun":
@@ -288,7 +296,7 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSFanSpeed(percent)
-        case "braiins", "luxos":
+        case "braiins", "luxos", "canaannano3":
             return false
         default:
             let clamped = max(0, min(100, percent))
@@ -324,7 +332,7 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSAutoFan(enabled)
-        case "braiins", "luxos":
+        case "braiins", "luxos", "canaannano3":
             return false
         default:
             let payload: JSONValue = .object([
@@ -351,7 +359,7 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSTuning(frequencyMHz: mhz, coreMV: nil)
-        case "nmaxe", "braiins", "luxos":
+        case "nmaxe", "braiins", "luxos", "canaannano3":
             return false
         default:
             let freqVal: JSONValue = mhz.rounded() == mhz ? .integer(Int64(mhz)) : .number(mhz)
@@ -376,7 +384,7 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSTuning(frequencyMHz: nil, coreMV: millivolts)
-        case "nmaxe", "braiins", "luxos":
+        case "nmaxe", "braiins", "luxos", "canaannano3":
             return false
         default:
             let payload: JSONValue = .object(["coreVoltage": .integer(Int64(millivolts))])
@@ -386,8 +394,15 @@ extension MinerFirmwareAdapter {
 
     /// Sets the Canaan Avalon performance workmode (`0` = Low, `1` = Mid, `2` = High).
     public func setWorkmode(_ mode: Int) async throws -> Bool {
-        guard resolvedFamilyName == "canaan", (0...2).contains(mode) else { return false }
-        return try await callCanaanAscset("0,workmode,set,\(mode)")
+        guard (0...2).contains(mode) else { return false }
+        switch resolvedFamilyName {
+        case "canaannano3":
+            return try await callCanaanAscset("0,worklevel,set,\(mode)")
+        case "canaan":
+            return try await callCanaanAscset("0,workmode,set,\(mode)")
+        default:
+            return false
+        }
     }
 
     /// Reboots/restarts the miner.
@@ -397,6 +412,11 @@ extension MinerFirmwareAdapter {
         case "canaan":
             let cli = try makeCgminerClient()
             _ = try await cli.call("ascset", parameter: "0,reboot,0")
+            return true
+        case "canaannano3":
+            // nano-cli Reboot: the original Nano 3 uses `reboot,all`, not `reboot,0`.
+            let cli = try makeCgminerClient()
+            _ = try await cli.call("ascset", parameter: "0,reboot,all")
             return true
         case "axeforge":
             return try await sendCustomHTTP(
@@ -565,7 +585,7 @@ extension MinerFirmwareAdapter {
     ) async throws -> Data {
         let family = resolvedFamilyName
         switch family {
-        case "canaan":
+        case "canaan", "canaannano3":
             return try await executeCanaanEndpoint(endpoint, body: body)
         case "braiins", "luxos":
             return try await executeReadOnlyCgminerEndpoint(endpoint)

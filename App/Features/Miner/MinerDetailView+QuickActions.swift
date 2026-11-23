@@ -83,7 +83,7 @@ final class MinerInlineActionState {
         let family = info.raw["firmwareFamily"]?.stringValue
             ?? (MinerHTTPDrivers.isAxeForgeStatusShape(info.raw) ? "axeForge" : nil)
             ?? (MinerFirmwareAdapter.isNestedNmaxePayload(info.raw) ? "nmaxe" : nil)
-        guard let family, ["axeForge", "nmaxe", "canaan"].contains(family) else { return nil }
+        guard let family, ["axeForge", "nmaxe", "canaan", "canaannano3"].contains(family) else { return nil }
         let hostOrBoard = (info.raw["hostname"]?.stringValue
             ?? info.raw["board"]?.stringValue
             ?? info.raw["deviceModel"]?.stringValue ?? "")

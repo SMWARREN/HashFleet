@@ -9,8 +9,11 @@ import GRDB
 /// WebSocket live monitoring and fallback polling for FleetStore. Moved to an extension for
 /// file and type length; connection handling and retry behavior are unchanged.
 extension FleetStore {
-    static let liveSnapshotMaximumAge: TimeInterval = 30
-    static let liveFreshnessCheckInterval: Duration = .seconds(15)
+    static let liveSnapshotMaximumAge: TimeInterval = 15
+    static let liveFreshnessCheckInterval: Duration = .seconds(5)
+    /// Foreground HTTP poll cadence for firmware without a live socket (matches MinerWatch
+    /// `polling.interval_seconds: 5`).
+    static let httpPollInterval: Duration = .seconds(5)
 
     func cancelLiveMonitoring(ownedBy token: UUID? = nil) {
         // SwiftUI can start a replacement `.task(id:)` before the cancelled task reaches its
@@ -198,7 +201,7 @@ extension FleetStore {
             // Refresh tap. Retry at a bounded interval while the healthy socket remains open.
             if needsLiveBootstrap(for: device.id), Date() >= nextBootstrapAttempt {
                 await fallbackPoll(device, token: token)
-                nextBootstrapAttempt = Date().addingTimeInterval(15)
+                nextBootstrapAttempt = Date().addingTimeInterval(5)
             }
             // The bootstrap await may outlive this generation. Its buffered frame must
             // not be applied to a replacement owner's snapshot or pending update batch.
@@ -279,7 +282,7 @@ extension FleetStore {
         while !Task.isCancelled, token == liveGeneration {
             await fallbackPoll(device, token: token)
             guard !Task.isCancelled, token == liveGeneration else { return }
-            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            do { try await Task.sleep(for: Self.httpPollInterval) } catch { return }
         }
         if token == liveGeneration { liveTasks[device.id] = nil }
     }

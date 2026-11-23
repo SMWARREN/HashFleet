@@ -128,6 +128,8 @@ public struct MinerWatchSample: Equatable, Sendable {
     public var host: String
     public var online: Bool
     public var error: String?
+    /// Active hardware power-supply fault (for example an Avalon `PS[...]` error code). Nil when OK or unknown.
+    public var powerFault: String?
     public var miningPaused: Bool?
 
     // Identity
@@ -332,7 +334,7 @@ public struct MinerWatchSample: Equatable, Sendable {
     private func applyIdentityFields(_ out: inout [String: JSONValue], preservingFlatRaw: Bool) {
         setIfMissingString(&out, key: "hostname", value: hostname)
         setIfMissingString(&out, key: "macAddr", value: mac)
-        if !preservingFlatRaw || ["nmaxe", "axeForge", "harloOS", "canaan", "braiins", "luxos"].contains(family) {
+        if !preservingFlatRaw || ["nmaxe", "axeForge", "harloOS", "canaan", "canaannano3", "braiins", "luxos"].contains(family) {
             setIfMissingString(&out, key: "deviceModel", value: model)
         }
         if let chipModel, !chipModel.isEmpty {
@@ -388,6 +390,7 @@ public struct MinerWatchSample: Equatable, Sendable {
             setIfMissingNumber(&out, key: "current", value: MinerDriverParse.roundTo(currentA * 1_000.0, places: 1))
         }
         if let workmode { out["workmode"] = .integer(Int64(workmode)) }
+        if let powerFault, !powerFault.isEmpty { out["power_fault"] = .string(powerFault) }
         if let hwErrors { out["hwErrors"] = .integer(Int64(hwErrors)) }
         if let hwErrorRate { out["hwErrorRate"] = .number(hwErrorRate) }
 

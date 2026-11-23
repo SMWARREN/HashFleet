@@ -69,7 +69,7 @@ public struct MinerFirmwareAdapter: Sendable {
         let explicitPort = baseURL.port
         let family = (device.firmwareFamily ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        if ["luxos", "braiins", "canaan", "cgminer"].contains(family) || explicitPort == Self.portCgminer {
+        if ["luxos", "braiins", "canaan", "canaannano3", "cgminer"].contains(family) || explicitPort == Self.portCgminer {
             return try await pollCgminerInfo(host: host, port: explicitPort ?? Self.portCgminer, knownFamily: family)
         }
 
@@ -223,11 +223,10 @@ public struct MinerFirmwareAdapter: Sendable {
     private func pollCgminerInfo(host: String, port: Int, knownFamily: String) async throws -> MinerInfo {
         let cli = CgminerClient(host: host, port: port, timeout: 4.0, transport: cgminerTransport)
         let family: String
-        if ["luxos", "braiins", "canaan"].contains(knownFamily) {
+        if ["luxos", "braiins", "canaan", "canaannano3"].contains(knownFamily) {
             family = knownFamily
         } else {
-            let version = try await cli.call("version")
-            family = MinerCgminerDrivers.fingerprint(versionResponse: version)
+            family = await MinerCgminerDrivers.fingerprint(client: cli) ?? "canaan"
         }
 
         let sample: MinerWatchSample
@@ -237,7 +236,7 @@ public struct MinerFirmwareAdapter: Sendable {
         case "braiins":
             sample = try await MinerCgminerDrivers.pollBraiins(client: cli)
         default:
-            sample = try await MinerCgminerDrivers.pollCanaan(client: cli)
+            sample = try await MinerCgminerDrivers.pollCanaan(client: cli, nano3: family == "canaannano3")
         }
         if sample.model == nil {
             var enriched = sample
@@ -356,7 +355,7 @@ extension MinerFirmwareAdapter {
         let asicDict = asic?.objectValue ?? [:]
 
         if let explicit = raw["firmwareFamily"]?.stringValue,
-           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "warpAxe", "canaan", "braiins", "luxos"]
+           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "warpAxe", "canaan", "canaannano3", "braiins", "luxos"]
             .contains(explicit) {
             return explicit
         }
@@ -545,12 +544,15 @@ extension MinerFirmwareAdapter {
         let cli = CgminerClient(host: host, port: port, timeout: timeout, transport: transport)
         guard let versionResp = try? await cli.call("version"),
               isCgminerVersionResponse(versionResp) else { return nil }
-        let family = MinerCgminerDrivers.fingerprint(versionResponse: versionResp)
+        var family = MinerCgminerDrivers.fingerprint(versionResponse: versionResp)
+        if family == "canaan", let estats = try? await cli.call("estats"), MinerCgminerDrivers.estatsSaysNano3(estats) {
+            family = "canaannano3"
+        }
         let sample: MinerWatchSample?
         switch family {
         case "luxos": sample = try? await MinerCgminerDrivers.pollLuxos(client: cli)
         case "braiins": sample = try? await MinerCgminerDrivers.pollBraiins(client: cli)
-        default: sample = try? await MinerCgminerDrivers.pollCanaan(client: cli)
+        default: sample = try? await MinerCgminerDrivers.pollCanaan(client: cli, nano3: family == "canaannano3")
         }
 
         let defModel = defaultCgminerModel(for: family)
@@ -592,6 +594,7 @@ extension MinerFirmwareAdapter {
         case "luxos": "LuxOS"
         case "braiins": "BMM101"
         case "canaan": "Avalon"
+        case "canaannano3": "Avalon Nano 3"
         default: family.capitalized
         }
     }
