@@ -51,29 +51,32 @@ extension FleetPreferences {
     }
 
     private func compareEntries(_ lhs: SortEntry, _ rhs: SortEntry) -> Bool {
-        if case .missing = lhs.metric, case .missing = rhs.metric {
-            return tieBreak(lhs, rhs)
+        if let missingResult = compareMissing(lhs, rhs) {
+            return missingResult
         }
-        // Missing or offline readings always sort after real readings, regardless of direction.
-        if case .missing = rhs.metric { return true }
-        if case .missing = lhs.metric { return false }
-
-        switch (lhs.metric, rhs.metric) {
-        case let (.number(a), .number(b)):
+        if let a = numericValue(for: lhs.metric), let b = numericValue(for: rhs.metric) {
             return compareValues(a, b, lhs: lhs, rhs: rhs)
-        case let (.integer(a), .integer(b)):
-            if a != b { return ascending ? a < b : a > b }
-            return tieBreak(lhs, rhs)
-        case let (.integer(a), .number(b)):
-            return compareValues(Double(a), b, lhs: lhs, rhs: rhs)
-        case let (.number(a), .integer(b)):
-            return compareValues(a, Double(b), lhs: lhs, rhs: rhs)
-        case let (.string(a), .string(b)):
+        }
+        if case let (.string(a), .string(b)) = (lhs.metric, rhs.metric) {
             return compareStrings(a, b, lhs: lhs, rhs: rhs)
-        default:
-            // Mismatched non-missing metric kinds (number vs string, etc.) never occur for a
-            // single sort option, but fall back to a stable tie-break rather than crashing.
-            return tieBreak(lhs, rhs)
+        }
+        return tieBreak(lhs, rhs)
+    }
+
+    private func compareMissing(_ lhs: SortEntry, _ rhs: SortEntry) -> Bool? {
+        switch (lhs.metric, rhs.metric) {
+        case (.missing, .missing): tieBreak(lhs, rhs)
+        case (_, .missing): true
+        case (.missing, _): false
+        default: nil
+        }
+    }
+
+    private func numericValue(for metric: SortMetric) -> Double? {
+        switch metric {
+        case let .number(v): v
+        case let .integer(v): Double(v)
+        default: nil
         }
     }
 

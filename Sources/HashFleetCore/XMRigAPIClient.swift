@@ -116,28 +116,10 @@ public struct XMRigAPIClient: Sendable {
             raw["hashRate"] = .number(hashrate / 1_000_000_000.0)
         }
         if let results = jsonValue["results"] {
-            if let accepted = Self.nonNegativeCounter(results["shares_good"]) {
-                raw["sharesAccepted"] = .integer(Int64(accepted))
-            }
-            if let total = Self.nonNegativeCounter(results["shares_total"]),
-                let accepted = Self.nonNegativeCounter(results["shares_good"]),
-                accepted <= total {
-                let subtraction = total.subtractingReportingOverflow(accepted)
-                if !subtraction.overflow {
-                    raw["sharesRejected"] = .integer(Int64(subtraction.partialValue))
-                }
-            }
-            if let best = results["best"]?.arrayValue?.first {
-                raw["bestDiff"] = best
-            }
+            parseResults(results, into: &raw)
         }
         if let connection = jsonValue["connection"] {
-            if let pool = connection["pool"] {
-                raw["stratumURL"] = pool
-            }
-            if let uptime = connection["uptime"] {
-                raw["uptimeSeconds"] = uptime
-            }
+            parseConnection(connection, into: &raw)
         }
         if let paused = jsonValue["paused"] {
             raw["miningPaused"] = paused
@@ -150,6 +132,32 @@ public struct XMRigAPIClient: Sendable {
         }
 
         return MinerInfo(raw: raw)
+    }
+
+    private func parseResults(_ results: JSONValue, into raw: inout [String: JSONValue]) {
+        if let accepted = Self.nonNegativeCounter(results["shares_good"]) {
+            raw["sharesAccepted"] = .integer(Int64(accepted))
+        }
+        if let total = Self.nonNegativeCounter(results["shares_total"]),
+            let accepted = Self.nonNegativeCounter(results["shares_good"]),
+            accepted <= total {
+            let subtraction = total.subtractingReportingOverflow(accepted)
+            if !subtraction.overflow {
+                raw["sharesRejected"] = .integer(Int64(subtraction.partialValue))
+            }
+        }
+        if let best = results["best"]?.arrayValue?.first {
+            raw["bestDiff"] = best
+        }
+    }
+
+    private func parseConnection(_ connection: JSONValue, into raw: inout [String: JSONValue]) {
+        if let pool = connection["pool"] {
+            raw["stratumURL"] = pool
+        }
+        if let uptime = connection["uptime"] {
+            raw["uptimeSeconds"] = uptime
+        }
     }
 
     private static func isRecognizedSummary(_ value: JSONValue) -> Bool {

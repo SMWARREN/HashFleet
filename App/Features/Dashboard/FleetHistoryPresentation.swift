@@ -90,20 +90,8 @@ enum FleetHistoryPresentation {
     /// jump from disappearing when the dashboard budget is smaller than the source history. The
     /// source series is never mutated, and short series are returned unchanged.
     static func sampledPoints(_ points: [HashratePoint], maximumCount: Int) -> [HashratePoint] {
-        guard maximumCount > 0 else { return [] }
-        guard points.count > maximumCount else { return points }
-        if maximumCount == 1 { return [points[points.count - 1]] }
-        if maximumCount == 2 { return [points[0], points[points.count - 1]] }
-
-        // With only three slots, preserve the established evenly spaced contract. The extrema
-        // envelope needs at least one interior bucket plus both endpoints.
-        if maximumCount == 3 {
-            let lastIndex = points.count - 1
-            return (0..<maximumCount).map { index in
-                let position = Double(index) / Double(maximumCount - 1)
-                let sourceIndex = Int((position * Double(lastIndex)).rounded())
-                return points[sourceIndex]
-            }
+        if let small = smallSampledPoints(points, maximumCount: maximumCount) {
+            return small
         }
 
         let interiorCount = points.count - 2
@@ -116,32 +104,56 @@ enum FleetHistoryPresentation {
             let end = 1 + ((bucket + 1) * interiorCount / bucketCount)
             guard start < end else { continue }
 
-            var minimumIndex = start
-            var maximumIndex = start
-            if start + 1 < end {
-                for index in (start + 1)..<end {
-                    if points[index].value < points[minimumIndex].value {
-                        minimumIndex = index
-                    }
-                    if points[index].value > points[maximumIndex].value {
-                        maximumIndex = index
-                    }
-                }
-            }
-
-            if minimumIndex == maximumIndex {
-                sampled.append(points[minimumIndex])
-            } else if minimumIndex < maximumIndex {
-                sampled.append(points[minimumIndex])
-                sampled.append(points[maximumIndex])
-            } else {
-                sampled.append(points[maximumIndex])
-                sampled.append(points[minimumIndex])
-            }
+            let (minimumIndex, maximumIndex) = findBucketExtrema(in: points, start: start, end: end)
+            appendBucketExtrema(to: &sampled, points: points, minIndex: minimumIndex, maxIndex: maximumIndex)
         }
 
         sampled.append(points[points.count - 1])
         return sampled
+    }
+
+    private static func smallSampledPoints(_ points: [HashratePoint], maximumCount: Int) -> [HashratePoint]? {
+        if maximumCount <= 0 { return [] }
+        if points.count <= maximumCount { return points }
+        if maximumCount == 1 { return [points[points.count - 1]] }
+        if maximumCount == 2 { return [points[0], points[points.count - 1]] }
+        if maximumCount == 3 {
+            let lastIndex = points.count - 1
+            return (0..<maximumCount).map { index in
+                let position = Double(index) / Double(maximumCount - 1)
+                let sourceIndex = Int((position * Double(lastIndex)).rounded())
+                return points[sourceIndex]
+            }
+        }
+        return nil
+    }
+
+    private static func findBucketExtrema(in points: [HashratePoint], start: Int, end: Int) -> (min: Int, max: Int) {
+        var minimumIndex = start
+        var maximumIndex = start
+        if start + 1 < end {
+            for index in (start + 1)..<end {
+                if points[index].value < points[minimumIndex].value {
+                    minimumIndex = index
+                }
+                if points[index].value > points[maximumIndex].value {
+                    maximumIndex = index
+                }
+            }
+        }
+        return (min: minimumIndex, max: maximumIndex)
+    }
+
+    private static func appendBucketExtrema(to sampled: inout [HashratePoint], points: [HashratePoint], minIndex: Int, maxIndex: Int) {
+        if minIndex == maxIndex {
+            sampled.append(points[minIndex])
+        } else if minIndex < maxIndex {
+            sampled.append(points[minIndex])
+            sampled.append(points[maxIndex])
+        } else {
+            sampled.append(points[maxIndex])
+            sampled.append(points[minIndex])
+        }
     }
 
     /// Apply one budget across all chronological recording segments, not a new budget for each

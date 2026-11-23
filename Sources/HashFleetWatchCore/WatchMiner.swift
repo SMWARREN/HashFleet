@@ -108,18 +108,32 @@ struct WatchEndpoint: Equatable, Sendable, CustomStringConvertible {
             throw WatchMinerValidationError.malformedAddress
         }
 
-        var scheme = Scheme.http
-        var rest = Substring(text)
-        if let range = rest.range(of: "://") {
-            switch rest[..<range.lowerBound].lowercased() {
-            case "http": scheme = .http
-            case "https": scheme = .https
-            default: throw WatchMinerValidationError.unsupportedScheme
-            }
-            rest = rest[range.upperBound...]
-        }
+        let (scheme, rest) = try parseScheme(from: text)
+        let authority = try extractAuthority(from: rest)
 
-        // Credentials, encodings and other URL syntax are rejected rather than interpreted.
+        let pieces = authority.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard pieces.count <= 2 else { throw WatchMinerValidationError.malformedAddress }
+        let host = pieces[0].lowercased()
+        let port: Int? = pieces.count == 2 ? try parsePort(pieces[1], scheme: scheme) : nil
+
+        try validateLocalHost(host)
+        return WatchEndpoint(scheme: scheme, host: host, port: port)
+    }
+
+    private static func parseScheme(from text: String) throws -> (Scheme, Substring) {
+        let rest = Substring(text)
+        guard let range = rest.range(of: "://") else {
+            return (.http, rest)
+        }
+        let schemeName = rest[..<range.lowerBound].lowercased()
+        switch schemeName {
+        case "http": return (.http, rest[range.upperBound...])
+        case "https": return (.https, rest[range.upperBound...])
+        default: throw WatchMinerValidationError.unsupportedScheme
+        }
+    }
+
+    private static func extractAuthority(from rest: Substring) throws -> Substring {
         if rest.contains("@") { throw WatchMinerValidationError.credentialsNotAllowed }
         if rest.contains(where: { "?#".contains($0) }) { throw WatchMinerValidationError.pathNotAllowed }
         if rest.contains(where: { "\\%[]".contains($0) }) { throw WatchMinerValidationError.malformedAddress }
@@ -132,21 +146,14 @@ struct WatchEndpoint: Equatable, Sendable, CustomStringConvertible {
             authority = rest
         }
         guard !authority.isEmpty else { throw WatchMinerValidationError.malformedAddress }
+        return authority
+    }
 
-        let pieces = authority.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
-        guard pieces.count <= 2 else { throw WatchMinerValidationError.malformedAddress }
-        let host = pieces[0].lowercased()
-        var port: Int?
-        if pieces.count == 2 {
-            let digits = pieces[1]
-            guard !digits.isEmpty, digits.count <= 5, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
-                  let value = Int(digits), (1...65_535).contains(value)
-            else { throw WatchMinerValidationError.invalidPort }
-            port = value == scheme.defaultPort ? nil : value
-        }
-
-        try validateLocalHost(host)
-        return WatchEndpoint(scheme: scheme, host: host, port: port)
+    private static func parsePort(_ digits: Substring, scheme: Scheme) throws -> Int? {
+        guard !digits.isEmpty, digits.count <= 5, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
+              let value = Int(digits), (1...65_535).contains(value)
+        else { throw WatchMinerValidationError.invalidPort }
+        return value == scheme.defaultPort ? nil : value
     }
 
     private static func validateLocalHost(_ host: String) throws {

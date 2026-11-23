@@ -182,30 +182,15 @@ actor WebPFrameStore {
         let size = pixelSize.fitting(animation)
         let key = FrameKey(animationID: animation.id, index: index, size: size)
         sequence &+= 1
-        if var entry = frames[key] {
-            cacheHits += 1
-            entry.leases += 1
-            entry.accessed = sequence
-            frames[key] = entry
-            return .ready(lease(entry, key: key))
+        if let cached = cachedLease(for: key) {
+            return cached
         }
         // Leased frames are never evicted. If every byte is in use, the caller keeps
         // its current picture and retries later instead of oversubscribing memory.
         guard size.byteCost <= byteLimit else { return .unavailable }
         guard makeRoom(for: size.byteCost) else { return .busy }
         guard let source = source(for: animation) else { return .unavailable }
-        let image: CGImage? = autoreleasepool {
-            guard let raw = CGImageSourceCreateImageAtIndex(source, index,
-                      [kCGImageSourceShouldCache: false] as CFDictionary),
-                  let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-                  let context = CGContext(data: nil, width: size.width, height: size.height,
-                      bitsPerComponent: 8, bytesPerRow: size.bytesPerRow, space: colorSpace,
-                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-            context.interpolationQuality = .high
-            context.draw(raw, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-            return context.makeImage()
-        }
-        guard !Task.isCancelled, let image else { return .unavailable }
+        guard !Task.isCancelled, let image = decodeFrameImage(from: source, index: index, size: size) else { return .unavailable }
         decodedFrames += 1
         if Thread.isMainThread { mainThreadDecodes += 1 }
         let cost = image.bytesPerRow * image.height
@@ -216,6 +201,29 @@ actor WebPFrameStore {
         residentBytes += cost
         peakResidentBytes = max(peakResidentBytes, residentBytes)
         return .ready(lease(entry, key: key))
+    }
+
+    private func cachedLease(for key: FrameKey) -> Preparation? {
+        guard var entry = frames[key] else { return nil }
+        cacheHits += 1
+        entry.leases += 1
+        entry.accessed = sequence
+        frames[key] = entry
+        return .ready(lease(entry, key: key))
+    }
+
+    private func decodeFrameImage(from source: CGImageSource, index: Int, size: WebPPixelSize) -> CGImage? {
+        autoreleasepool {
+            guard let raw = CGImageSourceCreateImageAtIndex(source, index,
+                      [kCGImageSourceShouldCache: false] as CFDictionary),
+                  let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+                  let context = CGContext(data: nil, width: size.width, height: size.height,
+                      bitsPerComponent: 8, bytesPerRow: size.bytesPerRow, space: colorSpace,
+                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            context.interpolationQuality = .high
+            context.draw(raw, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+            return context.makeImage()
+        }
     }
 
     func statistics() -> Statistics {
