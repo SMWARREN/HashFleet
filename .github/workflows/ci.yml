@@ -270,8 +270,13 @@ jobs:
       - name: Run offline PHP server tests with coverage
         run: |
           mkdir -p build/coverage
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/w -w /w php:8.3-cli bash -c \
-            'pecl install xdebug >/dev/null 2>&1 && docker-php-ext-enable xdebug && XDEBUG_MODE=coverage php Server/tests/coverage.php build/coverage/php-coverage.xml'
+          docker run --rm -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -v "$PWD":/w -w /w php:8.3-cli bash -ec '
+            pecl install xdebug
+            docker-php-ext-enable xdebug
+            XDEBUG_MODE=coverage php Server/tests/coverage.php build/coverage/php-coverage.xml
+            chown "$HOST_UID:$HOST_GID" build/coverage/php-coverage.xml
+          '
+          test -s build/coverage/php-coverage.xml
       - name: Run SonarQube analysis in Docker with coverage
         run: |
           python3 Scripts/ci/sonar-scan-ci.py
