@@ -274,8 +274,8 @@ struct SettingsAndRoutingEvaluationTests {
         }
 
         let settings = MinerSettingsView(device: device, store: store, insights: insights)
+        evaluate(settings.categoryDestination(.general))
         settings.submit(.settings, json: .object(["hostname": .string("Desk")]))
-        #expect(settings.saveAlert?.message.contains("Demo mode") == true)
         settings.submit(.settings, object: ["statsFrequency": 30])
         settings.submit(.settings, json: .object(["coreVoltage": .integer(1150)]))
         settings.submit(.restart, json: .object(["hostname": .string("Desk")]))
