@@ -147,7 +147,9 @@ public struct MinerFirmwareAdapter: Sendable {
             : Self.classifyAxeOSPayload(raw: raw, asic: [:])
 
         var sample: MinerWatchSample
-        switch effectiveFamily {
+        switch effectiveFamily.lowercased() {
+        case "warpaxe":
+            sample = MinerHTTPDrivers.parseWarpAxe(data: raw, host: host)
         case "bitforge":
             sample = MinerHTTPDrivers.parseBitForge(data: raw, host: host)
         case "nerdqaxe", "nerdoctaxe":
@@ -270,6 +272,7 @@ extension MinerFirmwareAdapter {
         if isNestedNmaxePayload(raw) { return "nmaxe" }
         if MinerHTTPDrivers.isAxeForgeStatusShape(raw) { return "axeForge" }
         if MinerHTTPDrivers.isHarloOSShape(raw) { return "harloOS" }
+        if MinerHTTPDrivers.isWarpAxeShape(raw) { return "warpAxe" }
 
         var deviceModel = (asic["deviceModel"]?.stringValue ?? raw["deviceModel"]?.stringValue ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -307,13 +310,14 @@ extension MinerFirmwareAdapter {
         let asicDict = asic?.objectValue ?? [:]
 
         if let explicit = raw["firmwareFamily"]?.stringValue,
-           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "canaan", "braiins", "luxos"]
+           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "warpAxe", "canaan", "braiins", "luxos"]
             .contains(explicit) {
             return explicit
         }
         if isNestedNmaxePayload(raw) { return "nmaxe" }
         if MinerHTTPDrivers.isHarloOSShape(raw) { return "harloOS" }
         if MinerHTTPDrivers.isAxeForgeStatusShape(raw) { return "axeForge" }
+        if MinerHTTPDrivers.isWarpAxeShape(raw) { return "warpAxe" }
 
         let classified = classifyAxeOSPayload(raw: raw, asic: asicDict)
         if classified != "bitaxe" {
@@ -445,6 +449,9 @@ extension MinerFirmwareAdapter {
         case "nerdqaxe":
             sample = MinerHTTPDrivers.parseNerdOctaxe(data: infoDict, host: host)
             model = !deviceModel.isEmpty ? deviceModel : (sample.model ?? "NerdOctaxe")
+        case "warpAxe":
+            sample = MinerHTTPDrivers.parseWarpAxe(data: infoDict, host: host)
+            model = sample.model ?? (!deviceModel.isEmpty ? deviceModel : "WarpAxe")
         default:
             sample = MinerHTTPDrivers.parseBitaxe(data: infoDict, host: host)
             model = !deviceModel.isEmpty ? deviceModel : (sample.model ?? "Bitaxe")

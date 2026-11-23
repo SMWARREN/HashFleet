@@ -322,17 +322,19 @@ public struct MinerWatchSample: Equatable, Sendable {
     public func toMinerInfo(preservingFlatRaw: Bool = false) -> MinerInfo {
         var out: [String: JSONValue] = preservingFlatRaw ? raw : [:]
         out["firmwareFamily"] = .string(family)
-        applyIdentityFields(&out)
+        applyIdentityFields(&out, preservingFlatRaw: preservingFlatRaw)
         applyPerformanceAndThermalFields(&out, preservingFlatRaw: preservingFlatRaw)
         applyClockAndMiningFields(&out)
         applyPoolFields(&out)
         return MinerInfo(raw: out)
     }
 
-    private func applyIdentityFields(_ out: inout [String: JSONValue]) {
+    private func applyIdentityFields(_ out: inout [String: JSONValue], preservingFlatRaw: Bool) {
         setIfMissingString(&out, key: "hostname", value: hostname)
         setIfMissingString(&out, key: "macAddr", value: mac)
-        setIfMissingString(&out, key: "deviceModel", value: model)
+        if !preservingFlatRaw || ["nmaxe", "axeForge", "harloOS", "canaan", "braiins", "luxos"].contains(family) {
+            setIfMissingString(&out, key: "deviceModel", value: model)
+        }
         if let chipModel, !chipModel.isEmpty {
             setIfMissingString(&out, key: "ASICModel", value: chipModel)
         } else if out["ASICModel"] == nil, out["asicModel"] == nil {

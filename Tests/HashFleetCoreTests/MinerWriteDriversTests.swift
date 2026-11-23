@@ -473,4 +473,60 @@ struct MinerWriteDriversTests {
         #expect(writes[6].httpMethod == "PUT" && writes[6].url?.path == "/api/tuning")
         #expect(writes[7].httpMethod == "PUT" && writes[7].url?.path == "/api/miner-name")
     }
+
+    @Test("WarpAxe detection overrides underlying board slug and routes pause/resume to /api/v1/chips/*")
+    func warpAxeDetectionAndWriteTranslation() async throws {
+        // WarpAxe reports deviceModel/boardVersion as the underlying board slug (e.g. "bitaxe-gamma-duo"
+        // or "nerdqaxe-plusplus"), while version is "warpaxe 0.1.47".
+        let warpRaw: [String: JSONValue] = [
+            "hostname": .string("warpaxe-lab"),
+            "version": .string("warpaxe 0.1.47"),
+            "boardName": .string("Bitaxe Gamma Duo"),
+            "boardVersion": .string("bitaxe-gamma-duo"),
+            "deviceModel": .string("bitaxe-gamma-duo"),
+            "ASICModel": .string("BM1370"),
+            "asicCount": .integer(2),
+            "hashRate": .number(1980.0),
+            "power": .number(28.5),
+            "temp": .number(48.0),
+            "dieTempC": .number(59.0),
+            "frequency": .number(525),
+            "frequencyActual": .number(525),
+            "coreVoltage": .integer(1150),
+            "coreVoltageActual": .integer(1199),
+            "coreCurrentA": .number(3.0),
+            "shutdown": .bool(false)
+        ]
+
+        #expect(MinerFirmwareAdapter.classifyAxeOSPayload(raw: warpRaw) == "warpAxe")
+        let sample = MinerHTTPDrivers.parseWarpAxe(data: warpRaw, host: "127.0.0.1")
+        #expect(sample.family == "warpAxe")
+        #expect(sample.model == "Bitaxe Gamma Duo")
+        #expect(sample.currentA == 3.0)
+        #expect(sample.miningPaused == false)
+        let info = sample.toMinerInfo(preservingFlatRaw: true)
+        #expect(MinerFirmwareAdapter.detectedFamily(from: info) == "warpAxe")
+
+        let id = UUID().uuidString
+        let session = makeSession(id: id) { _ in (200, Data(#"{"ok":true}"#.utf8)) }
+        defer { session.invalidateAndCancel() }
+
+        let device = MinerDevice(name: "Warp Duo", address: "127.0.0.1:18182", firmwareFamily: "warpAxe")
+        let adapter = MinerFirmwareAdapter(device: device, session: session)
+        #expect(adapter.capabilities.canPause)
+        #expect(adapter.capabilities.canShutdown)
+        #expect(!adapter.capabilities.canIdentify)
+
+        #expect(try await adapter.pause())
+        #expect(try await adapter.resume())
+        _ = try await adapter.execute(.pause)
+        _ = try await adapter.execute(.resume)
+
+        let reqs = sharedWriteRecorder.history(id: id)
+        #expect(reqs.count == 4)
+        #expect(reqs[0].httpMethod == "POST" && reqs[0].url?.path == "/api/v1/chips/off")
+        #expect(reqs[1].httpMethod == "POST" && reqs[1].url?.path == "/api/v1/chips/on")
+        #expect(reqs[2].httpMethod == "POST" && reqs[2].url?.path == "/api/v1/chips/off")
+        #expect(reqs[3].httpMethod == "POST" && reqs[3].url?.path == "/api/v1/chips/on")
+    }
 }

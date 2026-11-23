@@ -43,6 +43,34 @@ extension MinerFirmwareAdapter {
         }
     }
 
+    internal func executeWarpAxeEndpoint(
+        _ endpoint: MinerEndpoint,
+        body: Data?,
+        query: [URLQueryItem]
+    ) async throws -> Data {
+        switch endpoint {
+        case .pause:
+            return try await sendCustomHTTPData(
+                method: "POST", path: "/api/v1/chips/off", body: nil, query: query
+            )
+        case .resume:
+            return try await sendCustomHTTPData(
+                method: "POST", path: "/api/v1/chips/on", body: nil, query: query
+            )
+        case .logs:
+            return try await sendCustomHTTPData(
+                method: "GET", path: "/api/v1/log", body: nil, query: query
+            )
+        case .statistics, .dashboardStatistics:
+            return try await sendCustomHTTPData(
+                method: "GET", path: "/api/v1/history", body: nil, query: query
+            )
+        default:
+            return try await MinerAPIClient(device: device, session: session)
+                .execute(endpoint, body: body, query: query)
+        }
+    }
+
     internal func executeNmaxeEndpoint(
         _ endpoint: MinerEndpoint,
         body: Data?,

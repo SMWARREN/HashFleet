@@ -108,10 +108,14 @@ extension FleetStore {
             await monitorXMRig(device: device, token: token)
             return
         }
-        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge, NMAxe, BitForge, cgminer) is read by
-        // HTTP/TCP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
-        if let rawFamily = device.firmwareFamily?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !rawFamily.isEmpty {
+        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge, WarpAxe, Harlo-OS, NMAxe, BitForge, cgminer)
+        // is read by HTTP/TCP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
+        let currentFamily = (
+            devices.first(where: { $0.id == device.id })?.firmwareFamily
+            ?? device.firmwareFamily
+            ?? snapshots[device.id]?.info?.raw["firmwareFamily"]?.stringValue
+        )?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let rawFamily = currentFamily, !rawFamily.isEmpty {
             let carriesLiveSocket = MinerFirmwareFamily(rawValue: rawFamily)?.supportsLiveWebSocket ?? false
             if !carriesLiveSocket {
                 await monitorHTTPOnly(device: device, token: token)

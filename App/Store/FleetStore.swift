@@ -459,6 +459,7 @@ final class FleetStore {
             capabilities.remove(result.id)
         }
         guard let device = devices.first(where: { $0.id == result.id }), device.kind == .espMiner else { return }
+        updateDetectedFirmwareFamily(for: device.id, info: info)
         Task { [weak self] in
             guard let self, !Task.isCancelled, token == self.generation, !self.isDemo,
                 self.visibleDevices.contains(where: { $0.id == device.id })

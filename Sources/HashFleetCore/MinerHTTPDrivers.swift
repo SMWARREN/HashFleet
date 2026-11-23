@@ -55,8 +55,11 @@ public enum MinerHTTPDrivers {
             online: true,
             miningPaused: miningPaused,
             mac: macRaw.isEmpty ? nil : macRaw,
-            model: MinerDriverParse.nonEmptyString(data["ASICModel"])
+            model: MinerDriverParse.nonEmptyString(data["deviceModel"])
+                ?? MinerDriverParse.nonEmptyString(data["boardName"])
+                ?? MinerDriverParse.nonEmptyString(data["ASICModel"])
                 ?? MinerDriverParse.nonEmptyString(data["boardVersion"]),
+            chipModel: MinerDriverParse.nonEmptyString(data["ASICModel"]),
             hostname: MinerDriverParse.nonEmptyString(data["hostname"]),
             firmwareVersion: MinerDriverParse.nonEmptyString(data["version"])
                 ?? MinerDriverParse.nonEmptyString(data["firmwareVersion"]),
@@ -425,6 +428,50 @@ public enum MinerHTTPDrivers {
             }
         }
         return found ? total : nil
+    }
+
+    // MARK: - 4b. WarpAxe (dvb-WarpAxe) Driver
+
+    /// Returns `true` when the `/api/system/info` payload originates from WarpAxe (`dvb-projekt/dvb-WarpAxe`).
+    public static func isWarpAxeShape(_ data: [String: JSONValue]) -> Bool {
+        if let version = data["version"]?.stringValue,
+           version.localizedCaseInsensitiveContains("warpaxe") {
+            return true
+        }
+        if let axeVersion = data["axeOSVersion"]?.stringValue,
+           axeVersion.localizedCaseInsensitiveContains("warpaxe") {
+            return true
+        }
+        if data["boardModels"]?.arrayValue != nil && data["cockpitBig"]?.stringValue != nil {
+            return true
+        }
+        if data["vrProbe"]?.stringValue != nil || data["selfHeals"]?.arrayValue != nil {
+            return true
+        }
+        return false
+    }
+
+    public static func parseWarpAxe(data: [String: JSONValue], host: String = "") -> MinerWatchSample {
+        var sample = parseBitaxe(data: data, host: host)
+        sample.family = "warpAxe"
+        if let boardName = MinerDriverParse.nonEmptyString(data["boardName"]) {
+            sample.model = boardName
+        }
+        if let coreCurrentA = MinerDriverParse.optFloat(data["coreCurrentA"]) {
+            sample.currentA = coreCurrentA
+        } else if let currentMA = MinerDriverParse.optFloat(data["current"]) {
+            sample.currentA = MinerDriverParse.roundTo(currentMA / 1_000.0, places: 3)
+        }
+        if let sd = data["shutdown"], sd != .null {
+            sample.miningPaused = MinerDriverParse.coerceFlag(sd)
+        }
+        if let blocks = MinerDriverParse.optInt(data["blocksFoundTotal"]) ?? MinerDriverParse.optInt(data["blockFound"]) {
+            sample.blocksFound = blocks
+        }
+        if let height = MinerDriverParse.optInt(data["blockHeight"]), height > 0 {
+            sample.blockHeight = height
+        }
+        return sample
     }
 }
 

@@ -103,6 +103,17 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canSetPool: true,
                 fanMinPct: 20
             )
+        case "warpaxe":
+            return MinerDriverCapabilities(
+                family: "warpAxe",
+                canSetFan: true,
+                canSetFrequency: true,
+                canSetVoltage: true,
+                canRestart: true,
+                canPause: true,
+                canShutdown: true,
+                canSetPool: true
+            )
         case "canaan":
             return MinerDriverCapabilities(
                 family: "canaan",
@@ -400,7 +411,7 @@ extension MinerFirmwareAdapter {
         }
     }
 
-    /// Pauses mining (or powers down into standby on NerdQAxe/Harlo-OS).
+    /// Pauses mining (or powers down into standby on NerdQAxe/Harlo-OS/WarpAxe).
     public func pause() async throws -> Bool {
         let family = resolvedFamilyName
         switch family {
@@ -408,6 +419,8 @@ extension MinerFirmwareAdapter {
             return try await shutdown()
         case "harloos":
             return try await sendCustomHTTP(method: "POST", path: "/api/asic/stop", json: nil)
+        case "warpaxe":
+            return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/off", json: nil)
         case "bitaxe", "bitfortun", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/pause", json: nil)
         default:
@@ -415,7 +428,7 @@ extension MinerFirmwareAdapter {
         }
     }
 
-    /// Resumes mining (or restarts from standby shutdown on NerdQAxe / starts ASIC on Harlo-OS).
+    /// Resumes mining (or restarts from standby shutdown on NerdQAxe / starts ASIC on Harlo-OS & WarpAxe).
     public func resume() async throws -> Bool {
         let family = resolvedFamilyName
         switch family {
@@ -423,6 +436,8 @@ extension MinerFirmwareAdapter {
             return try await restart()
         case "harloos":
             return try await sendCustomHTTP(method: "POST", path: "/api/asic/start", json: nil)
+        case "warpaxe":
+            return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/on", json: nil)
         case "bitaxe", "bitfortun", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/resume", json: nil)
         default:
@@ -430,11 +445,15 @@ extension MinerFirmwareAdapter {
         }
     }
 
-    /// Powers down the ASIC and power stage on NerdQAxe (`POST /api/system/shutdown`) or Harlo-OS (`POST /api/asic/stop`).
+    /// Powers down the ASIC and power stage on NerdQAxe (`POST /api/system/shutdown`),
+    /// Harlo-OS (`POST /api/asic/stop`), or WarpAxe (`POST /api/v1/chips/off`).
     public func shutdown() async throws -> Bool {
         let family = resolvedFamilyName
         if family == "harloos" {
             return try await sendCustomHTTP(method: "POST", path: "/api/asic/stop", json: nil)
+        }
+        if family == "warpaxe" {
+            return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/off", json: nil)
         }
         guard family == "nerdqaxe" || family == "nerdoctaxe" else { return false }
         return try await sendCustomHTTP(method: "POST", path: "/api/system/shutdown", json: nil)
@@ -490,7 +509,7 @@ extension MinerFirmwareAdapter {
         if family == "harloos" {
             return try await writeHarloOSPoolConfig(config)
         }
-        guard ["bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge"].contains(family) else {
+        guard ["bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge", "warpaxe"].contains(family) else {
             return false
         }
         var payload: [String: JSONValue] = [
@@ -562,6 +581,8 @@ extension MinerFirmwareAdapter {
                 .execute(endpoint, body: translatedBody, query: query)
         case "nerdqaxe", "nerdoctaxe":
             return try await executeNerdQAxeEndpoint(endpoint, body: body, query: query)
+        case "warpaxe":
+            return try await executeWarpAxeEndpoint(endpoint, body: body, query: query)
         default:
             return try await MinerAPIClient(device: device, session: session)
                 .execute(endpoint, body: body, query: query)

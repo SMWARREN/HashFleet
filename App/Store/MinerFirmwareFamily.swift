@@ -48,6 +48,13 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
     /// names a known project, rather than guessing a default.
     static func identify(from info: MinerInfo?) -> MinerFirmwareFamily? {
         guard let info else { return nil }
+        // WarpAxe runs across Bitaxe, BitForge, and NerdQAxe boards and sets deviceModel to the
+        // board slug (e.g. "bitaxe-gamma-duo"), but uses its own git.warppool.org release stream
+        // and has no /api/ws/live socket. Never classify WarpAxe as stock ESP-Miner or NerdOS.
+        if MinerHTTPDrivers.isWarpAxeShape(info.raw)
+            || info.raw["firmwareFamily"]?.stringValue?.lowercased() == "warpaxe" {
+            return nil
+        }
         // Board and device model are the strongest signals, then hostname, then the version
         // strings, which some builds tag with the project name.
         let evidence = [
