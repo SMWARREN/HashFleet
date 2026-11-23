@@ -94,6 +94,7 @@ struct FleetViewEvaluationTests {
             evaluate(detail.poolsSection)
             evaluate(detail.desktopTelemetrySections(info, diagnostics: diagnostics))
             evaluate(detail.desktopPrimarySections(info))
+            evaluate(detail.numberFirstTelemetry(info))
             evaluate(FirmwareTelemetryView(
                 info: info,
                 observedAt: Date(),
@@ -110,6 +111,14 @@ struct FleetViewEvaluationTests {
 
         evaluate(MinerCoolingPreview(mode: .essentials, info: store.snapshots[device.id]?.info, canEdit: false))
         evaluate(MinerCoolingPreview(mode: .full, info: store.snapshots[device.id]?.info, canEdit: true))
+
+        evaluate(MinerTuningJournalCard(journal: []))
+        evaluate(MinerTuningAdvancedSwitch(isOn: .constant(true)))
+        evaluate(MinerTuningSafetyCard(riskAcknowledged: .constant(true), isBeyondReference: true, hasReference: true, voltageRestriction: nil))
+        evaluate(MinerTuningReferenceCard(reference: nil, isDemo: true))
+        evaluate(MinerTuningSessionHeader(deviceName: "Miner", isDemo: true, isOffline: false, chipCount: 1, chipCountWasReported: true, controlMode: .easy))
+        evaluate(MinerTuningLiveContextCard(configuredFrequency: "500", measuredFrequency: "505", configuredVoltage: "1050", measuredVoltage: "1048", asicErrors: "0", isChecking: false))
+        evaluate(MinerTuningDeltaStrip(stagedFrequency: 550, configuredFrequency: 500, stagedVoltage: 1100, configuredVoltage: 1050, estimatedLoad: 15.0, formatValue: { "\($0)" }))
     }
 
     @Test func evaluateMinerSettingsViews() {
@@ -123,6 +132,16 @@ struct FleetViewEvaluationTests {
             let settings = MinerSettingsView(device: device, store: store, insights: insights, initialCategory: category)
             evaluate(settings)
             evaluate(settings.categoryDestination(category))
+        }
+
+        let defaultSettings = MinerSettingsView(device: device, store: store, insights: insights, initialCategory: .general)
+        evaluate(defaultSettings.quickChangesCard)
+        evaluate(defaultSettings.reportedStateCard)
+        evaluate(defaultSettings.controlsCard)
+        evaluate(defaultSettings.compatibilityCard)
+        if let info = store.snapshots[device.id]?.info {
+            let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+            evaluate(defaultSettings.compactSettingsHub(availability))
         }
     }
 
@@ -164,6 +183,10 @@ struct FleetViewEvaluationTests {
             preferences: FleetTemperatureAlertPreferences(defaults: store.defaults),
             isDemo: store.isDemo
         ))
+        evaluate(DeveloperTipJarSection(service: DeveloperTipJarService.shared))
+        evaluate(DeveloperSupportSection())
+        evaluate(FleetWidgetSettingsPage(store: store, coordinator: coordinator))
+        evaluate(FleetLiveActivitySettingsPage(store: store, coordinator: coordinator))
     }
 
     @Test func evaluateNetworkViews() {
