@@ -41,6 +41,18 @@ final class ConnectedPoolsStore {
         self.cooldown = max(0, cooldown)
     }
 
+    /// Installs already-fetched results so view tests can render every disclosure branch
+    /// without contacting a pool. Production refresh still owns these values.
+    func installPreviewResults(
+        poolStats: [PoolKey: MiningDataResult<ConnectedPoolStats>] = [:],
+        accountStats: [AccountKey: ConnectedAccountResult] = [:],
+        isRefreshing: Bool = false
+    ) {
+        self.poolStats = poolStats
+        self.accountStats = accountStats
+        self.isRefreshing = isRefreshing
+    }
+
     /// Only fresh connected observations authorize account queries. Resolve again after every await.
     ///
     /// `deviceID` scopes the result to a single miner. Inside one miner's workspace nothing about any

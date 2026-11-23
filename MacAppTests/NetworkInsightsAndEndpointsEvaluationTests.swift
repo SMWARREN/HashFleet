@@ -202,6 +202,43 @@ struct NetworkInsightsAndEndpointsTests {
         ))
     }
 
+    @Test func evaluateFleetPoolsCardFetchedStatistics() throws {
+        let (store, defaults, suite) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        store.preferences.externalDataEnabled = true
+        let card = FleetPoolsCard(fleet: store)
+        let source = URL(string: "https://solo.ckpool.org")!
+        let fetched = Date(timeIntervalSince1970: 1_700_000_000)
+        let poolKey = PoolKey(provider: .ckpool, coin: .btc)
+        let accountKey = AccountKey(provider: .ckpool, coin: .btc, address: "bc1qtest", host: "solo.ckpool.org")
+        let stats = ConnectedPoolStats(hashRate1hrHPS: 1_250_000_000_000_000, workers: 42)
+        let account = ConnectedAccountStats(
+            hashRate1hrHPS: 1_180_000_000_000, hashRate1dHPS: 980_000_000_000,
+            workersCount: 2, shares: 12_486, bestShare: 18.4, bestEver: 44.2,
+            lastShare: fetched
+        )
+
+        card.store.installPreviewResults(
+            poolStats: [poolKey: MiningDataResult(value: stats, fetchedAt: fetched, sourceURL: source, sourceTimestamp: fetched)],
+            accountStats: [accountKey: .found(MiningDataResult(value: account, fetchedAt: fetched, sourceURL: source, sourceTimestamp: fetched))]
+        )
+        evaluate(card.statsDisclosure(provider: .ckpool, coin: .btc, address: "bc1qtest", host: "solo.ckpool.org"))
+
+        card.store.installPreviewResults(
+            poolStats: [poolKey: MiningDataResult(error: .timedOut, fetchedAt: fetched, sourceURL: source)],
+            accountStats: [accountKey: .failed(.http(statusCode: 503))],
+            isRefreshing: true
+        )
+        evaluate(card.statsDisclosure(provider: .ckpool, coin: .btc, address: "bc1qtest", host: "solo.ckpool.org"))
+
+        card.store.installPreviewResults(
+            accountStats: [accountKey: .notFound(fetchedAt: fetched)],
+            isRefreshing: true
+        )
+        evaluate(card.statsDisclosure(provider: .ckpool, coin: .btc, address: "bc1qtest", host: "solo.ckpool.org"))
+        evaluate(card.statsDisclosure(provider: .soloFury, coin: .bch, address: nil, host: "solofury.com"))
+    }
+
     // MARK: - MinerEndpointView and MinerCompletionAlert
 
     @Test func evaluateMinerEndpointViewAcrossCatalog() throws {
