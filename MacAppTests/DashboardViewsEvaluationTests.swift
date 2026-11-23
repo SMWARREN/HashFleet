@@ -96,6 +96,39 @@ struct DashboardViewsEvaluationTests {
         return (store, device, defaults, suite)
     }
 
+    // MARK: - DashboardView attention summary
+
+    @Test func dashboardFleetErrorSummaryShowsUnreachableAndFallbacks() throws {
+        let (store, defaults, suite) = makeStore(demo: false)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        try store.add(name: "Down Rig", address: "192.168.1.61")
+        try store.add(name: "Down Rig Two", address: "192.168.1.62")
+        try store.add(name: "Stream Rig", address: "192.168.1.63")
+        try store.add(name: "Stream Rig Two", address: "192.168.1.64")
+        let devices = store.devices
+        #expect(devices.count == 4)
+        for device in devices.prefix(2) {
+            store.snapshots[device.id] = MinerSnapshot(error: "Timed out")
+        }
+        for device in devices.suffix(2) {
+            store.snapshots[device.id] = MinerSnapshot(info: fullInfo(), updatedAt: Date())
+            store.liveConnectionErrors[device.id] = "socket closed"
+        }
+        var dashboard = DashboardView(store: store)
+        evaluate(dashboard.fleetErrorSummary)
+        evaluate(dashboard)
+        evaluate(dashboard, width: 420, height: 1600)
+        #expect(dashboard.attentionSummary.unreachable.count == 2)
+        #expect(dashboard.attentionSummary.liveFallbacks.count == 2)
+
+        // Single of each takes the singular wording branches.
+        store.snapshots[devices[1].id] = MinerSnapshot(info: fullInfo(), updatedAt: Date())
+        store.liveConnectionErrors.removeValue(forKey: devices[3].id)
+        dashboard = DashboardView(store: store)
+        evaluate(dashboard.fleetErrorSummary)
+        #expect(dashboard.attentionSummary.unreachable.count == 1)
+    }
+
     // MARK: - DashboardView sections
 
     @Test func evaluateDashboardSectionsEmptyAndPopulated() throws {

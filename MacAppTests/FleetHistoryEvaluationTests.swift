@@ -86,6 +86,29 @@ struct FleetHistoryEvaluationTests {
         ))
     }
 
+    @Test func evaluateFleetHistoryOptionPanels() {
+        let (demoStore, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+        let snapshots = demoStore.snapshots
+        let groups: [[MinerDevice]] = [demoStore.visibleDevices, Array(demoStore.visibleDevices.prefix(1))]
+        for devices in groups {
+            for numberFirst in [false, true] {
+                for mode in FleetPreferences.DashboardMode.allCases {
+                    let card = FleetHistoryCard(
+                        devices: devices, snapshots: snapshots, isDemo: true,
+                        initialDisplay: .miners, dashboardMode: mode, numberFirst: numberFirst
+                    )
+                    evaluate(card.savedHistoryOptions)
+                    evaluate(card.historyOptionsPanel)
+                    evaluate(card.historyOptionsPopoverContent)
+                    evaluate(card.previewHistoryDisplayChoices)
+                    evaluate(card.essentialsRangeMenu)
+                    evaluate(card.historyControlsButton)
+                }
+            }
+        }
+    }
+
     @Test func evaluateFleetHistoryCardDetailAndCompact() {
         let (demoStore, defaults) = makeStore(demo: true)
         defer { defaults.removePersistentDomain(forName: defaults.description) }

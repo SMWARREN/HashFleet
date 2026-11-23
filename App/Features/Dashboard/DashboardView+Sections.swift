@@ -545,7 +545,7 @@ extension DashboardView {
     }
 
     @ViewBuilder
-    private var fleetErrorSummary: some View {
+    var fleetErrorSummary: some View {
         let unreachable = attentionSummary.unreachable
         let liveFallbacks = attentionSummary.liveFallbacks
         if !unreachable.isEmpty || !liveFallbacks.isEmpty {
