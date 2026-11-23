@@ -70,12 +70,26 @@ final class MinerInlineActionState {
     private static var inFlight: Set<UUID> = []
 
     nonisolated static func identity(from info: MinerInfo) -> Identity? {
-        guard let rawMAC = info.raw["macAddr"]?.stringValue ?? info.raw["mac"]?.stringValue,
-              let firmware = info.raw["version"]?.stringValue, !firmware.isEmpty else { return nil }
-        let mac = rawMAC.lowercased().filter { $0 != ":" && $0 != "-" }
-        guard mac.utf8.count == 12, mac.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
-              mac != "000000000000", mac != "ffffffffffff" else { return nil }
-        return .init(mac: mac, firmware: firmware)
+        guard let firmware = info.raw["version"]?.stringValue, !firmware.isEmpty else { return nil }
+        if let rawMAC = info.raw["macAddr"]?.stringValue ?? info.raw["mac"]?.stringValue {
+            let mac = rawMAC.lowercased().filter { $0 != ":" && $0 != "-" }
+            guard mac.utf8.count == 12,
+                  mac.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
+                  mac != "000000000000", mac != "ffffffffffff" else { return nil }
+            return .init(mac: mac, firmware: firmware)
+        }
+        // Firmwares whose telemetry schema omits MAC (AxeForge /api/status, NMAxe /api/system/info)
+        // use their verified family + hostname/board fingerprint paired with firmware version.
+        let family = info.raw["firmwareFamily"]?.stringValue
+            ?? (MinerHTTPDrivers.isAxeForgeStatusShape(info.raw) ? "axeForge" : nil)
+            ?? (MinerFirmwareAdapter.isNestedNmaxePayload(info.raw) ? "nmaxe" : nil)
+        guard let family, ["axeForge", "nmaxe", "canaan"].contains(family) else { return nil }
+        let hostOrBoard = (info.raw["hostname"]?.stringValue
+            ?? info.raw["board"]?.stringValue
+            ?? info.raw["deviceModel"]?.stringValue ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !hostOrBoard.isEmpty else { return nil }
+        return .init(mac: "nomac:\(family):\(hostOrBoard.lowercased())", firmware: firmware)
     }
 
     func send(_ action: MinerDetailQuickAction, device: MinerDevice, store: FleetStore) async {
@@ -105,7 +119,7 @@ final class MinerInlineActionState {
 
         isSending = true
         receipt = "Sending \(action.endpoint.title.lowercased())…"
-        let client = MinerAPIClient(device: device, session: store.session)
+        let client = MinerFirmwareAdapter(device: device, session: store.session)
         var attemptingCommand = false
         do {
             let preflight = try await client.info()

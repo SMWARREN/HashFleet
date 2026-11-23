@@ -160,16 +160,24 @@ public enum FleetNetworkDiscovery {
     ) -> FleetDiscoveryCandidate? {
         guard statusCode == 200 else { return nil }
         if let contentType, !contentType.lowercased().contains("json") { return nil }
-        guard let info = try? JSONDecoder().decode(MinerInfo.self, from: body),
-            MinerShapeValidator.isValidInfoShape(.object(info.raw)
-            )
-        else { return nil }
+        guard let decoded = try? JSONDecoder().decode(MinerInfo.self, from: body) else { return nil }
+        let info: MinerInfo
+        if MinerFirmwareAdapter.isNestedNmaxePayload(decoded.raw) {
+            info = MinerHTTPDrivers.parseNmaxe(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isAxeForgeStatusShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseAxeForge(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isHarloOSShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseHarloOS(telemetry: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else {
+            info = decoded
+        }
+        guard MinerShapeValidator.isValidInfoShape(.object(info.raw)) else { return nil }
 
         let name = ["hostname", "fullHostname", "mdnsHostname", "deviceName"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
             ?? "Miner at \(host)"
-        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion"]
+        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion", "board"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
         return FleetDiscoveryCandidate(address: host, name: name, model: model, info: info)
@@ -198,12 +206,40 @@ public enum FleetNetworkDiscovery {
         do {
             let (body, response) = try await session.data(for: request, delegate: FleetDiscoveryRedirectBlocker())
             guard !Task.isCancelled, let http = response as? HTTPURLResponse else { return nil }
-            return candidate(
+            if let matched = candidate(
                 host: host,
                 statusCode: http.statusCode,
                 contentType: http.value(forHTTPHeaderField: "Content-Type"),
                 body: body
-            )
+            ) {
+                return matched
+            }
+            if [404, 405, 501].contains(http.statusCode) {
+                for path in ["/api/status", "/api/telemetry"] {
+                    guard !Task.isCancelled, let altURL = URL(string: "http://\(host)\(path)") else { continue }
+                    var altReq = URLRequest(
+                        url: altURL,
+                        cachePolicy: .reloadIgnoringLocalCacheData,
+                        timeoutInterval: requestTimeout
+                    )
+                    altReq.httpMethod = "GET"
+                    altReq.httpShouldHandleCookies = false
+                    altReq.setValue("application/json", forHTTPHeaderField: "Accept")
+                    guard let (altBody, altResp) = try? await session.data(
+                        for: altReq, delegate: FleetDiscoveryRedirectBlocker()
+                    ),
+                    let altHTTP = altResp as? HTTPURLResponse else { continue }
+                    if let matched = candidate(
+                        host: host,
+                        statusCode: altHTTP.statusCode,
+                        contentType: altHTTP.value(forHTTPHeaderField: "Content-Type"),
+                        body: altBody
+                    ) {
+                        return matched
+                    }
+                }
+            }
+            return nil
         } catch {
             return nil
         }

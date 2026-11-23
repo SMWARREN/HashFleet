@@ -11,8 +11,11 @@ struct MinerNumberFirstAvailability {
     var actionStatuses: [MinerDetailQuickAction: MinerProbeStatus] = [:]
     var hasFreshLiveFields = false
     var liveActionCandidates: Set<MinerDetailQuickAction> = []
+    var driverCapabilities: MinerDriverCapabilities = .forFamily("bitaxe")
 
-    var canEditSettings: Bool { rawAPI && (settingsStatus.isSupported || hasFreshLiveFields) }
+    var canEditSettings: Bool {
+        !driverCapabilities.isReadOnly && rawAPI && (settingsStatus.isSupported || hasFreshLiveFields)
+    }
 
     var quickActions: [MinerDetailQuickAction] {
         guard rawAPI else { return [] }
@@ -22,7 +25,7 @@ struct MinerNumberFirstAvailability {
     }
 
     var cooling: Bool {
-        guard canEditSettings,
+        guard canEditSettings, driverCapabilities.canSetFan,
               let automatic = info.raw["autofanspeed"]?.boolValue else { return false }
         return automatic
             ? FleetFormat.sensor(info, keys: "temptarget").map { $0 > 0 } == true
@@ -31,6 +34,8 @@ struct MinerNumberFirstAvailability {
 
     var tuning: Bool {
         canEditSettings
+            && driverCapabilities.canSetFrequency
+            && driverCapabilities.canSetVoltage
             && (FleetFormat.sensor(info, keys: "frequency") ?? 0) > 0
             && (FleetFormat.sensor(info, keys: "coreVoltage") ?? 0) > 0
     }
@@ -51,7 +56,7 @@ struct MinerNumberFirstAvailability {
             : Self.hasText(raw["stratumURL"]) && Self.hasText(raw["fallbackStratumURL"])
                 && Self.integer(raw["primaryPoolIndex"], in: 0...7) && Self.integer(raw["secondaryPoolIndex"], in: 0...7)
                 && raw["pools"]?.arrayValue?.contains(where: { Self.hasText($0["stratumURL"]) }) == true
-        if reportsPool {
+        if driverCapabilities.canSetPool, reportsPool {
             categories.append(.pools)
         }
         if let rotation = raw["rotation"]?.doubleValue, [0, 90, 180, 270].contains(rotation),
@@ -125,10 +130,27 @@ extension NumberFirstPreview {
             store.snapshot(for: device.id), device: device, currentDevices: store.devices, isDemo: store.isDemo
         )
         let hasDeviceIdentity = MinerInlineActionState.identity(from: info) != nil
-        return .init(info: info, infoStatus: validInfo ? .supported : .notChecked,
-                     settingsStatus: .notChecked, firmwareStatus: .notChecked,
-                     hasFreshLiveFields: canRequest,
-                     liveActionCandidates: canRequest && hasDeviceIdentity ? Set(MinerDetailQuickAction.allCases) : [])
+        let asic = store.capabilities.reports[device.id]?.asic
+        let family = device.firmwareFamily
+            ?? MinerFirmwareAdapter.detectedFamily(from: info, asic: asic)
+            ?? info.raw["firmwareFamily"]?.stringValue
+        let driverCaps = MinerDriverCapabilities.forFamily(family, info: info)
+        let supportedActions = Set(MinerDetailQuickAction.allCases.filter { action in
+            switch action {
+            case .identify: driverCaps.canIdentify
+            case .pause, .resume: driverCaps.canPause || driverCaps.canShutdown
+            case .restart: driverCaps.canRestart
+            }
+        })
+        return .init(
+            info: info,
+            infoStatus: validInfo ? .supported : .notChecked,
+            settingsStatus: .notChecked,
+            firmwareStatus: .notChecked,
+            hasFreshLiveFields: canRequest && !driverCaps.isReadOnly,
+            liveActionCandidates: canRequest && hasDeviceIdentity ? supportedActions : [],
+            driverCapabilities: driverCaps
+        )
     }
 }
 

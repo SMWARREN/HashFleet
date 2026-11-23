@@ -78,6 +78,16 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
                 return .bitaxe
             }
         }
+        // MinerWatch fork-only telemetry signals for NerdQAxe (fanCount > 1 or currentA).
+        if let fanCount = info.raw["fanCount"]?.intValue, fanCount > 1 {
+            return .nerdqaxe
+        }
+        if info.raw["currentA"]?.doubleValue != nil {
+            return .nerdqaxe
+        }
+        if MinerHTTPDrivers.isAxeForgeStatusShape(info.raw) {
+            return .axeForge
+        }
         return nil
     }
 }

@@ -88,7 +88,7 @@ extension FleetStore {
         await withTaskGroup(of: ScoreboardFetchResult?.self, returning: [ScoreboardFetchResult].self) { group in
             for device in targets where device.kind == .espMiner {
                 group.addTask(priority: .utility) {
-                    guard let entries = try? await MinerAPIClient(device: device, session: session).scoreboard(),
+                    guard let entries = try? await MinerFirmwareAdapter(device: device, session: session).scoreboard(),
                         !entries.isEmpty
                     else { return nil }
                     return ScoreboardFetchResult(deviceID: device.id, entries: entries)
@@ -108,12 +108,15 @@ extension FleetStore {
             await monitorXMRig(device: device, token: token)
             return
         }
-        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge) is read by
-        // HTTP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
-        if let family = device.firmwareFamily.flatMap(MinerFirmwareFamily.init(rawValue:)),
-           !family.supportsLiveWebSocket {
-            await monitorHTTPOnly(device: device, token: token)
-            return
+        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge, NMAxe, BitForge, cgminer) is read by
+        // HTTP/TCP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
+        if let rawFamily = device.firmwareFamily?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !rawFamily.isEmpty {
+            let carriesLiveSocket = MinerFirmwareFamily(rawValue: rawFamily)?.supportsLiveWebSocket ?? false
+            if !carriesLiveSocket {
+                await monitorHTTPOnly(device: device, token: token)
+                return
+            }
         }
         var retrySeconds = 1.0
 
@@ -227,7 +230,7 @@ extension FleetStore {
             let info: MinerInfo
             switch device.kind {
             case .espMiner:
-                info = try await MinerAPIClient(device: device, session: session).info()
+                info = try await MinerFirmwareAdapter(device: device, session: session).info()
             case .xmrig:
                 info = try await XMRigAPIClient(
                     device: device,

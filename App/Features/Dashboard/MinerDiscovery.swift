@@ -9,12 +9,21 @@ struct MinerDiscoveryCandidate: Identifiable, Hashable, Sendable {
     let model: String?
     /// Firmware project read from the scan's own `/api/system/info` response. Nil when unidentified.
     var firmwareFamily: MinerFirmwareFamily?
+    /// Driver family identifier (including `"nmaxe"`, `"bitforge"`, `"harloOS"`, `"axeForge"`, etc.).
+    var detectedFamily: String?
 
-    init(address: String, name: String, model: String?, firmwareFamily: MinerFirmwareFamily? = nil) {
+    init(
+        address: String,
+        name: String,
+        model: String?,
+        firmwareFamily: MinerFirmwareFamily? = nil,
+        detectedFamily: String? = nil
+    ) {
         self.address = address
         self.name = name
         self.model = model
         self.firmwareFamily = firmwareFamily
+        self.detectedFamily = detectedFamily ?? firmwareFamily?.rawValue
     }
 
     var id: String { address }
@@ -308,20 +317,34 @@ struct MinerDiscoveryService: Sendable {
     static func candidate(host: String, statusCode: Int, contentType: String?, body: Data) -> MinerDiscoveryCandidate? {
         guard statusCode == 200 else { return nil }
         if let contentType, !contentType.lowercased().contains("json") { return nil }
-        guard let info = try? JSONDecoder().decode(MinerInfo.self, from: body),
-            MinerShapeValidator.isValidInfoShape(.object(info.raw))
-        else { return nil }
+        guard let decoded = try? JSONDecoder().decode(MinerInfo.self, from: body) else { return nil }
+        let info: MinerInfo
+        if MinerFirmwareAdapter.isNestedNmaxePayload(decoded.raw) {
+            info = MinerHTTPDrivers.parseNmaxe(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isAxeForgeStatusShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseAxeForge(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isHarloOSShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseHarloOS(telemetry: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else {
+            info = decoded
+        }
+        guard MinerShapeValidator.isValidInfoShape(.object(info.raw)) else { return nil }
         let name =
             ["hostname", "fullHostname", "mdnsHostname", "deviceName"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
             ?? "Miner at \(host)"
-        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion"]
+        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion", "board"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
+        let familyEnum = MinerFirmwareFamily.identify(from: info)
+        let driverFamily = MinerFirmwareAdapter.detectedFamily(from: info) ?? familyEnum?.rawValue
         return MinerDiscoveryCandidate(
-            address: host, name: name, model: model,
-            firmwareFamily: MinerFirmwareFamily.identify(from: info)
+            address: host,
+            name: name,
+            model: model,
+            firmwareFamily: familyEnum,
+            detectedFamily: driverFamily
         )
     }
 
@@ -339,13 +362,24 @@ struct MinerDiscoveryService: Sendable {
         do {
             let (body, response) = try await transport(request)
             try Task.checkCancellation()
-            guard let http = response as? HTTPURLResponse, let match = candidate(
+            guard let http = response as? HTTPURLResponse else { return .noMatch }
+            if let match = candidate(
                 host: host,
                 statusCode: http.statusCode,
                 contentType: http.value(forHTTPHeaderField: "Content-Type"),
                 body: body
-            ) else { return .noMatch }
-            return .found(match)
+            ) {
+                return .found(match)
+            }
+            // If an HTTP server is alive on port 80 and returned 404/405/501 for /api/system/info,
+            // probe AxeForge (/api/status) and Harlo-OS (/api/telemetry).
+            if [404, 405, 501].contains(http.statusCode),
+               let fallbackMatch = try await probeAlternativeHTTPEndpoints(
+                   host: host, transport: transport, timeout: timeout
+               ) {
+                return .found(fallbackMatch)
+            }
+            return .noMatch
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
@@ -358,6 +392,38 @@ struct MinerDiscoveryService: Sendable {
         } catch {
             return .noMatch
         }
+    }
+
+    private static func probeAlternativeHTTPEndpoints(
+        host: String,
+        transport: Transport,
+        timeout: TimeInterval
+    ) async throws -> MinerDiscoveryCandidate? {
+        for path in ["/api/status", "/api/telemetry"] {
+            try Task.checkCancellation()
+            guard let url = URL(string: "http://\(host)\(path)") else { continue }
+            var req = URLRequest(
+                url: url,
+                cachePolicy: .reloadIgnoringLocalCacheData,
+                timeoutInterval: timeout
+            )
+            req.httpMethod = "GET"
+            req.httpShouldHandleCookies = false
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            guard let (body, response) = try? await transport(req),
+                  let http = response as? HTTPURLResponse else {
+                continue
+            }
+            if let match = candidate(
+                host: host,
+                statusCode: http.statusCode,
+                contentType: http.value(forHTTPHeaderField: "Content-Type"),
+                body: body
+            ) {
+                return match
+            }
+        }
+        return nil
     }
 }
 

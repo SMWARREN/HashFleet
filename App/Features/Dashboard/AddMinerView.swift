@@ -442,8 +442,13 @@ extension AddMinerView {
         #endif
         let result = AddMinerMultiSelection.addAll(
             candidates: discovery.candidates, alreadyAdded: addedAddresses, customName: name
-        ) { customName, address in
-            try store.add(name: customName, address: address)
+        ) { customName, candidate in
+            try store.add(
+                name: customName,
+                address: candidate.address,
+                firmwareFamily: candidate.firmwareFamily,
+                detectedFamily: candidate.detectedFamily
+            )
         }
         addedAddresses = result.addedAddresses
         if result.failures.isEmpty {
@@ -479,7 +484,12 @@ extension AddMinerView {
             let customName = AddMinerMultiSelection.name(
                 forCustomName: name, alreadyAdded: addedAddresses
             )
-            try store.add(name: customName, address: candidate.address, firmwareFamily: candidate.firmwareFamily)
+            try store.add(
+                name: customName,
+                address: candidate.address,
+                firmwareFamily: candidate.firmwareFamily,
+                detectedFamily: candidate.detectedFamily
+            )
             addedAddresses.insert(candidate.address)
             validationError = nil
         } catch FleetError.duplicate {

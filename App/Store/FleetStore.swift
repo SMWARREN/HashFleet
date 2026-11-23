@@ -266,6 +266,30 @@ final class FleetStore {
         return true
     }
 
+    /// Updates and persists the device's `firmwareFamily` when telemetry or `/api/system/asic`
+    /// provides positive evidence of its firmware family (or refines a generic `"bitaxe"` tag
+    /// to a more specific family such as `"bitforge"`, `"nerdqaxe"`, or `"bitfortun"`).
+    @discardableResult
+    func updateDetectedFirmwareFamily(
+        for id: UUID,
+        info: MinerInfo,
+        asic: JSONValue? = nil,
+        persistImmediately: Bool = true
+    ) -> Bool {
+        guard !isDemo,
+              let index = devices.firstIndex(where: { $0.id == id }),
+              devices[index].kind == .espMiner,
+              let detected = MinerFirmwareAdapter.detectedFamily(from: info, asic: asic) else {
+            return false
+        }
+        let current = devices[index].firmwareFamily?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let canUpgrade = current.isEmpty || (current == "bitaxe" && detected != "bitaxe")
+        guard canUpgrade, current != detected else { return false }
+        devices[index].firmwareFamily = detected
+        if persistImmediately { persist() }
+        return true
+    }
+
     func remove(_ device: MinerDevice, deleteAchievementHistory: Bool = true) {
         // The database may already have committed while its MainActor continuation is waiting.
         // Purging either identity now could destroy the other miner entry's transferred events.
@@ -440,6 +464,8 @@ final class FleetStore {
                 self.visibleDevices.contains(where: { $0.id == device.id })
             else { return }
             await self.capabilities.autoDetect(device: device, observedInfo: info, isDemo: self.isDemo)
+            let asic = self.capabilities.reports[device.id]?.asic
+            self.updateDetectedFirmwareFamily(for: device.id, info: info, asic: asic)
         }
     }
 
@@ -495,7 +521,7 @@ private enum FleetTelemetryBatchFetcher {
                         let info: MinerInfo
                         switch device.kind {
                         case .espMiner:
-                            info = try await MinerAPIClient(device: device, session: session).info()
+                            info = try await MinerFirmwareAdapter(device: device, session: session).info()
                         case .xmrig:
                             let token = MinerCredentialStore.token(for: device.keychainCredentialReference)
                             info = try await XMRigAPIClient(

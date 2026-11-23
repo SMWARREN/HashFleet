@@ -229,7 +229,7 @@ enum MinerSettingsWriter {
         guard body.count < 10_240 else {
             throw SettingsError.message("This request exceeds the miner's 10 KiB limit. Apply fewer slots at once; certificates cannot be shortened or omitted.")
         }
-        let client = MinerAPIClient(device: device)
+        let client = MinerFirmwareAdapter(device: device)
         let fresh: MinerInfo
         do { fresh = try await client.info() } catch { throw SettingsError.message("Could not read fresh settings. Nothing was sent; reconnect and reopen settings.") }
         try Task.checkCancellation()

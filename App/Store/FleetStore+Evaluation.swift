@@ -56,6 +56,7 @@ extension FleetStore {
         snapshots[deviceID] = snapshot
         lastRefresh = date
         updateAutomaticName(for: deviceID, info: info)
+        updateDetectedFirmwareFamily(for: deviceID, info: info)
         cacheSuccessfulInfo(info, for: deviceID, at: date)
 
         // Record telemetry to database if enabled

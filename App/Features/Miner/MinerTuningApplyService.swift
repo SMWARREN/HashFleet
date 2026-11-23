@@ -51,7 +51,7 @@ struct MinerTuningApplyService {
         }
         let validated = try Self.validatedPayload(payload)
         try Self.checkPolicy(device: device, payload: validated)
-        let client = MinerAPIClient(device: device, session: session)
+        let client = MinerFirmwareAdapter(device: device, session: session)
         let preflight = try await client.info()
         try Task.checkCancellation()
         try validatePreflight?(preflight)

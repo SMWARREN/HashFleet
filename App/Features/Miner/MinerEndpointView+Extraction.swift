@@ -114,7 +114,7 @@ final class MinerOperationModel {
         defer { isRunning = false }
         do {
             try Task.checkCancellation()
-            let client = MinerAPIClient(device: device, session: session)
+            let client = MinerFirmwareAdapter(device: device, session: session)
             // A snapshot may have been fresh at review but the miner can disconnect before Apply.
             // Require a valid read-only Info response immediately before any mutation.
             if MinerRequestSafety.isWrite(endpoint) {
