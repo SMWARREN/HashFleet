@@ -13,17 +13,22 @@ public struct MinerDevice: Identifiable, Codable, Hashable, Sendable {
     /// Nil preserves compatibility with saved fleets created before local naming preferences.
     public var usesAutomaticName: Bool?
 
+    /// Firmware project the scan read from the miner's own `/api/system/info`. Nil for devices saved
+    /// before this field existed, and for miners whose firmware could not be identified.
+    public var firmwareFamily: String?
+
     /// Optional reference to a credential stored securely in the Keychain.
     /// Token data should never be stored directly in this struct.
     public var keychainCredentialReference: String?
 
-    public init(id: UUID = UUID(), name: String, address: String, kind: Kind = .espMiner, usesAutomaticName: Bool? = nil, keychainCredentialReference: String? = nil) {
+    public init(id: UUID = UUID(), name: String, address: String, kind: Kind = .espMiner, usesAutomaticName: Bool? = nil, keychainCredentialReference: String? = nil, firmwareFamily: String? = nil) {
         self.id = id
         self.name = name
         self.address = address
         self.kind = kind
         self.usesAutomaticName = usesAutomaticName
         self.keychainCredentialReference = keychainCredentialReference
+        self.firmwareFamily = firmwareFamily
     }
 
     public init(from decoder: Decoder) throws {
@@ -34,6 +39,7 @@ public struct MinerDevice: Identifiable, Codable, Hashable, Sendable {
         self.kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? .espMiner
         self.usesAutomaticName = try container.decodeIfPresent(Bool.self, forKey: .usesAutomaticName)
         self.keychainCredentialReference = try container.decodeIfPresent(String.self, forKey: .keychainCredentialReference)
+        self.firmwareFamily = try container.decodeIfPresent(String.self, forKey: .firmwareFamily)
     }
 
     /// Accepts host-only addresses, optionally with HTTP(S), a port and a root slash.

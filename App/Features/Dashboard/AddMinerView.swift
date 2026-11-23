@@ -479,7 +479,7 @@ extension AddMinerView {
             let customName = AddMinerMultiSelection.name(
                 forCustomName: name, alreadyAdded: addedAddresses
             )
-            try store.add(name: customName, address: candidate.address)
+            try store.add(name: customName, address: candidate.address, firmwareFamily: candidate.firmwareFamily)
             addedAddresses.insert(candidate.address)
             validationError = nil
         } catch FleetError.duplicate {

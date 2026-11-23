@@ -283,7 +283,14 @@ final class FirmwareUpdateBoundaryTests {
     func familyFeedIsUsed(family: MinerFirmwareFamily) async throws {
         let store = makeStore()
         let target = device()
-        let board = family == .bitaxe ? "Bitaxe Supra" : "NerdQAxe++"
+        // Each family's own upstream identity string, so the checker is tested on real evidence.
+        let board: String
+        switch family {
+        case .bitaxe: board = "Bitaxe Supra"
+        case .nerdqaxe: board = "NerdQAxe++"
+        case .bitfortun: board = "BitfortunOCTAXE+"
+        case .axeForge: board = "AxeForge rev5.1/6"
+        }
         script(.http(status: 200, body: simpleFeed(["v3.0.0"])))
 
         await store.checkIfNeeded(device: target, info: miner(version: "v2.0.0", board: board))

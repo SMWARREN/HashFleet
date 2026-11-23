@@ -108,6 +108,13 @@ extension FleetStore {
             await monitorXMRig(device: device, token: token)
             return
         }
+        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge) is read by
+        // HTTP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
+        if let family = device.firmwareFamily.flatMap(MinerFirmwareFamily.init(rawValue:)),
+           !family.supportsLiveWebSocket {
+            await monitorHTTPOnly(device: device, token: token)
+            return
+        }
         var retrySeconds = 1.0
 
         while !Task.isCancelled, token == liveGeneration {
@@ -238,6 +245,17 @@ extension FleetStore {
             else { return }
             recordFailedInfo(error.localizedDescription, for: device.id)
         }
+    }
+
+    /// HTTP-only firmware: poll `/api/system/info` at the foreground cadence, with the same snapshot
+    /// and error pipeline as every other miner. No WebSocket is attempted, so no live-error banner.
+    func monitorHTTPOnly(device: MinerDevice, token: UUID) async {
+        while !Task.isCancelled, token == liveGeneration {
+            await fallbackPoll(device, token: token)
+            guard !Task.isCancelled, token == liveGeneration else { return }
+            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+        }
+        if token == liveGeneration { liveTasks[device.id] = nil }
     }
 
     /// XMRig exposes an HTTP summary rather than ESP-Miner's live WebSocket. Poll at a modest

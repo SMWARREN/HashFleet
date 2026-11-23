@@ -7,6 +7,15 @@ struct MinerDiscoveryCandidate: Identifiable, Hashable, Sendable {
     let address: String
     let name: String
     let model: String?
+    /// Firmware project read from the scan's own `/api/system/info` response. Nil when unidentified.
+    var firmwareFamily: MinerFirmwareFamily?
+
+    init(address: String, name: String, model: String?, firmwareFamily: MinerFirmwareFamily? = nil) {
+        self.address = address
+        self.name = name
+        self.model = model
+        self.firmwareFamily = firmwareFamily
+    }
 
     var id: String { address }
 }
@@ -310,7 +319,10 @@ struct MinerDiscoveryService: Sendable {
         let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
-        return MinerDiscoveryCandidate(address: host, name: name, model: model)
+        return MinerDiscoveryCandidate(
+            address: host, name: name, model: model,
+            firmwareFamily: MinerFirmwareFamily.identify(from: info)
+        )
     }
 
     private static func probe(host: String, transport: Transport, timeout: TimeInterval) async throws -> ProbeResult {

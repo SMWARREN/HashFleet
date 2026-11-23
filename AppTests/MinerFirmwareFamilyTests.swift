@@ -56,3 +56,56 @@ struct MinerFirmwareFamilyTests {
         #expect(feeds.count == MinerFirmwareFamily.allCases.count)
     }
 }
+
+/// Each family's live-socket capability comes from its pinned upstream registrar. Only ESP-Miner
+/// registers `/api/ws/live`; NerdQAxe and Bitfortun register only the `/api/ws` log stream.
+@Suite("Firmware live-socket capability")
+struct MinerFirmwareLiveSocketTests {
+    @Test func onlyESPMinerRegistersTheLiveSocket() {
+        #expect(MinerFirmwareFamily.bitaxe.supportsLiveWebSocket)
+        #expect(!MinerFirmwareFamily.nerdqaxe.supportsLiveWebSocket)
+        #expect(!MinerFirmwareFamily.bitfortun.supportsLiveWebSocket)
+        #expect(!MinerFirmwareFamily.axeForge.supportsLiveWebSocket)
+    }
+
+    @Test func bitfortunBoardStringsResolveToBitfortunNotBitaxe() {
+        // Upstream bitfortun-BS-1 sets deviceModel to BitfortunAxe, BitfortunQAxe+, BitfortunOCTAXE+ etc.
+        for value in ["BitfortunAxe", "BitfortunQAxe+", "BitfortunOCTAXE+", "BitfortunEKO", "BitfortunAxeGamma"] {
+            #expect(
+                MinerFirmwareFamily.identify(from: MinerInfo(raw: ["deviceModel": .string(value)])) == .bitfortun,
+                "\(value) must resolve to Bitfortun"
+            )
+        }
+    }
+
+    @Test func axeForgeBoardNamesResolveToAxeForge() {
+        // Upstream AxeForge names its board from boards/*.toml, e.g. "Bitfortun BS-1" in bs1.toml.
+        // That name also contains "Bitfortun", so AxeForge must be checked before Bitfortun.
+        let forged = MinerFirmwareFamily.identify(from: MinerInfo(raw: ["board": .string("AxeForge rev5.1/6")]))
+        #expect(forged == .axeForge)
+    }
+
+    @Test func fleetBoardsStayOnESPMinerAndKeepTheSocket() {
+        // Gamma 602, Gamma 601a and both Naja Duos report ESP-Miner identity: no project string.
+        for board in ["602", "601a", "1201"] {
+            let info = MinerInfo(raw: ["boardVersion": .string(board), "axeOSVersion": .string("Unified"),
+                                       "hostname": .string("bitaxe")])
+            #expect(MinerFirmwareFamily.identify(from: info) == .bitaxe, "board \(board) must stay ESP-Miner")
+        }
+    }
+}
+
+@Suite("Saved firmware family")
+struct MinerSavedFirmwareFamilyTests {
+    @Test func olderSavedDevicesDecodeWithoutAFamily() throws {
+        let legacy = Data(#"{"id":"\#(UUID().uuidString)","name":"Desk","address":"192.168.1.10","kind":"espMiner"}"#.utf8)
+        let device = try JSONDecoder().decode(MinerDevice.self, from: legacy)
+        #expect(device.firmwareFamily == nil)
+    }
+
+    @Test func familyRoundTripsThroughTheSavedFleet() throws {
+        let device = MinerDevice(name: "Naja", address: "192.168.86.239", firmwareFamily: "bitaxe")
+        let decoded = try JSONDecoder().decode(MinerDevice.self, from: JSONEncoder().encode(device))
+        #expect(decoded.firmwareFamily == "bitaxe")
+    }
+}
