@@ -97,16 +97,18 @@ class NativeCaptureTests(unittest.TestCase):
             manifest = json.loads(manifest_path.read_text())
             manifest['captures'][0]['bytes'] += 1
             manifest_path.write_text(json.dumps(manifest))
+            changed = self.fake_magick()
             with self.assertRaises(ValueError):
-                self.run_main(root, source, '--verify', magick=self.fake_magick())
+                self.run_main(root, source, '--verify', magick=changed)
             calls = iter([b'a', b'b'])
             def differing(cmd, **kwargs):
                 return next(calls)
             with self.assertRaises(ValueError):
                 self.run_main(root, source, magick=differing)
             (source / f'{self.mod.NAMES[0]}.png').unlink()
+            intact = self.fake_magick()
             with self.assertRaises(ValueError):
-                self.run_main(root, source, magick=self.fake_magick())
+                self.run_main(root, source, magick=intact)
 
 
 class WatchCaptureTests(unittest.TestCase):
