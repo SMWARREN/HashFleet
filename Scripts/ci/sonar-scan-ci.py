@@ -218,8 +218,18 @@ def main() -> int:
     scanner_bin = setup["tools"]["sonarScanner"]["path"]
 
     # 3. Ensure local Docker SonarQube container with sonar-apple is running
-    print("Ensuring SonarQube container with sonar-apple is ready...")
-    server = ensure_local_server(ROOT, "hashfleet")
+    server = None
+    for attempt in range(1, 6):
+        try:
+            print(f"Ensuring SonarQube container with sonar-apple is ready (attempt {attempt}/5)...")
+            server = ensure_local_server(ROOT, "hashfleet")
+            break
+        except Exception as exc:
+            if attempt == 5:
+                raise
+            print(f"Sonar server setup attempt {attempt} failed ({exc}). Retrying in 10s...")
+            time.sleep(10)
+    assert server is not None
     url = server["url"]
     token = server["token"]
 
