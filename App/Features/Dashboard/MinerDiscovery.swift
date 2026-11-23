@@ -209,6 +209,9 @@ struct MinerDiscoveryService: Sendable {
     private static let requestTimeout: TimeInterval = 1
     private static let fallbackTimeout: TimeInterval = 2.5
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    /// cgminer TCP API on port 4028 (Canaan Avalon, Braiins, LuxOS). Injected by tests.
+    typealias CgminerTransport = CgminerClient.Transport
+    private static let cgminerTimeout: TimeInterval = 1.5
 
     private enum ProbeResult: Sendable {
         case found(MinerDiscoveryCandidate)
@@ -216,10 +219,17 @@ struct MinerDiscoveryService: Sendable {
         case noMatch
     }
 
+    /// Whether the scan asks port 4028, and through which transport (nil uses a real socket).
+    enum CgminerProbe: Sendable {
+        case disabled
+        case enabled(CgminerTransport?)
+    }
+
     static func scan(
         plan: MinerDiscoveryScanPlan,
         onProgress: (@Sendable ([MinerDiscoveryCandidate], Int) -> Void)? = nil,
-        transport injectedTransport: Transport? = nil
+        transport injectedTransport: Transport? = nil,
+        cgminerTransport: CgminerTransport? = nil
     ) async throws -> [MinerDiscoveryCandidate] {
         let initialSession = makeSession(timeout: requestTimeout)
         defer { initialSession.invalidateAndCancel() }
@@ -228,8 +238,11 @@ struct MinerDiscoveryService: Sendable {
         var candidates: [MinerDiscoveryCandidate] = []
         var retryHosts: [String] = []
         var probedCount = 0
+        // A test that injects only HTTP must never open real TCP sockets to its fixture hosts.
+        let cgminerProbe: CgminerProbe = (injectedTransport != nil && cgminerTransport == nil)
+            ? .disabled : .enabled(cgminerTransport)
         for batch in batches(plan.hosts) {
-            let results = try await probeBatch(batch, transport: initialTransport, timeout: requestTimeout)
+            let results = try await probeBatch(batch, transport: initialTransport, cgminer: cgminerProbe, timeout: requestTimeout)
             candidates.append(contentsOf: results.found)
             retryHosts.append(contentsOf: results.retry)
             probedCount += batch.count
@@ -242,7 +255,7 @@ struct MinerDiscoveryService: Sendable {
             defer { retrySession.invalidateAndCancel() }
             let retryTransport: Transport = injectedTransport ?? { request in try await retrySession.data(for: request) }
             for batch in batches(retryHosts) {
-                let results = try await probeBatch(batch, transport: retryTransport, timeout: fallbackTimeout)
+                let results = try await probeBatch(batch, transport: retryTransport, cgminer: cgminerProbe, timeout: fallbackTimeout)
                 candidates.append(contentsOf: results.found)
                 if !results.found.isEmpty { onProgress?(results.found, probedCount) }
             }
@@ -268,12 +281,24 @@ struct MinerDiscoveryService: Sendable {
     }
 
     private static func probeBatch(
-        _ hosts: ArraySlice<String>, transport: @escaping Transport, timeout: TimeInterval
+        _ hosts: ArraySlice<String>, transport: @escaping Transport,
+        cgminer: CgminerProbe = .disabled, timeout: TimeInterval
     ) async throws -> (found: [MinerDiscoveryCandidate], retry: [String]) {
         try Task.checkCancellation()
         return try await withThrowingTaskGroup(of: ProbeResult.self) { group in
             for host in hosts {
-                group.addTask { try await probe(host: host, transport: transport, timeout: timeout) }
+                group.addTask {
+                    let result = try await probe(host: host, transport: transport, timeout: timeout)
+                    if case .found = result { return result }
+                    // No miner HTTP API on port 80. Canaan Avalon, Braiins and LuxOS answer only the
+                    // cgminer TCP API on 4028, so ask that port before giving up on this host.
+                    if case .enabled(let cgminerTransport) = cgminer, let found = await probeCgminer(
+                        host: host, transport: cgminerTransport, timeout: max(cgminerTimeout, timeout)
+                    ) {
+                        return .found(found)
+                    }
+                    return result
+                }
             }
             var found: [MinerDiscoveryCandidate] = []
             var retry: [String] = []
@@ -392,6 +417,25 @@ struct MinerDiscoveryService: Sendable {
         } catch {
             return .noMatch
         }
+    }
+
+    /// Read-only cgminer `version` identification on port 4028. Returns a candidate saved with the
+    /// cgminer family (`canaan`, `braiins`, `luxos`) and the explicit `:4028` origin.
+    static func probeCgminer(
+        host: String, transport: CgminerTransport?, timeout: TimeInterval
+    ) async -> MinerDiscoveryCandidate? {
+        guard !Task.isCancelled,
+              let identity = await MinerFirmwareAdapter.identifyCgminer(
+                  host: host, port: MinerFirmwareAdapter.portCgminer, timeout: timeout, transport: transport
+              )
+        else { return nil }
+        return MinerDiscoveryCandidate(
+            address: "\(host):\(MinerFirmwareAdapter.portCgminer)",
+            name: identity.name,
+            model: identity.model,
+            firmwareFamily: nil,
+            detectedFamily: identity.family
+        )
     }
 
     private static func probeAlternativeHTTPEndpoints(

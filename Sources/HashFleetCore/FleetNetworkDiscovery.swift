@@ -21,7 +21,10 @@ public struct FleetDiscoveryCandidate: Hashable, Sendable {
     }
 
     public var device: MinerDevice {
-        MinerDevice(name: name, address: address, kind: .espMiner, usesAutomaticName: true)
+        MinerDevice(
+            name: name, address: address, kind: .espMiner, usesAutomaticName: true,
+            firmwareFamily: info.raw["firmwareFamily"]?.stringValue
+        )
     }
 }
 
@@ -136,7 +139,12 @@ public enum FleetNetworkDiscovery {
             let batch = Array(plan.hosts[offset..<end])
             let results = await withTaskGroup(of: FleetDiscoveryCandidate?.self) { group in
                 for host in batch {
-                    group.addTask { await probe(host: host, session: session) }
+                    group.addTask {
+                        if let found = await probe(host: host, session: session) { return found }
+                        // No miner HTTP API on port 80: Canaan Avalon, Braiins and LuxOS answer only
+                        // the cgminer TCP API on 4028.
+                        return await probeCgminer(host: host)
+                    }
                 }
                 var values: [FleetDiscoveryCandidate] = []
                 for await candidate in group {
@@ -189,6 +197,26 @@ public enum FleetNetworkDiscovery {
             if order != .orderedSame { return order == .orderedAscending }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// Read-only cgminer `version` identification on TCP 4028. The candidate keeps the `:4028`
+    /// origin so later reads go straight to the cgminer driver.
+    static func probeCgminer(
+        host: String,
+        timeout: TimeInterval = 1.5,
+        transport: CgminerClient.Transport? = nil
+    ) async -> FleetDiscoveryCandidate? {
+        guard !Task.isCancelled,
+              let identity = await MinerFirmwareAdapter.identifyCgminer(
+                  host: host, port: MinerFirmwareAdapter.portCgminer, timeout: timeout, transport: transport
+              )
+        else { return nil }
+        return FleetDiscoveryCandidate(
+            address: "\(host):\(MinerFirmwareAdapter.portCgminer)",
+            name: identity.name,
+            model: identity.model,
+            info: identity.info
+        )
     }
 
     private static func probe(host: String, session: URLSession) async -> FleetDiscoveryCandidate? {

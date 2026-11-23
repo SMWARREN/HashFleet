@@ -133,6 +133,14 @@ extension FleetStore {
                 liveConnectedDeviceIDs.remove(device.id)
                 liveConnectionErrors[device.id] = error.localizedDescription
                 await fallbackPoll(device, token: token)
+                guard !Task.isCancelled, token == liveGeneration else { return }
+                // The HTTP read may have just identified HTTP-only or cgminer firmware (for example an
+                // Avalon found on port 4028). Stop retrying a socket that firmware never serves.
+                if !observedFamilyCarriesLiveSocket(for: device.id) {
+                    liveConnectionErrors.removeValue(forKey: device.id)
+                    await monitorHTTPOnly(device: device, token: token)
+                    return
+                }
                 do { try await Task.sleep(for: .seconds(retrySeconds)) } catch { return }
                 retrySeconds = min(retrySeconds * 2, 60)
             }
@@ -252,6 +260,17 @@ extension FleetStore {
             else { return }
             recordFailedInfo(error.localizedDescription, for: device.id)
         }
+    }
+
+    /// True unless the latest saved or observed family is known not to serve `/api/ws/live`.
+    /// An unidentified miner keeps the socket path, matching the behavior before identification.
+    func observedFamilyCarriesLiveSocket(for deviceID: UUID) -> Bool {
+        let family = (
+            devices.first(where: { $0.id == deviceID })?.firmwareFamily
+            ?? snapshots[deviceID]?.info?.raw["firmwareFamily"]?.stringValue
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !family.isEmpty else { return true }
+        return MinerFirmwareFamily(rawValue: family)?.supportsLiveWebSocket ?? false
     }
 
     /// HTTP-only firmware: poll `/api/system/info` at the foreground cadence, with the same snapshot

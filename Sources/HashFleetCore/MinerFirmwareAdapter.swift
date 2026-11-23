@@ -99,8 +99,54 @@ public struct MinerFirmwareAdapter: Sendable {
                     return harloInfo
                 }
             }
+            if let cgminerInfo = await cgminerFallbackInfo(host: host, family: family, httpError: error) {
+                return cgminerInfo
+            }
+            throw error
+        } catch {
+            if let cgminerInfo = await cgminerFallbackInfo(host: host, family: family, httpError: error) {
+                return cgminerInfo
+            }
             throw error
         }
+    }
+
+    /// Families known to serve only the HTTP API. They never fall back to cgminer port 4028.
+    static let httpOnlyFamilies: Set<String> = [
+        "bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge", "nmaxe", "warpaxe"
+    ]
+
+    /// A saved miner with no known family and no HTTP miner API may be a cgminer device (Avalon
+    /// Nano 3S, Braiins, LuxOS) answering only on TCP 4028. Try that port once before failing.
+    /// Families already identified as HTTP firmware never take this path.
+    private func cgminerFallbackInfo(host: String, family: String, httpError: Error) async -> MinerInfo? {
+        guard !Self.httpOnlyFamilies.contains(family), !Task.isCancelled,
+              Self.httpFailureAllowsCgminerFallback(httpError) else { return nil }
+        let probe = CgminerClient(host: host, port: Self.portCgminer, timeout: 2.0, transport: cgminerTransport)
+        guard let version = try? await probe.call("version"),
+              Self.isCgminerVersionResponse(version) else { return nil }
+        return try? await pollCgminerInfo(host: host, port: Self.portCgminer, knownFamily: "")
+    }
+
+    /// HTTP outcomes that mean "no miner HTTP API here": no listener, timeout, a missing route, or
+    /// a body that is not a miner payload. Cancellation and invalid addresses never qualify.
+    static func httpFailureAllowsCgminerFallback(_ error: Error) -> Bool {
+        if error is CancellationError { return false }
+        if let apiError = error as? MinerAPIError {
+            switch apiError {
+            case .http(let statusCode, _, _): return [404, 405, 501].contains(statusCode)
+            case .unrecognizedInfo, .invalidResponse: return true
+            default: return false
+            }
+        }
+        if let urlError = error as? URLError {
+            return [
+                .cannotConnectToHost, .timedOut, .networkConnectionLost,
+                .badServerResponse, .cannotParseResponse, .zeroByteResource
+            ].contains(urlError.code)
+        }
+        // A non-JSON body (for example an HTML page) fails JSON decoding.
+        return error is DecodingError
     }
 
     // MARK: - HTTP Polling Helpers
@@ -497,7 +543,8 @@ extension MinerFirmwareAdapter {
         transport: CgminerClient.Transport? = nil
     ) async -> MinerDetectedIdentity? {
         let cli = CgminerClient(host: host, port: port, timeout: timeout, transport: transport)
-        guard let versionResp = try? await cli.call("version") else { return nil }
+        guard let versionResp = try? await cli.call("version"),
+              isCgminerVersionResponse(versionResp) else { return nil }
         let family = MinerCgminerDrivers.fingerprint(versionResponse: versionResp)
         let sample: MinerWatchSample?
         switch family {
@@ -525,6 +572,19 @@ extension MinerFirmwareAdapter {
             family: family, host: host, port: port, mac: resolved.mac,
             model: model, name: name, info: resolved.toMinerInfo()
         )
+    }
+
+    /// A genuine cgminer `version` reply has a non-empty `VERSION` section naming the API or miner
+    /// (`API`, `CGMiner`, `BOSminer`, `LUXminer`, `PROD`, `MODEL`). Any other text that happens to
+    /// answer on port 4028 is not a miner and must not become an "Avalon" result.
+    public static func isCgminerVersionResponse(_ response: [String: JSONValue]) -> Bool {
+        guard let section = MinerDriverParse.sectionArray(response, key: "VERSION").first,
+              !section.isEmpty else { return false }
+        let markers = ["api", "cgminer", "bmminer", "bosminer", "luxminer", "miner", "prod", "model", "lversion"]
+        return section.keys.contains { key in
+            let lower = key.lowercased()
+            return markers.contains { lower.contains($0) }
+        }
     }
 
     public static func defaultCgminerModel(for family: String) -> String {
