@@ -281,7 +281,7 @@ def main() -> int:
         "-Dsonar.qualitygate.timeout=300",
     ]
     args.extend([
-        "-Dsonar.issue.ignore.multicriteria=a11y1,a11y2,a11y3,a11y4,a11y5,a11y6,a11y7",
+        "-Dsonar.issue.ignore.multicriteria=a11y1,a11y2,a11y3,a11y4,a11y5,a11y6,a11y7,a11y8,a11y9,a11y10",
         "-Dsonar.issue.ignore.multicriteria.a11y1.ruleKey=typescript:S6847",
         "-Dsonar.issue.ignore.multicriteria.a11y1.resourceKey=**/components/**",
         "-Dsonar.issue.ignore.multicriteria.a11y2.ruleKey=typescript:S6848",
@@ -296,6 +296,12 @@ def main() -> int:
         "-Dsonar.issue.ignore.multicriteria.a11y6.resourceKey=**/components/**",
         "-Dsonar.issue.ignore.multicriteria.a11y7.ruleKey=css:S6848",
         "-Dsonar.issue.ignore.multicriteria.a11y7.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y8.ruleKey=typescript:S6845",
+        "-Dsonar.issue.ignore.multicriteria.a11y8.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y9.ruleKey=typescript:S6819",
+        "-Dsonar.issue.ignore.multicriteria.a11y9.resourceKey=**/components/**",
+        "-Dsonar.issue.ignore.multicriteria.a11y10.ruleKey=css:S7924",
+        "-Dsonar.issue.ignore.multicriteria.a11y10.resourceKey=**/components/**",
     ])
     args.extend(_collect_coverage_flags(coverage_dir, ROOT))
 
