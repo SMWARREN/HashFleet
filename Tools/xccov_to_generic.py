@@ -51,21 +51,15 @@ def _parse_file_coverage(lines_output: str, max_line: int) -> dict[int, bool]:
     return lines
 
 
-def convert_xcresult(bundle: Path, output: Path, root: Path) -> tuple[int, int, int]:
-    root = root.resolve()
-    bundle = bundle.resolve()
-
+def _collect_admitted_files(bundle: Path, root: Path) -> list[Path]:
     raw_files = subprocess.check_output(
         ["xcrun", "xccov", "view", "--archive", "--file-list", str(bundle)],
         text=True,
     ).splitlines()
+    return [p for raw in raw_files if _is_admitted_source((p := Path(raw).resolve()), root)]
 
-    admitted_files: list[Path] = []
-    for raw in raw_files:
-        p = Path(raw).resolve()
-        if _is_admitted_source(p, root):
-            admitted_files.append(p)
 
+def _extract_file_coverages(admitted_files: list[Path], bundle: Path, root: Path) -> dict[str, dict[int, bool]]:
     def extract_one(p: Path) -> tuple[str, dict[int, bool]]:
         out = subprocess.check_output(
             ["xcrun", "xccov", "view", "--archive", "--file", str(p), str(bundle)],
@@ -80,7 +74,10 @@ def convert_xcresult(bundle: Path, output: Path, root: Path) -> tuple[int, int, 
         for rel_path, lines in executor.map(extract_one, admitted_files):
             if lines:
                 file_coverages[rel_path] = lines
+    return file_coverages
 
+
+def _write_generic_xml(file_coverages: dict[str, dict[int, bool]], output: Path) -> tuple[int, int]:
     root_elem = ET.Element("coverage", version="1")
     total_lines = 0
     total_covered = 0
@@ -103,7 +100,16 @@ def convert_xcresult(bundle: Path, output: Path, root: Path) -> tuple[int, int, 
     output.parent.mkdir(parents=True, exist_ok=True)
     ET.indent(root_elem)
     ET.ElementTree(root_elem).write(output, encoding="utf-8", xml_declaration=True)
+    return total_covered, total_lines
 
+
+def convert_xcresult(bundle: Path, output: Path, root: Path) -> tuple[int, int, int]:
+    root = root.resolve()
+    bundle = bundle.resolve()
+
+    admitted_files = _collect_admitted_files(bundle, root)
+    file_coverages = _extract_file_coverages(admitted_files, bundle, root)
+    total_covered, total_lines = _write_generic_xml(file_coverages, output)
     return total_covered, total_lines, len(file_coverages)
 
 

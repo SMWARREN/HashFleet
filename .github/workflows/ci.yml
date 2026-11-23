@@ -249,7 +249,8 @@ jobs:
             Tools.test_swiftpm_coverage \
             Tools.test_layout_guardrails \
             Tools.test_sonar_project_recipe \
-            Tools.test_sonar_scan
+            Tools.test_sonar_scan \
+            Tools.test_verify_local_push_removal
           python3 -m coverage xml -o build/coverage/python-coverage.xml
       - name: Run SonarQube analysis in Docker with coverage
         run: |

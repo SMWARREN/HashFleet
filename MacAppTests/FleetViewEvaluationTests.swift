@@ -364,7 +364,7 @@ struct FleetViewEvaluationTests {
         }
         evaluate(FleetPerformanceSettingsView())
 
-        let (store, defaults) = makeStore(demo: true)
+        let (_, defaults) = makeStore(demo: true)
         defer { defaults.removePersistentDomain(forName: defaults.description) }
         let runtime = FleetMacRuntime(defaults: defaults, isTesting: true)
         evaluate(FleetMacMenuBarContent(runtime: runtime, openDestination: { _ in }))
@@ -411,139 +411,6 @@ struct FleetViewEvaluationTests {
                 fleetPath: .constant(NavigationPath()),
                 sidebarSelection: .constant(.miner(device.id))
             ))
-        }
-    }
-}
-
-extension FleetViewEvaluationTests {
-    @Test func evaluateMinerDiagnosticsExpanded() {
-        let (store, defaults) = makeStore(demo: true)
-        defer { defaults.removePersistentDomain(forName: defaults.description) }
-
-        guard let device = store.devices.first,
-              let info = store.snapshots[device.id]?.info else { return }
-
-        let model = MinerDiagnosticsModel(info: info)
-        let collapsed = MinerDiagnosticsView(model: model, isExpanded: false)
-        let expanded = MinerDiagnosticsView(model: model, isExpanded: true)
-        evaluate(collapsed)
-        evaluate(expanded)
-        evaluate(expanded.clocksAndElectricalSection)
-        evaluate(expanded.thermalAndCoolingSection)
-        evaluate(expanded.hashrateAndPerformanceSection)
-    }
-
-    @Test func evaluateHashFleetAppRouting() {
-        let app = HashFleetApp()
-        evaluate(app.notificationLayer)
-        evaluate(app.mainTabs)
-        evaluate(app.fleetNavigation)
-        evaluate(app.aboutNavigation)
-
-        app.presentPreviewCelebration(.blockFound)
-        evaluate(app.notificationLayer)
-        app.presentPreviewCelebration(.bestShareSession)
-        evaluate(app.notificationLayer)
-        app.presentPreviewCelebration(.bestShareAllTime)
-        evaluate(app.notificationLayer)
-
-        app.pauseCelebrations()
-        app.resumeCelebrations()
-        app.disableSessionBestAlerts()
-        app.reconcileCelebrationSessionPreference()
-        app.openPendingFleetDestination()
-        app.openPendingMinerRoute()
-        app.restoreSceneStateIfPossible()
-        app.presentUITestCelebrationIfRequested()
-        app.presentUITestInAppAlertIfRequested()
-        app.dismissCelebration()
-    }
-
-    @Test func evaluateNumberFirstDetailView() {
-        let (store, defaults) = makeStore(demo: true)
-        defer { defaults.removePersistentDomain(forName: defaults.description) }
-
-        guard let device = store.devices.first,
-              let info = store.snapshots[device.id]?.info else { return }
-        let insights = MiningInsightsStore()
-
-        let detailView = MinerDetailView(device: device, store: store, insights: insights)
-        evaluate(detailView.numberFirstTelemetry(info))
-
-        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
-        _ = availability.canEditSettings
-        _ = availability.quickActions
-        _ = availability.cooling
-        _ = availability.tuning
-        _ = availability.rawAPI
-        _ = availability.settingsCategories(usesEssentialsPools: false)
-        _ = availability.settingsCategories(usesEssentialsPools: true)
-        _ = availability.showsSettingsHub(in: .full)
-        _ = availability.showsSettingsHub(in: .essentials)
-        _ = availability.firmwareUpdate(NumberFirstPreview.minerFirmwareNotice)
-    }
-
-    @Test func evaluateFleetHistoryCardDeep() {
-        let (store, defaults) = makeStore(demo: true)
-        defer { defaults.removePersistentDomain(forName: defaults.description) }
-
-        for metric in MinerHistoryMetric.allCases {
-            var card = FleetHistoryCard(
-                devices: store.visibleDevices,
-                snapshots: store.snapshots,
-                isDemo: store.isDemo,
-                initialRecentRange: .oneMinute,
-                isCompactDashboard: false,
-                dashboardMode: .full,
-                numberFirst: false
-            )
-            card.selectedMetric = metric
-            evaluate(card)
-            evaluate(card.numberFirstChartControls)
-            evaluate(card.essentialsHistoryControls)
-        }
-
-        for range in FleetRecentRange.allCases {
-            let card = FleetHistoryCard(
-                devices: store.visibleDevices,
-                snapshots: store.snapshots,
-                isDemo: store.isDemo,
-                initialRecentRange: range,
-                isCompactDashboard: true,
-                dashboardMode: .essentials,
-                numberFirst: true
-            )
-            evaluate(card)
-        }
-
-        let pageCache = FleetHistoryPageCache()
-        let pageIdentity = FleetHistoryPageIdentity(
-            window: .daily,
-            recentRange: .oneMinute,
-            displayMode: .fleet,
-            kind: .sha256,
-            currentSignatures: [],
-            storedSignatures: [],
-            storedRevision: 1,
-            deviceMetadata: []
-        )
-        let resolvedPage = pageCache.resolve(pageIdentity) {
-            (histories: [], segments: nil)
-        }
-        _ = pageCache.resolve(pageIdentity) { resolvedPage }
-
-        let rangeCache = FleetHistoryRangeCache()
-        let rangeIdentity = FleetHistoryRangeIdentity(
-            kind: .sha256,
-            currentSignatures: [],
-            storedSignatures: [],
-            storedRevision: 1
-        )
-        let ranges = rangeCache.resolve(rangeIdentity, now: Date()) {
-            (ranges: [.oneMinute, .fifteenMinutes], expiration: Date().addingTimeInterval(60))
-        }
-        _ = rangeCache.resolve(rangeIdentity, now: Date()) {
-            (ranges: ranges, expiration: Date().addingTimeInterval(60))
         }
     }
 }

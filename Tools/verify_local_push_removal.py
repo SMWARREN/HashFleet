@@ -163,6 +163,23 @@ def repository_violations(root):
     )
 
 
+def _component_violations(component):
+    errors = []
+    component_info = load_plist(component / "Info.plist")
+    if any(key.startswith("NSLocation") for key in component_info):
+        errors.append(f"{component.name}: rejected location permission packaged")
+    if component.name == "HashFleetNotificationService.appex":
+        if component_info.get("NSExtension", {}).get("NSExtensionPointIdentifier") != "com.apple.usernotifications.service":
+            errors.append(f"{component.name}: wrong embedded extension point")
+    executable = component / component_info["CFBundleExecutable"]
+    # Debug builds may put imports in a dylib rather than the executable stub.
+    for image in (executable, *sorted(component.glob("*.dylib"))):
+        linked = subprocess.check_output(["otool", "-L", str(image)], text=True)
+        if "NetworkExtension.framework" in linked:
+            errors.append(f"{component.name}/{image.name}: links rejected NetworkExtension framework")
+    return errors
+
+
 def bundle_violations(bundle):
     errors = []
     info = load_plist(bundle / "Info.plist")
@@ -174,18 +191,7 @@ def bundle_violations(bundle):
     if actual != expected:
         errors.append(f"{bundle.name}: embedded extension set differs from standard service and existing widgets")
     for component in (bundle, *sorted(plugins.glob("*.appex"))):
-        component_info = load_plist(component / "Info.plist")
-        if any(key.startswith("NSLocation") for key in component_info):
-            errors.append(f"{component.name}: rejected location permission packaged")
-        if component.name == "HashFleetNotificationService.appex":
-            if component_info.get("NSExtension", {}).get("NSExtensionPointIdentifier") != "com.apple.usernotifications.service":
-                errors.append(f"{component.name}: wrong embedded extension point")
-        executable = component / component_info["CFBundleExecutable"]
-        # Debug builds may put imports in a dylib rather than the executable stub.
-        for image in (executable, *sorted(component.glob("*.dylib"))):
-            linked = subprocess.check_output(["otool", "-L", str(image)], text=True)
-            if "NetworkExtension.framework" in linked:
-                errors.append(f"{component.name}/{image.name}: links rejected NetworkExtension framework")
+        errors.extend(_component_violations(component))
     return errors
 
 
