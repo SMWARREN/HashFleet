@@ -238,12 +238,17 @@ jobs:
       - name: Run Python unit tests with coverage
         run: |
           export PYTHONPATH="Scripts/release${PYTHONPATH:+:$PYTHONPATH}"
-          python3 -m coverage run --branch --source=Tools,Scripts '--omit=Tools/test_*,Scripts/tests/test_*' -m unittest \
+          python3 -m coverage run --branch --source=Tools,Scripts,Server/tools,website/Tools '--omit=Tools/test_*,Scripts/tests/test_*,Scripts/release/test_*,website/Tools/test_*' -m unittest \
             Scripts/release/test_release.py \
             Scripts/tests/test_package_hashfleet_mac.py \
             Scripts/tests/test_native_add_miner_completion.py \
             Scripts/tests/test_crypto_support.py \
             website/Tools/test_capture_dashboard.py \
+            website/Tools/test_capture_cli_fixtures.py \
+            website/Tools/test_capture_cli_dashboard_extra.py \
+            Scripts/release/test_release_extra.py \
+            Scripts/tests/test_build_bundle.py \
+            Scripts/tests/test_sonar_scan_ci.py \
             Tools.test_sonar_scope \
             Tools.test_xccov_to_generic \
             Tools.test_swiftpm_coverage \
