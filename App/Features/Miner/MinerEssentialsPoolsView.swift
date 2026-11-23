@@ -113,7 +113,7 @@ struct MinerEssentialsPoolsView: View {
     }
 }
 
-private struct MinerEssentialsPoolEditor: View {
+struct MinerEssentialsPoolEditor: View {
     private enum Field: Hashable { case server, port, worker, password }
 
     let device: MinerDevice

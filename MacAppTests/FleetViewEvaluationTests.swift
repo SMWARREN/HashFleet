@@ -111,6 +111,54 @@ struct FleetViewEvaluationTests {
 
         evaluate(MinerCoolingPreview(mode: .essentials, info: store.snapshots[device.id]?.info, canEdit: false))
         evaluate(MinerCoolingPreview(mode: .full, info: store.snapshots[device.id]?.info, canEdit: true))
+        evaluate(MinerCoolingPreview(mode: .full, info: nil, canEdit: false))
+        evaluate(MinerCoolingPreview(mode: .full, info: store.snapshots[device.id]?.info, canEdit: true, live: .init(target: "192.168.1.100", save: { _, draft in draft })))
+
+        if let info = store.snapshots[device.id]?.info {
+            let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+            evaluate(MinerTuningPreview(
+                mode: .full, device: device, store: store, info: info,
+                isDemo: store.isDemo, canEdit: availability.tuning, insights: insights
+            ))
+            evaluate(MinerTuningPreview(
+                mode: .essentials, device: device, store: store, info: info,
+                isDemo: store.isDemo, canEdit: false, insights: insights
+            ))
+            var draft = MinerTuningPreviewDraft(info: info)
+            draft.edit(.frequency, "550")
+            if let review = draft.review {
+                evaluate(MinerTuningPreviewReview(
+                    request: review, canConfirm: true, isLive: false,
+                    attemptMessage: "Verification succeeded", confirm: {}
+                ))
+                evaluate(MinerTuningPreviewReview(
+                    request: review, canConfirm: false, isLive: true,
+                    attemptMessage: "Error occurred", confirm: {}
+                ))
+            }
+        }
+
+        var setpointFreq = 525.0
+        var setpointVolt = 1060.0
+        let freqDial = MinerTuningDial(
+            title: "Frequency", unit: "MHz",
+            setpoint: Binding(get: { setpointFreq }, set: { setpointFreq = $0 }),
+            range: 300...800, liveValue: 520.0, configuredValue: 500.0,
+            referenceMaximum: 550.0, isBeyondReference: false, isRestricted: false,
+            isEnabled: true, referenceOptions: [400, 500, 525, 550, 600],
+            accessibilityPrefix: "tuning.freq", compact: false
+        )
+        let voltDial = MinerTuningDial(
+            title: "Core Voltage", unit: "mV",
+            setpoint: Binding(get: { setpointVolt }, set: { setpointVolt = $0 }),
+            range: 900...1200, liveValue: 1055.0, configuredValue: 1050.0,
+            referenceMaximum: 1150.0, isBeyondReference: true, isRestricted: true,
+            isEnabled: false, referenceOptions: [1000, 1050, 1100, 1150],
+            accessibilityPrefix: "tuning.volt", compact: true
+        )
+        evaluate(freqDial)
+        evaluate(voltDial)
+        evaluate(MinerTuningDialPair(frequency: freqDial, voltage: voltDial))
 
         evaluate(MinerTuningJournalCard(journal: []))
         evaluate(MinerTuningAdvancedSwitch(isOn: .constant(true)))
@@ -142,7 +190,22 @@ struct FleetViewEvaluationTests {
         if let info = store.snapshots[device.id]?.info {
             let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
             evaluate(defaultSettings.compactSettingsHub(availability))
+            let essentialsSettings = MinerSettingsView(device: device, store: store, insights: insights, initialCategory: .general)
+            evaluate(essentialsSettings.compactSettingsHub(availability))
+
+            _ = MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: .object(["hostname": .string("Axe")]))
+            _ = MinerDirectSavePolicy.qualifies(endpoint: .info, payload: .object(["hostname": .string("Axe")]))
+            _ = MinerDisplaySetting.rotation.matches(.object(["rotation": .number(0)]), in: info)
+            _ = MinerDisplaySetting.colors.matches(.object(["invertscreen": .bool(true)]), in: info)
+            _ = MinerDisplaySetting.timeout.matches(.object(["displayTimeout": .number(60)]), in: info)
+
+            evaluate(defaultSettings.displaySaveButton("Apply Rotation", setting: .rotation) { .object(["rotation": .number(0)]) })
+            evaluate(defaultSettings.displaySaveButton("Apply Colors", setting: .colors) { .object(["invertscreen": .bool(true)]) })
+            evaluate(defaultSettings.displaySaveButton("Apply Timeout", setting: .timeout) { .object(["displayTimeout": .number(60)]) })
         }
+        defaultSettings.submit(.settings, json: .object(["hostname": .string("TestMiner")]))
+        defaultSettings.submit(.settings, object: ["hostname": "TestMiner"])
+        _ = defaultSettings.everydayTitle(review: "Review", save: "Save")
     }
 
     @Test func evaluateMinerSupportingViews() {
@@ -162,6 +225,40 @@ struct FleetViewEvaluationTests {
         evaluate(MinerEndpointView(device: device, store: store, endpoint: .info, insights: insights))
         evaluate(MinerEndpointView(device: device, store: store, endpoint: .logs, insights: insights))
         evaluate(MinerEndpointView(device: device, store: store, endpoint: .settings, insights: insights))
+
+        if let info = store.snapshots[device.id]?.info {
+            let write = PendingMinerWrite(
+                endpoint: .settings,
+                body: Data("{\"frequency\": 550}".utf8),
+                query: [URLQueryItem(name: "save", value: "true")],
+                filename: nil,
+                opensExactRequest: true
+            )
+            evaluate(MinerWriteConfirmation(device: device, request: write, isDemo: false, onConfirm: {}))
+            let highRiskWrite = PendingMinerWrite(
+                endpoint: .otaFirmware,
+                body: Data("firmware".utf8),
+                query: [],
+                filename: "firmware.bin",
+                opensExactRequest: false
+            )
+            evaluate(MinerWriteConfirmation(device: device, request: highRiskWrite, isDemo: true, onConfirm: {}))
+
+            _ = try? MinerRequestSafety.jsonData("{\"test\": 123}")
+            _ = MinerRequestSafety.pretty(Data("{\"test\": 123}".utf8))
+            _ = MinerRequestSafety.reviewedBody(Data("{\"test\": 123}".utf8))
+            _ = MinerRequestSafety.reviewedBody(nil)
+            _ = MinerRequestSafety.isWrite(.settings)
+            _ = MinerRequestSafety.isWrite(.info)
+            _ = MinerRequestSafety.isHighRisk(.otaFirmware, data: nil)
+            _ = MinerRequestSafety.isHighRisk(.settings, data: Data("{\"coreVoltage\": 1100}".utf8))
+            _ = MinerRequestSafety.coreVoltage(in: Data("{\"coreVoltage\": 1150}".utf8))
+
+            if let identity = MinerInlineActionState.identity(from: info),
+               let baseline = MinerEssentialsPoolBaseline(role: .primary, raw: info.raw) {
+                evaluate(MinerEssentialsPoolEditor(device: device, store: store, initial: baseline, identity: identity))
+            }
+        }
     }
 
     @Test func evaluateSettingsViews() {
@@ -197,6 +294,15 @@ struct FleetViewEvaluationTests {
 
         let networkView = NetworkInsightsView(fleet: store, insights: insights)
         evaluate(networkView)
+        evaluate(networkView.soloCard(MiningInsightsDemo.network, now: Date()))
+        for scope in networkView.soloOutcomeScopes(now: Date()) {
+            evaluate(networkView.soloOutcomePage(scope: scope, difficulty: 80e12))
+        }
+        for window in SoloOutcomeWindow.allCases {
+            _ = window.duration
+            _ = window.title
+            _ = window.accessibilityTitle
+        }
         if let network = insights.network {
             evaluate(networkView.soloCard(network, now: Date()))
         }
@@ -305,6 +411,139 @@ struct FleetViewEvaluationTests {
                 fleetPath: .constant(NavigationPath()),
                 sidebarSelection: .constant(.miner(device.id))
             ))
+        }
+    }
+}
+
+extension FleetViewEvaluationTests {
+    @Test func evaluateMinerDiagnosticsExpanded() {
+        let (store, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        guard let device = store.devices.first,
+              let info = store.snapshots[device.id]?.info else { return }
+
+        let model = MinerDiagnosticsModel(info: info)
+        let collapsed = MinerDiagnosticsView(model: model, isExpanded: false)
+        let expanded = MinerDiagnosticsView(model: model, isExpanded: true)
+        evaluate(collapsed)
+        evaluate(expanded)
+        evaluate(expanded.clocksAndElectricalSection)
+        evaluate(expanded.thermalAndCoolingSection)
+        evaluate(expanded.hashrateAndPerformanceSection)
+    }
+
+    @Test func evaluateHashFleetAppRouting() {
+        let app = HashFleetApp()
+        evaluate(app.notificationLayer)
+        evaluate(app.mainTabs)
+        evaluate(app.fleetNavigation)
+        evaluate(app.aboutNavigation)
+
+        app.presentPreviewCelebration(.blockFound)
+        evaluate(app.notificationLayer)
+        app.presentPreviewCelebration(.bestShareSession)
+        evaluate(app.notificationLayer)
+        app.presentPreviewCelebration(.bestShareAllTime)
+        evaluate(app.notificationLayer)
+
+        app.pauseCelebrations()
+        app.resumeCelebrations()
+        app.disableSessionBestAlerts()
+        app.reconcileCelebrationSessionPreference()
+        app.openPendingFleetDestination()
+        app.openPendingMinerRoute()
+        app.restoreSceneStateIfPossible()
+        app.presentUITestCelebrationIfRequested()
+        app.presentUITestInAppAlertIfRequested()
+        app.dismissCelebration()
+    }
+
+    @Test func evaluateNumberFirstDetailView() {
+        let (store, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        guard let device = store.devices.first,
+              let info = store.snapshots[device.id]?.info else { return }
+        let insights = MiningInsightsStore()
+
+        let detailView = MinerDetailView(device: device, store: store, insights: insights)
+        evaluate(detailView.numberFirstTelemetry(info))
+
+        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+        _ = availability.canEditSettings
+        _ = availability.quickActions
+        _ = availability.cooling
+        _ = availability.tuning
+        _ = availability.rawAPI
+        _ = availability.settingsCategories(usesEssentialsPools: false)
+        _ = availability.settingsCategories(usesEssentialsPools: true)
+        _ = availability.showsSettingsHub(in: .full)
+        _ = availability.showsSettingsHub(in: .essentials)
+        _ = availability.firmwareUpdate(NumberFirstPreview.minerFirmwareNotice)
+    }
+
+    @Test func evaluateFleetHistoryCardDeep() {
+        let (store, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        for metric in MinerHistoryMetric.allCases {
+            var card = FleetHistoryCard(
+                devices: store.visibleDevices,
+                snapshots: store.snapshots,
+                isDemo: store.isDemo,
+                initialRecentRange: .oneMinute,
+                isCompactDashboard: false,
+                dashboardMode: .full,
+                numberFirst: false
+            )
+            card.selectedMetric = metric
+            evaluate(card)
+            evaluate(card.numberFirstChartControls)
+            evaluate(card.essentialsHistoryControls)
+        }
+
+        for range in FleetRecentRange.allCases {
+            let card = FleetHistoryCard(
+                devices: store.visibleDevices,
+                snapshots: store.snapshots,
+                isDemo: store.isDemo,
+                initialRecentRange: range,
+                isCompactDashboard: true,
+                dashboardMode: .essentials,
+                numberFirst: true
+            )
+            evaluate(card)
+        }
+
+        let pageCache = FleetHistoryPageCache()
+        let pageIdentity = FleetHistoryPageIdentity(
+            window: .daily,
+            recentRange: .oneMinute,
+            displayMode: .fleet,
+            kind: .sha256,
+            currentSignatures: [],
+            storedSignatures: [],
+            storedRevision: 1,
+            deviceMetadata: []
+        )
+        let resolvedPage = pageCache.resolve(pageIdentity) {
+            (histories: [], segments: nil)
+        }
+        _ = pageCache.resolve(pageIdentity) { resolvedPage }
+
+        let rangeCache = FleetHistoryRangeCache()
+        let rangeIdentity = FleetHistoryRangeIdentity(
+            kind: .sha256,
+            currentSignatures: [],
+            storedSignatures: [],
+            storedRevision: 1
+        )
+        let ranges = rangeCache.resolve(rangeIdentity, now: Date()) {
+            (ranges: [.oneMinute, .fifteenMinutes], expiration: Date().addingTimeInterval(60))
+        }
+        _ = rangeCache.resolve(rangeIdentity, now: Date()) {
+            (ranges: ranges, expiration: Date().addingTimeInterval(60))
         }
     }
 }
