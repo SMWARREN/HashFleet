@@ -222,5 +222,74 @@ struct MinerCustomJSONTests {
         #expect(throws: MinerCustomJSONError.notAnObject) {
             try draft.importJSON("[1, 2]")
         }
+        #expect(throws: MinerCustomJSONError.emptyInput) {
+            try draft.importJSON(" \n\t ")
+        }
+        let oversized = String(repeating: "x", count: MinerCustomJSONDraft.maximumPayloadBytes + 1)
+        #expect(throws: MinerCustomJSONError.oversized(oversized.utf8.count)) {
+            try draft.importJSON(oversized)
+        }
+    }
+
+    @Test("File import accepts a JSON object and rejects the closed set of bad files")
+    func importFromFileCoversEveryRejection() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("custom-json-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        var draft = MinerCustomJSONDraft()
+        let valid = directory.appendingPathComponent("settings.json")
+        try Data("{\"frequency\": 575, \"nested\": [1, true]}".utf8).write(to: valid)
+        try draft.importFromFile(url: valid)
+        #expect(draft.rawText.contains("\"frequency\" : 575"))
+
+        let wrongType = directory.appendingPathComponent("settings.txt")
+        try Data("{\"ok\": true}".utf8).write(to: wrongType)
+        #expect(throws: MinerCustomJSONError.invalidFileType) {
+            try draft.importFromFile(url: wrongType)
+        }
+
+        let directoryAsJSON = directory.appendingPathComponent("folder.json", isDirectory: true)
+        try FileManager.default.createDirectory(at: directoryAsJSON, withIntermediateDirectories: true)
+        #expect(throws: MinerCustomJSONError.invalidFileType) {
+            try draft.importFromFile(url: directoryAsJSON)
+        }
+
+        let missing = directory.appendingPathComponent("missing.json")
+        #expect(throws: MinerCustomJSONError.unreadableFile) {
+            try draft.importFromFile(url: missing)
+        }
+
+        let empty = directory.appendingPathComponent("empty.json")
+        try Data().write(to: empty)
+        #expect(throws: MinerCustomJSONError.emptyInput) {
+            try draft.importFromFile(url: empty)
+        }
+
+        let binary = directory.appendingPathComponent("binary.json")
+        try Data([0xFF, 0xFE, 0x00]).write(to: binary)
+        #expect(throws: MinerCustomJSONError.malformedJSON("File content is not valid UTF-8 text.")) {
+            try draft.importFromFile(url: binary)
+        }
+
+        let oversized = directory.appendingPathComponent("oversized.json")
+        try Data(repeating: 0x61, count: MinerCustomJSONDraft.maximumPayloadBytes + 1).write(to: oversized)
+        #expect(throws: MinerCustomJSONError.oversized(MinerCustomJSONDraft.maximumPayloadBytes + 1)) {
+            try draft.importFromFile(url: oversized)
+        }
+    }
+
+    @Test("Every custom JSON error describes the rejected condition")
+    func errorDescriptionsCoverEveryCase() {
+        let cases: [MinerCustomJSONError] = [
+            .emptyInput, .oversized(300_000), .malformedJSON("bad token"), .notAnObject,
+            .emptyObject, .nonFiniteNumber, .securityScopedAccessDenied, .invalidFileType, .unreadableFile
+        ]
+        for error in cases {
+            #expect(!(error.errorDescription ?? "").isEmpty)
+        }
+        #expect(MinerCustomJSONError.oversized(300_000).errorDescription?.contains("300000") == true)
+        #expect(MinerCustomJSONError.malformedJSON("bad token").errorDescription?.contains("bad token") == true)
     }
 }
