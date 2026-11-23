@@ -131,21 +131,11 @@ public enum FleetSharedStore {
             let height = info.raw["blockHeight"]?.intValue
             let showNewBlock = info.raw["showNewBlock"]?.boolValue == true
             let uptimeSeconds = info.raw["uptimeSeconds"]?.intValue
-            let rebooted: Bool
-            if let oldUptime = prior?.uptimeSeconds, let newUptime = uptimeSeconds {
-                rebooted = newUptime < oldUptime
-            } else {
-                rebooted = false
-            }
+            let rebooted = checkRebooted(priorUptime: prior?.uptimeSeconds, newUptime: uptimeSeconds)
             let bootID = rebooted || prior == nil ? UUID().uuidString : prior!.bootID
             var flagEventSequence = prior?.flagEventSequence ?? 0
             var lastFlagEventID = prior?.lastFlagEventID
-            let countIncreased: Bool
-            if let oldCount = prior?.count, let newCount = count {
-                countIncreased = newCount > oldCount && !rebooted
-            } else {
-                countIncreased = false
-            }
+            let countIncreased = checkCountIncreased(priorCount: prior?.count, newCount: count, rebooted: rebooted)
             let isEvent = (showNewBlock && !(prior?.showNewBlock ?? false)) || countIncreased
             if isEvent {
                 flagEventSequence += 1
@@ -176,6 +166,16 @@ public enum FleetSharedStore {
             let value = try? JSONDecoder().decode([String: BlockObservationState].self, from: data)
         else { return [:] }
         return value
+    }
+
+    private static func checkRebooted(priorUptime: Int?, newUptime: Int?) -> Bool {
+        guard let priorUptime, let newUptime else { return false }
+        return newUptime < priorUptime
+    }
+
+    private static func checkCountIncreased(priorCount: Int?, newCount: Int?, rebooted: Bool) -> Bool {
+        guard let priorCount, let newCount else { return false }
+        return newCount > priorCount && !rebooted
     }
 
     private static func writeBlockObservationStates(

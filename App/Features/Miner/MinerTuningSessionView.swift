@@ -477,7 +477,7 @@ extension MinerTuningSessionView {
         setpoints.observe(configuredFrequency: configuredFrequency, configuredVoltage: configuredVoltage, reference: reference)
     }
 
-    private func restoreDraft() {
+    func restoreDraft() {
         setpoints.restore(configuredFrequency: configuredFrequency, configuredVoltage: configuredVoltage, reference: reference)
         easyResetGeneration += 1
         invalidEasyFields.removeAll()
@@ -501,7 +501,7 @@ extension MinerTuningSessionView {
         journal = MinerTuningJournalStore.record(title: title, detail: detail, to: journal, deviceID: device.id)
     }
 
-    private func applyStagedChange() {
+    func applyStagedChange() {
         guard !isApplying, !hasUnfinishedEasyInput, riskAcknowledged, canWrite, voltageRestriction == nil,
             let payload = reviewedPayload, payload == stagedPayload else {
             error = "The reviewed change is no longer available. Review the draft and connection before applying."

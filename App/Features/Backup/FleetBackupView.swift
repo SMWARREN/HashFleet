@@ -128,7 +128,7 @@ struct FleetBackupView: View {
     }
 
     @ViewBuilder
-    private func restorePreview(_ preview: FleetBackupRestorePreview) -> some View {
+    func restorePreview(_ preview: FleetBackupRestorePreview) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Review import")
                 .fleetFont(.headline)
@@ -177,7 +177,7 @@ struct FleetBackupView: View {
         )
     }
 
-    private func prepareExport() {
+    func prepareExport() {
         do {
             exportDocument = FleetBackupFileDocument(data: try store.fleetBackupExportData())
             isExporting = true
@@ -209,7 +209,7 @@ struct FleetBackupView: View {
         }
     }
 
-    private func confirmImport() {
+    func confirmImport() {
         guard let pendingData, let preview else { return }
         do {
             let count = try store.applyFleetBackup(data: pendingData, expectedPreview: preview)
@@ -220,7 +220,7 @@ struct FleetBackupView: View {
         }
     }
 
-    private func clearPreview() {
+    func clearPreview() {
         pendingData = nil
         preview = nil
     }

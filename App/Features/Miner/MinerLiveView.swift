@@ -108,6 +108,12 @@ final class MinerLiveModel {
         }
     }
 
+    /// Records one already-received frame through the same formatter and field merger
+    /// used by the socket loop. It does not open a connection.
+    func recordReceived(_ data: Data, endpoint: MinerEndpoint) {
+        handleMessage(.data(data), endpoint: endpoint)
+    }
+
     func disconnect() {
         generation = UUID()
         task?.cancel()
@@ -126,18 +132,20 @@ struct MinerLiveView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var endpoint: MinerEndpoint
-    @State private var model = MinerLiveModel()
+    @State var model: MinerLiveModel
 
     init(
         device: MinerDevice,
         isDemo: Bool,
         initialEndpoint: MinerEndpoint = .liveWebSocket,
-        navigationIdentity: MinerNavigationIdentity? = nil
+        navigationIdentity: MinerNavigationIdentity? = nil,
+        model: MinerLiveModel = MinerLiveModel()
     ) {
         self.device = device
         self.isDemo = isDemo
         self.navigationIdentity = navigationIdentity
         _endpoint = State(initialValue: initialEndpoint)
+        _model = State(initialValue: model)
     }
 
     var body: some View {
@@ -316,7 +324,7 @@ struct MinerLiveView: View {
         }
     }
 
-    private var telemetry: some View {
+    var telemetry: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("MERGED TELEMETRY DIFFS")
                 .font(FleetTheme.mono())

@@ -157,7 +157,7 @@ extension FleetHistoryCard {
         }
     }
 
-    private var savedHistoryOptions: some View {
+    var savedHistoryOptions: some View {
         VStack(alignment: .leading, spacing: 6) {
             if chartDevices.count > 1 {
                 FleetSettingsPicker(
@@ -190,7 +190,7 @@ extension FleetHistoryCard {
         .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private var essentialsRangeMenu: some View {
+    var essentialsRangeMenu: some View {
         Menu {
             ForEach(selectedMetric == .hashrate ? visibleRecentRanges : FleetRecentRange.allCases) { range in
                 let selected = selectedWindow == .daily && range == recentRange
@@ -223,7 +223,7 @@ extension FleetHistoryCard {
         .accessibilityIdentifier("dashboard.historyRangeMenu")
     }
 
-    private var historyControlsButton: some View {
+    var historyControlsButton: some View {
         let title = showsHistoryControls ? "Hide history options" : (isMinerDetail ? "View history" : "History options")
         return Button { showsHistoryControls.toggle() } label: {
             if numberFirst {
@@ -504,7 +504,7 @@ extension FleetHistoryCard {
     }
 
     @ViewBuilder
-    private var historyOptionsPopoverContent: some View {
+    var historyOptionsPopoverContent: some View {
         if numberFirst {
             ViewThatFits(in: .vertical) {
                 historyOptionsPanel.fixedSize(horizontal: false, vertical: true)
@@ -518,7 +518,7 @@ extension FleetHistoryCard {
         }
     }
 
-    private var historyOptionsPanel: some View {
+    var historyOptionsPanel: some View {
         VStack(alignment: .leading, spacing: numberFirst ? 4 : 12) {
             if chartDevices.count > 1 {
                 if numberFirst {
@@ -564,7 +564,7 @@ extension FleetHistoryCard {
         .padding(.all, numberFirst ? 10 : nil)
         .frame(minWidth: numberFirst ? 260 : 230)
     }
-    private var previewHistoryDisplayChoices: some View {
+    var previewHistoryDisplayChoices: some View {
         HStack(spacing: 4) {
             ForEach(FleetHistoryDisplay.allCases, id: \.self) { mode in
                 let selected = displayMode == mode

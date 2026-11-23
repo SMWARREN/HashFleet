@@ -6,8 +6,13 @@ import HashFleetCore
 /// external-data opt-out exactly like NetworkInsightsView.
 struct PoolStatsHubView: View {
     let fleet: FleetStore
-    @State private var store = ConnectedPoolsStore()
+    @State var store: ConnectedPoolsStore
     @Environment(\.scenePhase) private var scenePhase
+
+    init(fleet: FleetStore, store: ConnectedPoolsStore = ConnectedPoolsStore()) {
+        self.fleet = fleet
+        _store = State(initialValue: store)
+    }
 
     private var entries: [PoolStatsHubEntry] {
         let memberships = fleet.devices.flatMap { device -> [PoolStatsHubEntry.Membership] in

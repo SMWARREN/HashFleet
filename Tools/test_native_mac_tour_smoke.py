@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import resource
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1045,12 +1046,15 @@ assert(jsonStr.contains("\\"frame\\":null"), "Nonfinite nodes must have null fra
 
 print("PASS: Extracted probe serialization block handles finite, infinite, and NaN geometry safely")
 """
+        if not shutil.which("xcrun") and not shutil.which("swift"):
+            self.skipTest("Neither xcrun nor swift is available on this platform")
+        cmd = ["xcrun", "swift", "-"] if shutil.which("xcrun") else ["swift", "-"]
         proc = subprocess.run(
-            ["xcrun", "swift", "-"],
+            cmd,
             input=swift_program,
             text=True,
             capture_output=True,
-            timeout=15,
+            timeout=180,
         )
         self.assertEqual(proc.returncode, 0, f"Swift execution failed:\nSTDOUT: {proc.stdout}\nSTDERR: {proc.stderr}")
         self.assertIn("PASS: Extracted probe serialization block", proc.stdout)

@@ -128,8 +128,8 @@ TOUR_STEPS: Tuple[TourStepSpec, ...] = (
         screen="settings",
         target="guide.preferencesEntry",
         title="Find display settings",
-        instruction_substr="In Settings, tap Preferences",
-        tap_title="Open Preferences",
+        instruction_substr="In App settings, tap Fleet",
+        tap_title="Open Fleet preferences",
     ),
     TourStepSpec(
         id="appearance",

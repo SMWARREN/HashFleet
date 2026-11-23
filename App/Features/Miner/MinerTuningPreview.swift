@@ -40,7 +40,7 @@ struct MinerTuningPreviewRoute: View {
     }
 }
 
-private struct MinerTuningPreview: View {
+struct MinerTuningPreview: View {
     let mode: FleetPreferences.DashboardMode
     let device: MinerDevice
     let store: FleetStore
@@ -456,7 +456,7 @@ private struct MinerTuningPreview: View {
     }
 }
 
-private struct MinerTuningPreviewReview: View {
+struct MinerTuningPreviewReview: View {
     let request: MinerTuningPreviewDraft.Review
     let canConfirm: Bool
     let isLive: Bool

@@ -94,6 +94,14 @@ public final class DeveloperTipJarService {
         }
     }
 
+    #if DEBUG
+    func setTestState(loading: Bool, error: String?, attempted: Bool) {
+        isLoadingProducts = loading
+        loadError = error
+        hasAttemptedLoad = attempted
+    }
+    #endif
+
     deinit {
         updatesTask?.cancel()
     }

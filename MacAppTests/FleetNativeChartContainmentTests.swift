@@ -32,12 +32,15 @@ struct FleetNativeChartContainmentTests {
             HashratePoint(date: date, value: value)
         }
         if clipped {
-            let productionChart = productionCard.historyChart(
-                [MinerHistorySeries(name: "Offline chart fixture", points: points)],
+            let series = [MinerHistorySeries(name: "Offline chart fixture", points: points)]
+            let selection = FleetChartSelection.resolve(at: points[2].date, in: series, tolerance: 120)
+            let selectedChart = productionCard.historyChart(
+                series,
                 window: .daily,
-                selection: nil
+                selection: selection,
+                segments: [FleetHistorySegment(id: 0, points: [points[2]])]
             )
-            return AnyView(productionChart.frame(width: width))
+            return AnyView(selectedChart.frame(width: width))
         }
 
         // Positive control mirrors the production marks and focused domain but deliberately omits

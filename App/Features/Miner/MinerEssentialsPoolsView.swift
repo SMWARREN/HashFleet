@@ -113,7 +113,7 @@ struct MinerEssentialsPoolsView: View {
     }
 }
 
-private struct MinerEssentialsPoolEditor: View {
+struct MinerEssentialsPoolEditor: View {
     private enum Field: Hashable { case server, port, worker, password }
 
     let device: MinerDevice
@@ -256,7 +256,7 @@ private struct MinerEssentialsPoolEditor: View {
             .accessibilityHidden(true)
     }
 
-    private func reviewMessage(_ change: MinerEssentialsPoolChange) -> String {
+    func reviewMessage(_ change: MinerEssentialsPoolChange) -> String {
         var details = ["\(device.name) · \(change.address)"]
         if change.changesWorker { details.append("Updates the worker or wallet you entered.") }
         if change.changesPassword { details.append("Replaces this connection’s password.") }
@@ -264,7 +264,7 @@ private struct MinerEssentialsPoolEditor: View {
         return details.joined(separator: "\n\n")
     }
 
-    private func buildReview() {
+    func buildReview() {
         focused = nil
         failure = nil
         receipt = nil
@@ -279,7 +279,7 @@ private struct MinerEssentialsPoolEditor: View {
         }
     }
 
-    private func save(_ change: MinerEssentialsPoolChange) {
+    func save(_ change: MinerEssentialsPoolChange) {
         guard !isSaving, !requiresReopen else { return }
         guard currentInfo != nil else {
             failure = "The miner connection changed. Nothing was sent. Reopen Pools to try again."

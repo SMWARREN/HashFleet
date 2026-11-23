@@ -97,22 +97,11 @@ actor FleetCelebrationQueueWorker {
         case .close:
             preconditionFailure("Close is handled before opening storage")
         case let .present(event, sessionEnabled):
-            if !sessionEnabled, event.kind == .bestShareSession {
-                accepted = true
-            } else if sessionEnabled || queue!.removeSessionBests() {
-                accepted = queue!.present(event)
-            }
+            accepted = handlePresent(event: event, sessionEnabled: sessionEnabled, in: &queue!)
         case .dismiss(let id), .pause(let id), .acknowledgeAndPause(let id):
-            if queue!.current?.id != id {
-                stale = true
-            } else {
-                switch command {
-                case .dismiss: accepted = queue!.dismiss()
-                case .pause: accepted = queue!.pause()
-                case .acknowledgeAndPause: accepted = queue!.acknowledgeAndPause()
-                default: break
-                }
-            }
+            let outcome = handleTargetedAction(command: command, id: id, in: &queue!)
+            accepted = outcome.accepted
+            stale = outcome.stale
         case .resume(let sessionEnabled):
             if sessionEnabled || queue!.removeSessionBests() { accepted = queue!.resume() }
         case .removeSessionBests:
@@ -126,6 +115,30 @@ actor FleetCelebrationQueueWorker {
             current: current, pending: pending, unacknowledgedCount: queue!.unacknowledgedCount,
             isPaused: queue!.isPaused, storageError: error)
         return .init(accepted: accepted, staleAction: stale, snapshot: snapshot)
+    }
+
+    private func handlePresent(event: FleetCelebration, sessionEnabled: Bool, in queue: inout FleetCelebrationQueue) -> Bool {
+        if !sessionEnabled, event.kind == .bestShareSession {
+            return true
+        }
+        if sessionEnabled || queue.removeSessionBests() {
+            return queue.present(event)
+        }
+        return false
+    }
+
+    private func handleTargetedAction(command: FleetCelebrationQueueController.Command, id: UUID, in queue: inout FleetCelebrationQueue) -> (accepted: Bool, stale: Bool) {
+        guard queue.current?.id == id else {
+            return (accepted: false, stale: true)
+        }
+        let accepted: Bool
+        switch command {
+        case .dismiss: accepted = queue.dismiss()
+        case .pause: accepted = queue.pause()
+        case .acknowledgeAndPause: accepted = queue.acknowledgeAndPause()
+        default: accepted = false
+        }
+        return (accepted: accepted, stale: false)
     }
 
     private func openQueueIfNeeded() {

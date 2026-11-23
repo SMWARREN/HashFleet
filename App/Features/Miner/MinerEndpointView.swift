@@ -197,7 +197,7 @@ struct MinerEndpointView: View {
         .environment(\.minerNavigationIdentity, navigationIdentity)
     }
 
-    private func confirmationSheet(_ request: PendingMinerWrite) -> some View {
+    func confirmationSheet(_ request: PendingMinerWrite) -> some View {
         MinerWriteConfirmation(
             device: device,
             request: request,
@@ -211,7 +211,7 @@ struct MinerEndpointView: View {
         .environment(\.minerNavigationIdentity, navigationIdentity)
     }
 
-    private func sendAfterReviewDismisses() {
+    func sendAfterReviewDismisses() {
         // Cancel and interactive dismissal never stage an authorized request. A confirmed
         // request is consumed once and the lower-level write service rechecks availability.
         guard let request = confirmedRequest else { return }
@@ -223,7 +223,7 @@ struct MinerEndpointView: View {
         }
     }
 
-    private func prepare() {
+    func prepare() {
         guard pending == nil, confirmedRequest == nil, !isSendingWrite, !model.isRunning else { return }
         do {
             let query = try queryItems()
@@ -261,7 +261,7 @@ struct MinerEndpointView: View {
         } catch { model.error = error.localizedDescription }
     }
 
-    private func run(_ endpoint: MinerEndpoint, body: Data?, query: [URLQueryItem]) async {
+    func run(_ endpoint: MinerEndpoint, body: Data?, query: [URLQueryItem]) async {
         let isWrite = MinerRequestSafety.isWrite(endpoint)
         await model.execute(
             device: device,
@@ -290,11 +290,12 @@ struct MinerEndpointView: View {
         completionAlert = alert
     }
 
-    private func queryItems() throws -> [URLQueryItem] {
+    func queryItems(columns: String? = nil, extraQuery: String? = nil) throws -> [URLQueryItem] {
         var items: [URLQueryItem] = []
-        let columns = columns.trimmingCharacters(in: .whitespacesAndNewlines)
-        if endpoint == .statistics, !columns.isEmpty { items.append(URLQueryItem(name: "columns", value: columns)) }
-        for line in extraQuery.split(whereSeparator: \.isNewline) {
+        let columnsVal = (columns ?? self.columns).trimmingCharacters(in: .whitespacesAndNewlines)
+        if endpoint == .statistics, !columnsVal.isEmpty { items.append(URLQueryItem(name: "columns", value: columnsVal)) }
+        let extraQueryVal = extraQuery ?? self.extraQuery
+        for line in extraQueryVal.split(whereSeparator: \.isNewline) {
             let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             let name = String(parts[0]).trimmingCharacters(in: .whitespaces)
             guard parts.count == 2, !name.isEmpty else {
@@ -308,7 +309,7 @@ struct MinerEndpointView: View {
         return items
     }
 
-    private func importFile(_ result: Result<[URL], Error>) {
+    func importFile(_ result: Result<[URL], Error>) {
         do {
             guard let url = try result.get().first else { return }
             guard url.pathExtension.lowercased() == "bin" else {

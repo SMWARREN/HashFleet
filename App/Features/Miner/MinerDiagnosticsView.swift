@@ -10,6 +10,11 @@ struct MinerDiagnosticsView: View {
     @ScaledMetric(relativeTo: .title3) private var iconColumnWidth: CGFloat = 28
     @State private var isExpanded: Bool = false
 
+    init(model: MinerDiagnosticsModel, isExpanded: Bool = false) {
+        self.model = model
+        _isExpanded = State(initialValue: isExpanded)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {

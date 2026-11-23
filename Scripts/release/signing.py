@@ -14,5 +14,5 @@ def decode_certificate(encoded: str) -> bytes:
         raise ValueError('MACOS_CERTIFICATE_P12 must not be empty')
     try:
         return base64.b64decode(compact, validate=True)
-    except (binascii.Error, ValueError):
+    except ValueError:
         raise ValueError('MACOS_CERTIFICATE_P12 must contain valid standard Base64') from None

@@ -134,7 +134,7 @@ struct DeveloperTipJarSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func handleStateChange(_ state: DeveloperTipPurchaseState) {
+    func handleStateChange(_ state: DeveloperTipPurchaseState) {
         switch state {
         case .idle, .purchasing:
             break

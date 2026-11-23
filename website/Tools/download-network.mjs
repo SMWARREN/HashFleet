@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import net from 'node:net'
 
-const origins = ['http://127.0.0.1:4173', 'http://127.0.0.1:4174']
+const origins = new Set(['http://127.0.0.1:4173', 'http://127.0.0.1:4174'])
 // Chromium uses the last --disable-features switch. Retain the installed
 // Playwright 1.66.0-alpha-1794252756000 defaults instead of replacing them.
 // Revalidate these and the strict proxy counter when upgrading the CLI.
@@ -15,8 +15,8 @@ const disabledFeatures = [
 ]
 
 export function downloadBrowserConfig(origin, proxyServer) {
-  assert(origins.includes(origin), 'Only an exact documented loopback origin is allowed')
-  assert(/^http:\/\/127\.0\.0\.1:[1-9][0-9]*$/.test(proxyServer), 'A local deny proxy is required')
+  assert(origins.has(origin), 'Only an exact documented loopback origin is allowed')
+  assert(/^http:\/\/127\.0\.0\.1:[1-9]\d*$/.test(proxyServer), 'A local deny proxy is required')
   return {
     browser: {
       browserName: 'chromium',
@@ -114,22 +114,39 @@ export function validateDownloadResult(result, origin, deniedConnections) {
 
 // Preserve the acceptance error, even when browser/sink cleanup also fails.
 export async function withDownloadCleanup(work, cleanup, reportCleanup = console.error) {
-  let failed = false
+  let hasWorkError = false
+  let workError
+  let workResult
   try {
-    return await work()
+    workResult = await work()
   } catch (error) {
-    failed = true
-    throw error
-  } finally {
-    try {
-      await cleanup()
-    } catch (error) {
-      if (!failed) throw error
+    hasWorkError = true
+    workError = error
+  }
+
+  let hasCleanupError = false
+  let cleanupError
+  try {
+    await cleanup()
+  } catch (error) {
+    hasCleanupError = true
+    cleanupError = error
+  }
+
+  if (hasWorkError) {
+    if (hasCleanupError) {
       try {
-        reportCleanup(`Cleanup also failed: ${error?.message ?? String(error)}`)
+        reportCleanup(`Cleanup also failed: ${cleanupError?.message ?? String(cleanupError)}`)
       } catch {
         // Even a failed diagnostic must not replace the original failure.
       }
     }
+    throw workError
   }
+
+  if (hasCleanupError) {
+    throw cleanupError
+  }
+
+  return workResult
 }

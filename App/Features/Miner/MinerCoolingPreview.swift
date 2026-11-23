@@ -146,7 +146,7 @@ struct MinerCoolingPreview: View {
         _draft = State(initialValue: initial)
     }
 
-    private struct Review: Identifiable {
+    struct Review: Identifiable {
         let id = UUID()
         let changes: [String: JSONValue]
         let json: String
@@ -365,7 +365,7 @@ struct MinerCoolingPreview: View {
         .accessibilityIdentifier("cooling.\(field.rawValue).\(increasing ? "increase" : "decrease")")
     }
 
-    private var actions: some View {
+    var actions: some View {
         let direct = mode == .essentials
         let title = direct ? "Apply Changes" : "Review Changes"
         let pending = direct && isApplying
@@ -405,7 +405,7 @@ struct MinerCoolingPreview: View {
             .accessibilityIdentifier("cooling.error")
     }
 
-    private func reviewSheet(_ request: Review) -> some View {
+    func reviewSheet(_ request: Review) -> some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {

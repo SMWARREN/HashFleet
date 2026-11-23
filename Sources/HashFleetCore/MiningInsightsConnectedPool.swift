@@ -46,16 +46,7 @@ public struct ConnectedPoolLookup: Hashable, Sendable {
     ) -> (hostText: String?, username: String?)? {
         if let rawPools = info.raw["pools"] {
             guard let pools = rawPools.arrayValue, let index else { return nil }
-            guard
-                ConfiguredMiningPool.resolve(info: info).contains(where: {
-                    $0.id == "slot-\(index)" && $0.isActive == true
-                })
-            else { return nil }
-            // Match by reported ID, never by ordering or by searching for any configured CKPool account.
-            let matches = pools.compactMap(\.objectValue).filter { MiningInsightsParser.integer($0["id"]) == index }
-            guard matches.count == 1, let selected = matches.first else { return nil }
-            return (string(selected["url"]) ?? string(selected["stratumURL"]),
-                string(selected["user"]) ?? string(selected["stratumUser"]))
+            return slotPoolEntry(info: info, pools: pools, index: index)
         }
         if info.raw["activePoolIndex"] != nil { return nil }
         if fallback {
@@ -64,6 +55,23 @@ public struct ConnectedPoolLookup: Hashable, Sendable {
         return (
             string(info.raw["stratumURL"]) ?? string(info.raw["poolURL"]),
             string(info.raw["stratumUser"])
+        )
+    }
+
+    private static func slotPoolEntry(
+        info: MinerInfo,
+        pools: [JSONValue],
+        index: Int
+    ) -> (hostText: String?, username: String?)? {
+        guard ConfiguredMiningPool.resolve(info: info).contains(where: {
+            $0.id == "slot-\(index)" && $0.isActive == true
+        }) else { return nil }
+        // Match by reported ID, never by ordering or by searching for any configured CKPool account.
+        let matches = pools.compactMap(\.objectValue).filter { MiningInsightsParser.integer($0["id"]) == index }
+        guard matches.count == 1, let selected = matches.first else { return nil }
+        return (
+            string(selected["url"]) ?? string(selected["stratumURL"]),
+            string(selected["user"]) ?? string(selected["stratumUser"])
         )
     }
 

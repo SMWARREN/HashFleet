@@ -258,40 +258,50 @@ final class WebPFrameImageView: WebPPlatformImageView {
         let index = desiredFrameIndex
         let revision = generation
         frameTask = Task { [weak self, frameStore] in
-            var result = await frameStore.prepareFrame(for: animation, index: index, pixelSize: pixelSize)
-            // A full cache is temporary, not a permanently blank paused poster. Retry
-            // with one cancellable task at a bounded rate, never a task per UI tick.
-            // Do not retain the view across the wait or retry invalid/oversized inputs.
-            while case .busy = result {
-                guard !Task.isCancelled, self?.generation == revision else { return }
-                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
-                result = await frameStore.prepareFrame(for: animation, index: index, pixelSize: pixelSize)
-            }
+            let result = await Self.fetchFrameWithRetry(
+                frameStore: frameStore,
+                target: (animation: animation, index: index, pixelSize: pixelSize),
+                revision: revision,
+                currentRevision: { [weak self] in self?.generation }
+            )
             guard !Task.isCancelled, let self, self.generation == revision else { return }
             self.frameTask = nil
             guard case let .ready(frame) = result else {
-                // A permanent decode/geometry failure cannot improve on the next tick.
-                // Keep the approved poster or last frame and retry only after a new
-                // data, size/scale or playback lifecycle generation is configured.
                 self.frameUnavailable = true
                 self.stopClock()
                 return
             }
-            // Replacing the image before releasing the previous lease keeps all live bitmaps
-            // accounted for. Data, scale, pause and teardown changes invalidate the generation.
-#if canImport(UIKit)
-            self.image = UIImage(cgImage: frame.image,
-                                 scale: CGFloat(frame.image.width) / self.displaySize.width, orientation: .up)
-#else
-            self.image = NSImage(cgImage: frame.image, size: self.displaySize)
-#endif
-            self.currentFrame = frame
-            self.currentFrameIndex = index
-            self.currentPixelSize = pixelSize
-            self.start()
-            // Skip obsolete intermediate frames, rather than queuing a decode per clock tick.
-            if self.desiredFrameIndex != index { self.requestFrame() }
+            self.applyReadyFrame(frame, index: index, pixelSize: pixelSize)
         }
+    }
+
+    private static func fetchFrameWithRetry(
+        frameStore: WebPFrameStore,
+        target: (animation: WebPAnimation, index: Int, pixelSize: WebPPixelSize),
+        revision: UInt64,
+        currentRevision: () -> UInt64?
+    ) async -> WebPFrameStore.Preparation {
+        var result = await frameStore.prepareFrame(for: target.animation, index: target.index, pixelSize: target.pixelSize)
+        while case .busy = result {
+            guard !Task.isCancelled, currentRevision() == revision else { return .busy }
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return .busy }
+            result = await frameStore.prepareFrame(for: target.animation, index: target.index, pixelSize: target.pixelSize)
+        }
+        return result
+    }
+
+    private func applyReadyFrame(_ frame: WebPFrameLease, index: Int, pixelSize: WebPPixelSize) {
+#if canImport(UIKit)
+        self.image = UIImage(cgImage: frame.image,
+                             scale: CGFloat(frame.image.width) / self.displaySize.width, orientation: .up)
+#else
+        self.image = NSImage(cgImage: frame.image, size: self.displaySize)
+#endif
+        self.currentFrame = frame
+        self.currentFrameIndex = index
+        self.currentPixelSize = pixelSize
+        self.start()
+        if self.desiredFrameIndex != index { self.requestFrame() }
     }
 
     private func start() {

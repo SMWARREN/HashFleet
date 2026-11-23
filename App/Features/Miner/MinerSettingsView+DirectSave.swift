@@ -114,7 +114,7 @@ extension MinerSettingsView {
         return MinerInlineActionState.identity(from: info)
     }
 
-    private func saveDirectly(_ payload: JSONValue, displaySetting: MinerDisplaySetting? = nil) {
+    func saveDirectly(_ payload: JSONValue, displaySetting: MinerDisplaySetting? = nil) {
         guard !isSaving, !isRestartingDisplay else { return }
         guard MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: payload) else { return }
         saveMessage = nil

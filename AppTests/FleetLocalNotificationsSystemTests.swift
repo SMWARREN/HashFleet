@@ -299,4 +299,39 @@ struct FleetLocalNotificationsSystemTests {
         #expect(presented.count == 1, "The background event must not add a second in-app banner.")
         await drainPending()
     }
+
+    @Test func setupRegistersCategoriesAndForegroundPresentationFollowsVisibility() async {
+        FleetLocalNotifications.setup()
+        let categories = await center.notificationCategories()
+        let identifiers = Set(categories.map(\.identifier))
+        #expect(identifiers.isSuperset(of: [
+            "app.hashfleet.block", "app.hashfleet.bestShare",
+            FleetNotificationDelegate.sessionBestCategory, "app.hashfleet.summary"
+        ]))
+
+        let hidden = FleetNotificationDelegate.foregroundPresentation(
+            forCategory: "app.hashfleet.block", dashboardBannerVisible: false, celebrationVisible: false)
+        #expect(hidden.contains(.banner))
+        let visible = FleetNotificationDelegate.foregroundPresentation(
+            forCategory: "app.hashfleet.block", dashboardBannerVisible: true, celebrationVisible: true)
+        #expect(visible == [.list])
+        let status = FleetNotificationDelegate.foregroundPresentation(
+            forCategory: "app.hashfleet.summary", dashboardBannerVisible: true, celebrationVisible: true)
+        #expect(status.contains(.banner))
+
+        FleetInAppSurface.dashboardBannerVisible = true
+        FleetInAppSurface.celebrationVisible = true
+        #expect(FleetInAppSurface.dashboardBannerVisible)
+        #expect(FleetInAppSurface.celebrationVisible)
+        FleetInAppSurface.dashboardBannerVisible = false
+        FleetInAppSurface.celebrationVisible = false
+        #expect(!FleetInAppSurface.dashboardBannerVisible)
+        #expect(!FleetInAppSurface.celebrationVisible)
+
+        FleetLocalNotifications.clearBadge()
+        let deviceID = UUID()
+        let identifiersForDevice = FleetLocalNotifications.statusNotificationIdentifiers(for: deviceID)
+        #expect(identifiersForDevice.count == 7)
+        #expect(identifiersForDevice.allSatisfy { $0.contains(deviceID.uuidString) })
+    }
 }

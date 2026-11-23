@@ -151,7 +151,7 @@ struct FleetMilestonesCard: View {
     }
 
     @ViewBuilder
-    private func blockFoundBanner(sum: FleetMilestonesSummary) -> some View {
+    func blockFoundBanner(sum: FleetMilestonesSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 ZStack {
@@ -230,7 +230,7 @@ struct FleetMilestonesCard: View {
     }
 
     @ViewBuilder
-    private func searchingContent(sum: FleetMilestonesSummary) -> some View {
+    func searchingContent(sum: FleetMilestonesSummary) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .fleetFont(.title2)

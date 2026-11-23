@@ -5,11 +5,18 @@ from pathlib import Path
 
 from PIL import Image
 
-from prepare_hash_fleet_wan_workflow import (
-    BACKING_RGB,
-    configure_workflow,
-    make_reference_image,
-)
+try:
+    from Tools.prepare_hash_fleet_wan_workflow import (
+        BACKING_RGB,
+        configure_workflow,
+        make_reference_image,
+    )
+except ImportError:
+    from prepare_hash_fleet_wan_workflow import (
+        BACKING_RGB,
+        configure_workflow,
+        make_reference_image,
+    )
 
 
 def sample_workflow():

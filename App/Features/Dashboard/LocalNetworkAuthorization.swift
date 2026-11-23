@@ -50,6 +50,20 @@ final class LocalNetworkAuthorization {
         attempt = id
         status = .requesting
         let serviceName = "HashFleet-\(id.uuidString)"
+        guard setupListener(serviceName: serviceName, id: id) else {
+            finish(.notRequested)
+            return
+        }
+        setupBrowser(serviceName: serviceName, id: id)
+        timeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(60))
+            guard !Task.isCancelled, let self, self.attempt == id else { return }
+            // An unanswered prompt, unavailable network, or service error is not approval.
+            self.finish(.notRequested)
+        }
+    }
+
+    private func setupListener(serviceName: String, id: UUID) -> Bool {
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = false
         do {
@@ -67,11 +81,13 @@ final class LocalNetworkAuthorization {
             }
             self.listener = listener
             listener.start(queue: .main)
+            return true
         } catch {
-            finish(.notRequested)
-            return
+            return false
         }
+    }
 
+    private func setupBrowser(serviceName: String, id: UUID) {
         let browser = NWBrowser(for: .bonjour(type: Self.serviceType, domain: "local."), using: .tcp)
         browser.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in
@@ -100,12 +116,6 @@ final class LocalNetworkAuthorization {
         }
         self.browser = browser
         browser.start(queue: .main)
-        timeout = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(60))
-            guard !Task.isCancelled, let self, self.attempt == id else { return }
-            // An unanswered prompt, unavailable network, or service error is not approval.
-            self.finish(.notRequested)
-        }
     }
 
     static func isPolicyDenied(_ error: NWError) -> Bool {

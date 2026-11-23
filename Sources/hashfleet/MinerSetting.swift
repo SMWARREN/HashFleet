@@ -63,33 +63,48 @@ struct MinerSetting {
 
     func parse(_ draft: String) throws -> JSONValue {
         if isSecret {
-            guard draft.utf8.count <= 255, TerminalText.safe(draft) == draft, draft != "*****" else {
-                throw SettingsError.message("Use up to 255 bytes without control characters. ***** is reserved; press Esc to keep the current password.")
-            }
-            return .string(draft)
+            return try parseSecret(draft)
         }
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, text.utf8.count <= 255, TerminalText.safe(text) == text else {
-            throw SettingsError.message("Enter a value of 1–255 bytes without control characters.")
-        }
+        let text = try parseCleanText(draft)
         switch input {
         case .password: return .string(draft)
-        case .protocolName:
-            guard ["SV1", "SV2"].contains(text.uppercased()) else { throw SettingsError.message("Enter SV1 or SV2.") }
-            return .string(text.uppercased())
+        case .protocolName: return try parseProtocol(text)
         case .text: return .string(text)
         case .hostname: return try parseHostname(text)
         case .poolHost: return try parsePoolHost(text)
         case .integer(let low, let high): return try parseInteger(text, low, high)
         case .decimal: return try parseDecimal(text)
         case .toggle: return try parseToggle(text)
-        case .rotation:
-            let value = try parseInteger(text, 0, 270)
-            guard [0, 90, 180, 270].contains(value.intValue ?? -1) else {
-                throw SettingsError.message("Choose 0, 90, 180 or 270 degrees.")
-            }
-            return value
+        case .rotation: return try parseRotation(text)
         }
+    }
+
+    private func parseSecret(_ draft: String) throws -> JSONValue {
+        guard draft.utf8.count <= 255, TerminalText.safe(draft) == draft, draft != "*****" else {
+            throw SettingsError.message("Use up to 255 bytes without control characters. ***** is reserved; press Esc to keep the current password.")
+        }
+        return .string(draft)
+    }
+
+    private func parseCleanText(_ draft: String) throws -> String {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, text.utf8.count <= 255, TerminalText.safe(text) == text else {
+            throw SettingsError.message("Enter a value of 1–255 bytes without control characters.")
+        }
+        return text
+    }
+
+    private func parseProtocol(_ text: String) throws -> JSONValue {
+        guard ["SV1", "SV2"].contains(text.uppercased()) else { throw SettingsError.message("Enter SV1 or SV2.") }
+        return .string(text.uppercased())
+    }
+
+    private func parseRotation(_ text: String) throws -> JSONValue {
+        let value = try parseInteger(text, 0, 270)
+        guard [0, 90, 180, 270].contains(value.intValue ?? -1) else {
+            throw SettingsError.message("Choose 0, 90, 180 or 270 degrees.")
+        }
+        return value
     }
 
     private func parseInteger(_ text: String, _ low: Int, _ high: Int) throws -> JSONValue {

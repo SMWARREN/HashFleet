@@ -5,6 +5,7 @@
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic"
       runPostActionsOnFailure = "NO">
       <BuildActionEntries>
          <BuildActionEntry
@@ -48,6 +49,17 @@
                BlueprintIdentifier = "B4FAAD8B8124C609DD895916"
                BuildableName = "HashFleetMacTests.xctest"
                BlueprintName = "HashFleetMacTests"
+               ReferencedContainer = "container:HashFleet.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "35D2135CCDC4B268650CE52E"
+               BuildableName = "HashFleetAppMacTests.xctest"
+               BlueprintName = "HashFleetAppMacTests"
                ReferencedContainer = "container:HashFleet.xcodeproj">
             </BuildableReference>
          </TestableReference>
