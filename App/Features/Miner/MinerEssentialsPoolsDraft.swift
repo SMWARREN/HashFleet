@@ -18,6 +18,12 @@ struct MinerPoolConnection: Equatable {
     var port: String
     var worker: String
 
+    init(server: String, port: String, worker: String) {
+        self.server = server
+        self.port = port
+        self.worker = worker
+    }
+
     init(_ fields: [String: JSONValue], prefix: String) {
         server = fields[prefix + "URL"]?.stringValue ?? ""
         port = fields[prefix + "Port"]?.intValue.flatMap { $0 > 0 ? String($0) : nil } ?? ""

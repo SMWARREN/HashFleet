@@ -159,7 +159,7 @@ extension MinerDetailView {
         }
     }
 
-    private func numberFirstControls(_ availability: MinerNumberFirstAvailability, showsSettings: Bool) -> some View {
+    func numberFirstControls(_ availability: MinerNumberFirstAvailability, showsSettings: Bool) -> some View {
         let stacked = dynamicTypeSize.isAccessibilitySize
         let actions = availability.quickActions
         let layout = stacked
@@ -215,13 +215,13 @@ extension MinerDetailView {
         .fleetCard(padding: 10, border: .clear, cornerRadius: 16)
     }
 
-    private func numberFirstQuickActionResult(_ action: MinerDetailQuickAction) -> some View {
+    func numberFirstQuickActionResult(_ action: MinerDetailQuickAction) -> some View {
         MinerQuickActionPreviewResult(action: action)
             .padding(.horizontal, 4)
             .accessibilityIdentifier("detail.previewControls.result")
     }
 
-    private func numberFirstControl(_ title: String, symbol: String, category: MinerSettingsCategory?) -> some View {
+    func numberFirstControl(_ title: String, symbol: String, category: MinerSettingsCategory?) -> some View {
         NavigationLink {
             settingsDestination(category)
         } label: {
@@ -324,7 +324,7 @@ private struct MinerPreviewReading {
 }
 
 /// Shows the same sanitized Info response as the cards without making a request.
-private struct MinerPreviewInfoResponse: View {
+struct MinerPreviewInfoResponse: View {
     let info: MinerInfo
     let isDemo: Bool
 

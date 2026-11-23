@@ -6,6 +6,12 @@ public struct MinerSensorHistorySample: Sendable {
     public let date: Date
     public let temperature: Double?
     public let power: Double?
+
+    public init(date: Date, temperature: Double? = nil, power: Double? = nil) {
+        self.date = date
+        self.temperature = temperature
+        self.power = power
+    }
 }
 
 // MARK: - Reading Writes & Queries

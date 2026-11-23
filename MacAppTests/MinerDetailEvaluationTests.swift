@@ -223,7 +223,10 @@ struct MinerDetailEvaluationTests {
 
         let (liveStore, liveDevice, liveDefaults, liveSuite) = try makeLiveStore()
         defer { liveDefaults.removePersistentDomain(forName: liveSuite) }
-        evaluate(MinerTuningSessionView(device: liveDevice, store: liveStore), height: 2000)
+        var tuningView = MinerTuningSessionView(device: liveDevice, store: liveStore)
+        evaluate(tuningView, height: 2000)
+        tuningView.restoreDraft()
+        tuningView.applyStagedChange()
         evaluate(MinerTuningPreviewRoute(device: liveDevice, store: liveStore, insights: nil), height: 2000)
 
         // Offline live store: read-only tuning path.
@@ -349,6 +352,33 @@ struct MinerDetailEvaluationTests {
         #expect(model.frames.isEmpty)
         model.disconnect()
         #expect(model.status == "Disconnected")
+
+        let populatedModel = MinerLiveModel()
+        populatedModel.recordReceived(Data(#"{"data":{"hashRate":1180,"voltage":5200,"temp":54}}"#.utf8), endpoint: .liveWebSocket)
+        let liveViewWithFrames = MinerLiveView(device: realDevice, isDemo: false, model: populatedModel)
+        evaluate(liveViewWithFrames)
+        evaluate(liveViewWithFrames.telemetry)
+    }
+
+    @Test func evaluateTuningPreviewReviewAndDraft() {
+        let info = fullInfo()
+        var draft = MinerTuningPreviewDraft(info: info)
+        draft.edit(.frequency, "600")
+        draft.edit(.coreVoltage, "1200")
+        if let review = draft.review {
+            evaluate(MinerTuningPreviewReview(request: review, canConfirm: true, isLive: true, attemptMessage: nil, confirm: {}))
+            evaluate(MinerTuningPreviewReview(request: review, canConfirm: false, isLive: false, attemptMessage: "Applying...", confirm: {}))
+        }
+        draft.reset()
+        _ = draft.next(.frequency, direction: 1)
+        _ = draft.next(.coreVoltage, direction: -1)
+        for field in MinerTuningPreviewDraft.Field.allCases {
+            _ = field.id
+            _ = field.title
+            _ = field.unit
+            _ = field.formatted(100)
+            _ = field.formatted(nil)
+        }
     }
 
     // MARK: - MinerCoolingPreview
@@ -370,8 +400,13 @@ struct MinerDetailEvaluationTests {
         evaluate(MinerCoolingPreview(mode: .essentials, info: manualInfo, canEdit: true))
 
         let live = MinerCoolingPreview.LiveDestination(target: "192.168.1.50", save: { _, draft in draft })
-        evaluate(MinerCoolingPreview(mode: .full, info: info, canEdit: true, live: live))
+        let cooling = MinerCoolingPreview(mode: .full, info: info, canEdit: true, live: live)
+        evaluate(cooling)
+        evaluate(cooling.actions)
         evaluate(MinerCoolingPreview(mode: .full, info: info, canEdit: false, live: live))
+
+        let review = MinerCoolingPreview.Review(changes: ["temptarget": .integer(60)], json: "{\"temptarget\": 60}")
+        evaluate(cooling.reviewSheet(review))
     }
 
     @Test func evaluateCoolingPreviewDraftLogic() throws {

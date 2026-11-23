@@ -133,7 +133,7 @@ struct MiningAchievementsView: View {
             .foregroundStyle(FleetTheme.ink)
     }
 
-    private func achievementRow(_ achievement: AchievementEvent) -> some View {
+    func achievementRow(_ achievement: AchievementEvent) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: achievement.eventType == "block_found" ? "cube.fill" : "star.fill")

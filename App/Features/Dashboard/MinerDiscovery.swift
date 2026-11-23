@@ -54,6 +54,13 @@ final class MinerDiscoveryCoordinator {
         return false
     }
 
+    #if DEBUG
+    func setTestState(_ state: MinerDiscoveryState, candidates: [MinerDiscoveryCandidate] = []) {
+        self.state = state
+        self.candidates = candidates
+    }
+    #endif
+
     func start() {
         cancel()
         candidates = []

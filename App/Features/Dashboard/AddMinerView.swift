@@ -7,14 +7,14 @@ struct AddMinerView: View {
     var onBulkAddSuccess: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @State private var name = ""
-    @State private var address = ""
-    @State private var minerKind: MinerDevice.Kind = .espMiner
-    @State private var bearerToken = ""
-    @State private var isValidating = false
-    @State private var isFindingThisMac = false
-    @State private var validationError: String?
-    @State private var discoveryAddError: String?
+    @State var name = ""
+    @State var address = ""
+    @State var minerKind: MinerDevice.Kind = .espMiner
+    @State var bearerToken = ""
+    @State var isValidating = false
+    @State var isFindingThisMac = false
+    @State var validationError: String?
+    @State var discoveryAddError: String?
     @State var discovery = MinerDiscoveryCoordinator()
     @State var localNetwork = LocalNetworkAuthorization()
     /// Addresses added during this sheet session. Discovery can surface several miners at once,
@@ -225,7 +225,7 @@ struct AddMinerView: View {
         }
     }
 
-    private var discoveryCard: some View {
+    var discoveryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Label("Find miners on Wi-Fi", systemImage: "wifi")
@@ -372,7 +372,7 @@ struct AddMinerView: View {
         )
     }
 
-    private func addMiner() {
+    func addMiner() {
         guard localNetwork.isGranted else { return }
         guard FleetReleaseFeatures.includes(minerKind) else { return }
         guard !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -407,7 +407,7 @@ struct AddMinerView: View {
         }
     }
 
-    private func findXMRigOnThisMac() {
+    func findXMRigOnThisMac() {
         guard FleetLayout.isMac else { return }
         isFindingThisMac = true
         validationError = nil

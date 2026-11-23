@@ -112,6 +112,28 @@ struct FleetHistoryEvaluationTests {
             numberFirst: true
         ))
 
+        // Number-first chart controls in essentials and full modes
+        let nfCard = FleetHistoryCard(
+            devices: demoStore.visibleDevices,
+            snapshots: snapshots,
+            isDemo: true,
+            dashboardMode: .essentials,
+            numberFirst: true
+        )
+        evaluate(nfCard.numberFirstChartControls)
+        evaluate(nfCard.essentialsHistoryControls)
+
+        let nfDetailCard = FleetHistoryCard(
+            devices: [firstDevice],
+            snapshots: snapshots,
+            isDemo: true,
+            isMinerDetail: true,
+            dashboardMode: .full,
+            numberFirst: true
+        )
+        evaluate(nfDetailCard.numberFirstChartControls)
+        evaluate(nfDetailCard.essentialsHistoryControls)
+
         // Compact dashboard with essentials mode
         evaluate(FleetHistoryCard(
             devices: demoStore.visibleDevices,
@@ -247,8 +269,35 @@ struct FleetHistoryEvaluationTests {
             ]
         )
 
+        let now = Date()
+        let selection = FleetChartSelection(
+            selectedDate: now,
+            rawTargetDate: now,
+            seriesValues: [
+                FleetChartSelection.SeriesValue(
+                    id: UUID(),
+                    name: "Rig One",
+                    value: 1250,
+                    colorIndex: 0,
+                    isMissing: false
+                )
+            ],
+            totalRate: 1250
+        )
+        evaluate(card.historyChart([series], window: .daily, selection: selection))
+        evaluate(card.historyChart([series], window: .weekly, selection: selection))
         evaluate(card.historyChart([series], window: .daily, selection: nil))
         evaluate(card.historyChart([series], window: .weekly, selection: nil))
         evaluate(card.historyChart([], window: .monthly, selection: nil))
+
+        for metric in MinerHistoryMetric.allCases {
+            _ = metric.id
+            _ = metric.title
+            _ = metric.unit
+            _ = metric.label(54.2, spoken: false)
+            _ = metric.label(54.2, spoken: true)
+            let sample = MinerSensorHistorySample(date: now, temperature: 55, power: 19.5)
+            _ = metric.sensorValue(sample)
+        }
     }
 }

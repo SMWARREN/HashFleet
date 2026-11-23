@@ -264,6 +264,20 @@ struct DashboardViewsEvaluationTests {
         _ = availability.rawAPI
         _ = availability.canEditSettings
         _ = availability.quickActions
+
+        var fullAvailability = availability
+        fullAvailability.actionStatuses = Dictionary(uniqueKeysWithValues: MinerDetailQuickAction.allCases.map { ($0, .supported) })
+
+        let detail = MinerDetailView(device: device, store: store, insights: insights)
+        evaluate(detail.numberFirstControls(fullAvailability, showsSettings: true))
+        evaluate(detail.numberFirstControls(fullAvailability, showsSettings: false))
+        for action in MinerDetailQuickAction.allCases {
+            evaluate(detail.numberFirstQuickActionResult(action))
+        }
+        evaluate(detail.numberFirstControl("Test Cooling", symbol: "fan", category: .cooling))
+        evaluate(detail.numberFirstControl("Test Settings", symbol: "gearshape", category: nil))
+        evaluate(MinerPreviewInfoResponse(info: info, isDemo: false))
+        evaluate(MinerPreviewInfoResponse(info: info, isDemo: true))
     }
 
     // MARK: - MinerEssentialsPoolsView
@@ -299,7 +313,13 @@ struct DashboardViewsEvaluationTests {
         let identity = try #require(MinerInlineActionState.identity(from: info))
         for role in MinerPoolRole.allCases {
             let baseline = try #require(MinerEssentialsPoolBaseline(role: role, raw: info.raw))
-            evaluate(MinerEssentialsPoolEditor(device: device, store: store, initial: baseline, identity: identity))
+            var editor = MinerEssentialsPoolEditor(device: device, store: store, initial: baseline, identity: identity)
+            evaluate(editor)
+            editor.buildReview()
+            if let change = try? baseline.plan(for: MinerPoolConnection(server: "stratum.ckpool.org", port: "3333", worker: "new.worker"), password: "pwd") {
+                _ = editor.reviewMessage(change)
+                editor.save(change)
+            }
         }
     }
 

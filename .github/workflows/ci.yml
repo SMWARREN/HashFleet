@@ -229,7 +229,7 @@ jobs:
       - name: Install swift-sonar-kit and coverage
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install coverage git+https://github.com/SMWARREN/swift-sonar-kit.git
+          python3 -m pip install coverage pillow git+https://github.com/SMWARREN/swift-sonar-kit.git
       - name: Download coverage and test artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -250,7 +250,15 @@ jobs:
             Tools.test_layout_guardrails \
             Tools.test_sonar_project_recipe \
             Tools.test_sonar_scan \
-            Tools.test_verify_local_push_removal
+            Tools.test_verify_local_push_removal \
+            Tools.test_sonar_swift_preflight \
+            Tools.test_verify_expansion_acceptance \
+            Tools.test_native_mac_smoke \
+            Tools.test_native_mac_tour_smoke \
+            Tools.test_generate_hash_fleet_brand_loop \
+            Tools.test_import_3dicon_webp \
+            Tools.test_prepare_hash_fleet_wan_workflow \
+            Tools.test_art_tooling_coverage
           python3 -m coverage xml -o build/coverage/python-coverage.xml
       - name: Run SonarQube analysis in Docker with coverage
         run: |

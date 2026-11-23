@@ -5,7 +5,10 @@ import unittest
 import urllib.error
 from unittest.mock import patch
 
-import sonar_swift_preflight as preflight
+try:
+    from Tools import sonar_swift_preflight as preflight
+except ImportError:
+    import sonar_swift_preflight as preflight
 
 
 class SonarSwiftPreflightTests(unittest.TestCase):

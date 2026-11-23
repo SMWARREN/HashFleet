@@ -58,6 +58,19 @@ struct DashboardCardsAndLayoutEvaluationTests {
         evaluate(dashboard.fleetToolsSection)
         evaluate(dashboard.demoNotice)
         evaluate(dashboard.poolIconDemoGallery)
+        evaluate(dashboard.summaryMetrics(wide: true))
+        evaluate(dashboard.summaryMetrics(wide: false))
+
+        let destinations: [DashboardPageDestination] = [
+            .overview, .settings, .about, .support, .featureTour,
+            .energy, .network, .reports, .backup, .achievements
+        ]
+        for dest in destinations {
+            dashboard.routeToDashboardPage(dest)
+        }
+        if let first = store.devices.first {
+            dashboard.routeToDashboardPage(.miner(first.id))
+        }
 
         // Clear devices to evaluate empty / onboarding branch
         store.devices.removeAll()
@@ -113,6 +126,7 @@ struct DashboardCardsAndLayoutEvaluationTests {
             openAchievements: {}
         )
         evaluate(card)
+        evaluate(card.searchingContent(sum: FleetMilestonesSummary(devices: store.devices, snapshots: store.snapshots, blockObservations: [:], latestEvent: nil)))
 
         let event = MinerBlockFoundEvent(
             id: UUID(),
@@ -123,12 +137,22 @@ struct DashboardCardsAndLayoutEvaluationTests {
             count: 1,
             occurredAt: Date()
         )
+        let blockCard = FleetMilestonesCard(
+            devices: store.devices,
+            snapshots: store.snapshots,
+            blockObservations: [:],
+            latestBlockEvent: event,
+            isDemo: false,
+            openAchievements: {}
+        )
+        evaluate(blockCard)
         let summary = FleetMilestonesSummary(
             devices: store.devices,
             snapshots: store.snapshots,
             blockObservations: [:],
             latestEvent: event
         )
+        evaluate(blockCard.blockFoundBanner(sum: summary))
         #expect(summary.totalBlocksFound == 1)
         #expect(summary.latestBlockMinerName == "Bitaxe Alpha")
         #expect(summary.latestBlockHeight == 890000)

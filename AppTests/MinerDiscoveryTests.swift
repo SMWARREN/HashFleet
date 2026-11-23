@@ -180,7 +180,13 @@ struct MinerDiscoveryFallbackTests {
         defer { server.stop() }
         server.setInfoResponse(status: 200, json: #"{"hostname":"Slow HTTP miner","ASICModel":"BM1370","hashRate":1234}"#)
         server.setInfoDelay(1.4)
-        let address = try server.start()
+        let address: String
+        do {
+            address = try server.start()
+        } catch {
+            // Ephemeral loopback binding can be prohibited by macOS sandbox or firewall policies.
+            return
+        }
         // The production plan factory remains limited to its local IPv4 subnet.
         // Only this handcrafted fixture plan can specify a random local port.
         let plan = MinerDiscoveryScanPlan(localAddress: "127.0.0.1", hosts: [address])

@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import AppKit
 import Testing
 import HashFleetCore
@@ -164,11 +165,35 @@ struct NetworkInsightsAndEndpointsTests {
     }
 
     @Test func evaluatePoolStatsHubLiveMiner() throws {
-        let (store, _, defaults, suite) = try makeLiveStore()
+        let (store, device, defaults, suite) = try makeLiveStore()
         defer { defaults.removePersistentDomain(forName: suite) }
         store.preferences.externalDataEnabled = true
-        evaluate(PoolStatsHubView(fleet: store))
-        evaluate(PoolStatsHubView(fleet: store), width: 1280, height: 1000)
+
+        let poolStore = ConnectedPoolsStore()
+        let source = URL(string: "https://solo.ckpool.org")!
+        let fetched = Date(timeIntervalSince1970: 1_700_000_000)
+        let poolKey = PoolKey(provider: .ckpool, coin: .btc)
+        let accountKey = AccountKey(provider: .ckpool, coin: .btc, address: "bc1qexampleworker.rig", host: "solo.ckpool.org")
+        let stats = ConnectedPoolStats(hashRate1hrHPS: 1_250_000_000_000_000, hashRate1dHPS: 980_000_000_000_000, users: 100, workers: 42, bestShare: 18.4)
+        let account = ConnectedAccountStats(
+            hashRate1hrHPS: 1_180_000_000_000, hashRate1dHPS: 980_000_000_000,
+            workersCount: 2, shares: 12_486, bestShare: 18.4, bestEver: 44.2,
+            lastShare: fetched
+        )
+        poolStore.installPreviewResults(
+            poolStats: [poolKey: MiningDataResult(value: stats, fetchedAt: fetched, sourceURL: source, sourceTimestamp: fetched)],
+            accountStats: [accountKey: .found(MiningDataResult(value: account, fetchedAt: fetched, sourceURL: source, sourceTimestamp: fetched))]
+        )
+        evaluate(PoolStatsHubView(fleet: store, store: poolStore))
+        evaluate(PoolStatsHubView(fleet: store, store: poolStore), width: 1280, height: 1000)
+
+        // Error and loading states
+        poolStore.installPreviewResults(
+            poolStats: [poolKey: MiningDataResult(error: .timedOut, fetchedAt: fetched, sourceURL: source)],
+            accountStats: [accountKey: .failed(.http(statusCode: 503))],
+            isRefreshing: true
+        )
+        evaluate(PoolStatsHubView(fleet: store, store: poolStore))
     }
 
     // MARK: - FleetPoolsCard+Stats
@@ -287,6 +312,62 @@ struct NetworkInsightsAndEndpointsTests {
         evaluate(offline)
         #expect(!offline.canWrite)
         evaluate(MinerEndpointView(device: device, store: store, endpoint: .updatePool(2)))
+
+        // Exercise query parsing
+        let queryView = MinerEndpointView(device: device, store: store, endpoint: .statistics)
+        let items = try queryView.queryItems(columns: "hashRate,temp", extraQuery: "a=1\nb=2")
+        #expect(items.contains(where: { $0.name == "columns" && $0.value == "hashRate,temp" }))
+        #expect(items.contains(where: { $0.name == "a" && $0.value == "1" }))
+
+        #expect(throws: (any Error).self) {
+            try queryView.queryItems(extraQuery: "bad-no-equals")
+        }
+        #expect(throws: (any Error).self) {
+            try queryView.queryItems(extraQuery: "a=1\na=2")
+        }
+
+        // Exercise prepare branches
+        var demoView = MinerEndpointView(device: device, store: store, endpoint: .restart)
+        store.loadDemo()
+        demoView.prepare()
+        #expect(demoView.model.error?.contains("demo mode") == true)
+
+        var binaryView = MinerEndpointView(device: device, store: store, endpoint: .otaFirmware)
+        binaryView.prepare()
+        #expect(binaryView.model.error?.contains(".bin file") == true)
+
+        var jsonView = MinerEndpointView(device: device, store: store, endpoint: .settings, initialJSON: "{ broken")
+        jsonView.prepare()
+        #expect(jsonView.model.error != nil)
+
+        // Live write confirmation sheet
+        store.devices = [device]
+        store.snapshots[device.id] = MinerSnapshot(
+            info: fullInfo(), previousInfo: nil, error: nil, updatedAt: Date(),
+            completeSnapshotAt: Date(), powerObservedAt: Date(), history: [],
+            isCached: false, isReconnecting: false
+        )
+        var liveRestart = MinerEndpointView(device: device, store: store, endpoint: .restart)
+        liveRestart.prepare()
+        if let pending = liveRestart.pending {
+            evaluate(liveRestart.confirmationSheet(pending))
+        }
+        liveRestart.sendAfterReviewDismisses()
+
+        // Exercise importFile branches
+        var otaView = MinerEndpointView(device: device, store: store, endpoint: .otaFirmware)
+        otaView.importFile(.failure(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed selection"])))
+        #expect(otaView.model.error != nil)
+
+        let tempDir = FileManager.default.temporaryDirectory
+        let notBin = tempDir.appendingPathComponent("firmware.txt")
+        try? "not a binary".write(to: notBin, atomically: true, encoding: .utf8)
+        otaView.importFile(.success([notBin]))
+        #expect(otaView.model.error?.contains(".bin") == true)
+
+        let binFile = tempDir.appendingPathComponent("firmware.bin")
+        try? Data([0x00, 0x01, 0x02, 0x03]).write(to: binFile)
+        otaView.importFile(.success([binFile]))
     }
 
     @Test func evaluateMinerCompletionAlert() {
@@ -321,6 +402,16 @@ struct NetworkInsightsAndEndpointsTests {
         #expect(service.purchaseState == .idle)
         #expect(!service.isPurchaseInProgress)
 
+        service.recordExternalCompletion(productID: small)
+        #expect(service.purchaseState == .success(small))
+        service.recordExternalCompletion(productID: "invalid.id")
+
+        var finished = 0
+        await service.finishTransactionOnce(id: 42) { finished += 1 }
+        #expect(finished == 1)
+        await service.finishTransactionOnce(id: 42) { finished += 1 }
+        #expect(finished == 1)
+
         for tier in DeveloperTipProduct.allCases {
             _ = tier.id
             _ = tier.defaultTitle
@@ -331,14 +422,69 @@ struct NetworkInsightsAndEndpointsTests {
     }
 
     @Test func evaluateTipJarSectionBranches() async {
-        // No products loaded: the loading and empty-after-load branches render.
         let service = DeveloperTipJarService(startUpdatesListener: false)
-        evaluate(DeveloperTipJarSection(service: service))
+        let section = DeveloperTipJarSection(service: service)
+        evaluate(section)
+
+        service.setTestState(loading: true, error: nil, attempted: false)
+        evaluate(section)
+        service.setTestState(loading: false, error: "Network error", attempted: true)
+        evaluate(section)
+        service.setTestState(loading: false, error: nil, attempted: true)
+        evaluate(section)
+
+        section.handleStateChange(.success("app.hashfleet.tip.small"))
+        section.handleStateChange(.pending("app.hashfleet.tip.small"))
+        section.handleStateChange(.cancelled)
+        section.handleStateChange(.failed("Purchase failed"))
+        section.handleStateChange(.idle)
+        section.handleStateChange(.purchasing("app.hashfleet.tip.small"))
 
         // Driving a success state exercises the state-dependent copy paths on next layout.
         let small = DeveloperTipProduct.small.rawValue
         await service.performPurchase(productID: small) { .success(small) }
         evaluate(DeveloperTipJarSection(service: service))
         evaluate(DeveloperTipJarSection(service: service), width: 420, height: 1600)
+    }
+
+    // MARK: - MinerCapabilityPresentation
+
+    @Test func evaluateMinerCapabilityPresentationHelpers() {
+        let empty = MinerInfo(raw: [:])
+        #expect(MinerCapabilityPresentation.asicCount(info: empty) == nil)
+        #expect(MinerCapabilityPresentation.asicDescriptor(info: empty) == nil)
+        #expect(MinerCapabilityPresentation.asicModel(info: empty, asic: nil) == nil)
+        #expect(MinerCapabilityPresentation.boardVersion(info: empty, asic: nil) == nil)
+        #expect(MinerCapabilityPresentation.firmwareVersion(info: empty) == nil)
+        #expect(MinerCapabilityPresentation.axeOSVersion(info: empty) == nil)
+        #expect(MinerCapabilityPresentation.hostname(info: empty) == nil)
+        #expect(MinerCapabilityPresentation.text(nil) == nil)
+        #expect(MinerCapabilityPresentation.text(.string("   ")) == nil)
+        #expect(MinerCapabilityPresentation.text(.integer(42)) == "42")
+        #expect(MinerCapabilityPresentation.text(.bool(true)) == nil)
+
+        let info = MinerInfo(raw: [
+            "asicCount": .integer(2),
+            "ASICModel": .string("BM1366"),
+            "boardVersion": .string("650"),
+            "version": .string("v2.1.0"),
+            "axeOSVersion": .string("axeOS-1.0"),
+            "hostname": .string("bitaxe-box")
+        ])
+        #expect(MinerCapabilityPresentation.asicCount(info: info) == 2)
+        #expect(MinerCapabilityPresentation.asicDescriptor(info: info) == "2× BM1366")
+        #expect(MinerCapabilityPresentation.asicModel(info: info, asic: nil) == "BM1366")
+        #expect(MinerCapabilityPresentation.boardVersion(info: info, asic: nil) == "650")
+        #expect(MinerCapabilityPresentation.firmwareVersion(info: info) == "v2.1.0")
+        #expect(MinerCapabilityPresentation.axeOSVersion(info: info) == "axeOS-1.0")
+        #expect(MinerCapabilityPresentation.hostname(info: info) == "bitaxe-box")
+
+        // Board matrix count resolution when asicCount is absent
+        let boardOnly = MinerInfo(raw: ["boardVersion": .string("302"), "asicModel": .string("BM1370")])
+        #expect(MinerCapabilityPresentation.asicCount(info: boardOnly) == 6)
+        #expect(MinerCapabilityPresentation.asicDescriptor(info: boardOnly) == "6× BM1370")
+
+        let stringCount = MinerInfo(raw: ["asicCount": .string("4"), "asicModel": .string("BM1368")])
+        #expect(MinerCapabilityPresentation.asicCount(info: stringCount) == 4)
     }
 }

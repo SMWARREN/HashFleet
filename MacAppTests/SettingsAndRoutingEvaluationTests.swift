@@ -147,6 +147,30 @@ struct SettingsAndRoutingEvaluationTests {
         #expect(storage.lastError != nil)
     }
 
+    @Test func celebrationStorageFilePersistenceAndReopenValidation() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("celeb-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let fileURL = tempDir.appendingPathComponent("queue.sqlite")
+        let storage1 = try FleetCelebrationQueueStorage(location: .file(fileURL))
+        #expect(storage1.openStatementCount == 0)
+        _ = try storage1.enqueue(celebration("Rig One", kind: .blockFound))
+        #expect(storage1.pendingTotal == 1)
+
+        // Reopen existing database file: exercises validateCurrentSchema() and WAL check
+        let storage2 = try FleetCelebrationQueueStorage(location: .file(fileURL))
+        #expect(storage2.pendingTotal == 1)
+        #expect(storage2.page.first?.minerName == "Rig One")
+
+        // Reject non-sqlite file
+        let badURL = tempDir.appendingPathComponent("bad.sqlite")
+        try Data("NOT_SQLITE_FILE_HEADER_LONGER_THAN_16_BYTES".utf8).write(to: badURL)
+        #expect(throws: FleetCelebrationQueueStorageError.notADatabase) {
+            try FleetCelebrationQueueStorage(location: .file(badURL))
+        }
+    }
+
     // MARK: - FleetGlance and menu-bar formatting
 
     @Test func glanceValidityStalenessAndStorage() {
@@ -271,10 +295,37 @@ struct SettingsAndRoutingEvaluationTests {
             evaluate(general.generalPage)
             evaluate(general.coolingPage)
             evaluate(general.displayPage)
+            evaluate(general.poolsPage)
+            evaluate(general.advancedPage)
+            evaluate(general.tuningPage)
         }
 
-        let settings = MinerSettingsView(device: device, store: store, insights: insights)
+        var settings = MinerSettingsView(device: device, store: store, insights: insights)
         evaluate(settings.categoryDestination(.general))
+        settings.load()
+        settings.applySoloPoolDraft(.ckPoolBTC, previous: nil)
+        settings.reviewPool()
+        if let preset = MiningSetupCatalog.allPresets.first {
+            settings.applyUnifiedPoolDraft(preset)
+            settings.reviewPool()
+        }
+        settings.selectedSoloPool = .ckPoolBTC
+        settings.addSoloPoolDraft()
+        settings.poolMode = "slot"
+        settings.slot = 1
+        settings.poolReplacementAcknowledged = true
+        settings.reviewPool()
+
+        settings.saveDirectly(.object(["hostname": .string("Desk")]), displaySetting: nil)
+        settings.saveDirectly(.object(["rotation": .integer(0)]), displaySetting: .rotation)
+        let sampleInfo = MinerInfo(raw: [
+            "rotation": .integer(0), "invertscreen": .integer(0), "displayTimeout": .integer(5)
+        ])
+        #expect(MinerDisplaySetting.rotation.matches(.object(["rotation": .integer(0)]), in: sampleInfo))
+        #expect(MinerDisplaySetting.colors.matches(.object(["invertscreen": .integer(0)]), in: sampleInfo))
+        #expect(MinerDisplaySetting.timeout.matches(.object(["displayTimeout": .integer(5)]), in: sampleInfo))
+        #expect(!MinerDisplaySetting.rotation.matches(.object(["rotation": .integer(90)]), in: sampleInfo))
+
         settings.submit(.settings, json: .object(["hostname": .string("Desk")]))
         settings.submit(.settings, object: ["statsFrequency": 30])
         settings.submit(.settings, json: .object(["coreVoltage": .integer(1150)]))
@@ -283,6 +334,15 @@ struct SettingsAndRoutingEvaluationTests {
         #expect(settings.everydayTitle(review: "Review", save: "Save") == "Save")
         #expect(MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: .object(["rotation": .integer(90)])))
         #expect(!MinerDirectSavePolicy.qualifies(endpoint: .settings, payload: .object(["stratumURL": .string("pool")])))
+        evaluate(settings.directSaveStatus)
+
+        // Test saving progress and completed message states in directSaveStatus
+        settings.isSaving = true
+        settings.savingDisplaySetting = nil
+        evaluate(settings.directSaveStatus)
+
+        settings.isSaving = false
+        settings.saveMessage = "Display settings saved."
         evaluate(settings.directSaveStatus)
     }
 
@@ -297,10 +357,20 @@ struct SettingsAndRoutingEvaluationTests {
         let (liveStore, liveDefaults, liveSuite) = makeStore(demo: false)
         defer { liveDefaults.removePersistentDomain(forName: liveSuite) }
         try liveStore.add(name: "Backup Rig", address: "192.168.1.60")
-        evaluate(FleetBackupView(store: liveStore))
+        var liveView = FleetBackupView(store: liveStore)
+        evaluate(liveView)
 
         let doc = FleetBackupFileDocument(data: Data("{}".utf8))
         #expect(doc.data == Data("{}".utf8))
+
+        liveView.prepareExport()
+        let entry = try FleetBackupEntry(address: "192.168.1.70", name: "Added Miner")
+        let preview1 = FleetBackupRestorePreview(additions: [entry], alreadyPresent: [])
+        evaluate(liveView.restorePreview(preview1))
+        let emptyPreview = FleetBackupRestorePreview(additions: [], alreadyPresent: [])
+        evaluate(liveView.restorePreview(emptyPreview))
+        liveView.clearPreview()
+        liveView.confirmImport()
     }
 
     // MARK: - FleetReportView
@@ -313,7 +383,25 @@ struct SettingsAndRoutingEvaluationTests {
 
         let (emptyStore, emptyDefaults, emptySuite) = makeStore(demo: false)
         defer { emptyDefaults.removePersistentDomain(forName: emptySuite) }
-        evaluate(FleetReportView(store: emptyStore))
+        var emptyView = FleetReportView(store: emptyStore)
+        evaluate(emptyView)
+        emptyView.capture()
+
+        var demoView = FleetReportView(store: demoStore)
+        evaluate(demoView)
+        demoView.capture()
+        let snapshot = FleetReportSnapshot.capture(store: demoStore)
+        demoView.save(snapshot, format: .pdf)
+        demoView.save(snapshot, format: .csv)
+        demoView.share(snapshot, format: .pdf)
+        demoView.share(snapshot, format: .csv)
+        demoView.clearSharedFile()
+
+        // Test FleetReportDocument properties
+        let doc = FleetReportDocument(data: Data("test,csv".utf8), contentType: .commaSeparatedText)
+        #expect(doc.data.count == 8)
+        #expect(doc.contentType == .commaSeparatedText)
+        #expect(FleetReportDocument.readableContentTypes.contains(.pdf))
     }
 
     // MARK: - FleetRemotePushSettingsSection
@@ -338,6 +426,19 @@ struct SettingsAndRoutingEvaluationTests {
         #expect(MiningAchievementsView.AchievementFilter.all.eventType == nil)
         #expect(MiningAchievementsView.AchievementFilter.blocks.eventType == "block_found")
         #expect(MiningAchievementsView.AchievementFilter.shares.eventType == "best_share")
+
+        let view = MiningAchievementsView(devices: store.devices)
+        let blockEvent = AchievementEvent(
+            id: 1, minerId: store.devices.first?.id.uuidString ?? "dev-1",
+            eventType: "block_found", timestamp: Date(), blockHeight: 890123, difficulty: nil, metadata: nil
+        )
+        evaluate(view.achievementRow(blockEvent))
+
+        let shareEvent = AchievementEvent(
+            id: 2, minerId: store.devices.first?.id.uuidString ?? "dev-1",
+            eventType: "best_share", timestamp: Date(), blockHeight: nil, difficulty: "45.2M", metadata: nil
+        )
+        evaluate(view.achievementRow(shareEvent))
     }
 
     // MARK: - FleetEnergyHistorySection and stat cards
@@ -380,5 +481,46 @@ struct SettingsAndRoutingEvaluationTests {
         evaluate(FleetTourView(showsEssentialsWalkthrough: true))
         evaluate(FleetTourView(dontShowAgain: .constant(true), onPreviewCelebration: { _ in }))
         evaluate(FleetTourView(), width: 420, height: 1600)
+    }
+
+    @Test func evaluateDeveloperSupportAvailability() async {
+        let availability = DeveloperSupportAvailability(currentCountryCode: { "US" })
+        #expect(availability.directDistribution)
+        #expect(!availability.usesNativeTipJar)
+        #expect(availability.checkoutURL != nil)
+        #expect(!availability.cryptoDestinations.isEmpty)
+        await availability.observe(while: .background)
+        #expect(!availability.isResolved)
+        await availability.observe(while: .active)
+        #expect(availability.isResolved)
+        _ = await availability.revalidatedURL()
+        _ = await availability.revalidatedCryptoDestination(.bitcoin)
+    }
+
+    @Test func evaluateFleetActivityPresentationMethods() {
+        let (store, defaults, suite) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        guard let device = store.devices.first else { return }
+        let snapshot = store.snapshots[device.id]
+        _ = FleetActivityPresentation.sessionBest(snapshot: snapshot, isDemo: true)
+
+        _ = FleetActivityPresentation.notifications(from: store)
+
+        let id = device.id
+        let now = Date()
+        let events: [FleetNotificationEvent] = [
+            .bestShare(MinerBestShareEvent(deviceID: id, minerName: "Rig", kind: .session, displayValue: "1M", rawValue: "1M", occurredAt: now)),
+            .bestShare(MinerBestShareEvent(deviceID: id, minerName: "Rig", kind: .allTime, displayValue: "2M", rawValue: "2M", occurredAt: now)),
+            .blockFound(MinerBlockFoundEvent(deviceID: id, minerName: "Rig", coinLabel: "BTC", height: 800_000, count: 1, occurredAt: now)),
+            .temperature(MinerTemperatureAlertEvent(deviceID: id, minerName: "Rig", temperatureCelsius: 80, thresholdCelsius: 70, occurredAt: now)),
+            .power(MinerPowerAlertEvent(deviceID: id, minerName: "Rig", kind: .exceeded, watts: 30, thresholdWatts: 25, occurredAt: now)),
+            .power(MinerPowerAlertEvent(deviceID: id, minerName: "Rig", kind: .resolved, watts: 20, thresholdWatts: 25, occurredAt: now)),
+            .stateChange(MinerStateChangeEvent(deviceID: id, minerName: "Rig", kind: .offline, occurredAt: now)),
+            .stateChange(MinerStateChangeEvent(deviceID: id, minerName: "Rig", kind: .backOnline, occurredAt: now)),
+            .metricAlert(MinerMetricAlertEvent(deviceID: id, minerName: "Rig", kind: .hashrateDrop, title: "Drop", detail: "Down", occurredAt: now))
+        ]
+        for event in events {
+            _ = FleetActivityPresentation.title(for: event)
+        }
     }
 }

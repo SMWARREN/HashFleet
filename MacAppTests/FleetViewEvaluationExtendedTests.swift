@@ -49,7 +49,7 @@ struct FleetViewEvaluationExtendedTests {
         evaluate(expanded.hashrateAndPerformanceSection)
     }
 
-    @Test func evaluateHashFleetAppRouting() {
+    @Test func evaluateHashFleetAppRouting() async {
         let app = HashFleetApp()
         evaluate(app.notificationLayer)
         evaluate(app.mainTabs)
@@ -73,6 +73,16 @@ struct FleetViewEvaluationExtendedTests {
         app.presentUITestCelebrationIfRequested()
         app.presentUITestInAppAlertIfRequested()
         app.dismissCelebration()
+
+        let deviceID = UUID()
+        app.presentInAppNotification(.stateChange(MinerStateChangeEvent(deviceID: deviceID, minerName: "Desk", kind: .offline, occurredAt: Date())))
+        app.presentInAppNotification(.metricAlert(MinerMetricAlertEvent(deviceID: deviceID, minerName: "Desk", kind: .hashrateDrop, title: "Drop", detail: "Down", occurredAt: Date())))
+        _ = app.acceptInAppNotification(.temperature(MinerTemperatureAlertEvent(deviceID: deviceID, minerName: "Desk", temperatureCelsius: 85, thresholdCelsius: 75, occurredAt: Date())))
+        _ = await app.commitInAppRecord(.blockFound(MinerBlockFoundEvent(deviceID: deviceID, minerName: "Desk", coinLabel: "BTC", height: 900_000, count: 1, occurredAt: Date())))
+
+        app.openSupportFromCelebration()
+        app.openMiner(deviceID, dismissCelebration: true)
+        app.openMiner(deviceID, dismissCelebration: false)
     }
 
     @Test func evaluateNumberFirstDetailView() {

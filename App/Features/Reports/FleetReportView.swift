@@ -276,14 +276,14 @@ struct FleetReportView: View {
         .fleetSettingsSectionIdentifier("fleetReport.exportSection")
     }
 
-    private func capture() {
+    func capture() {
         guard presentation == nil else { return }
         clearSharedFile()
         exportError = nil
         report = FleetReportSnapshot.capture(store: store)
     }
 
-    private func save(_ report: FleetReportSnapshot, format: FleetReportTemporaryFile.Format) {
+    func save(_ report: FleetReportSnapshot, format: FleetReportTemporaryFile.Format) {
         guard presentation == nil else { return }
         clearSharedFile()
         exportError = nil
@@ -298,7 +298,7 @@ struct FleetReportView: View {
         isExporterPresented = true
     }
 
-    private func share(_ report: FleetReportSnapshot, format: FleetReportTemporaryFile.Format) {
+    func share(_ report: FleetReportSnapshot, format: FleetReportTemporaryFile.Format) {
         guard presentation == nil else { return }
         clearSharedFile()
         exportError = nil
@@ -312,7 +312,7 @@ struct FleetReportView: View {
         }
     }
 
-    private func clearSharedFile() {
+    func clearSharedFile() {
         sharedFile?.remove()
         sharedFile = nil
     }
