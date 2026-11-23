@@ -193,6 +193,7 @@ struct FleetViewEvaluationTests {
         let (store, defaults) = makeStore(demo: true)
         defer { defaults.removePersistentDomain(forName: defaults.description) }
         let insights = MiningInsightsStore()
+        insights.setDemo(true)
 
         evaluate(NetworkInsightsView(fleet: store, insights: insights))
         evaluate(PoolStatsHubView(fleet: store))
@@ -252,5 +253,47 @@ struct FleetViewEvaluationTests {
             evaluate(BitsySays(mood: mood, message: "Testing \(mood.rawValue)"))
         }
         evaluate(FleetPerformanceSettingsView())
+    }
+
+    @Test func evaluateDashboardSplitView() {
+        let (store, defaults) = makeStore(demo: true)
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+        let insights = MiningInsightsStore()
+        insights.setDemo(true)
+        let coordinator = FleetGlanceCoordinator(defaults: defaults)
+
+        evaluate(FleetActivityPopup(store: store))
+        evaluate(FleetSplitView(
+            store: store,
+            insights: insights,
+            coordinator: coordinator,
+            startupReady: true,
+            fleetPath: .constant(NavigationPath()),
+            sidebarSelection: .constant(.overview)
+        ))
+
+        let destinations: [FleetSidebarDestination] = [
+            .overview, .network, .energy, .achievements, .reports, .backup, .monitoring, .preferences, .about, .support
+        ]
+        for dest in destinations {
+            evaluate(FleetSplitView(
+                store: store,
+                insights: insights,
+                coordinator: coordinator,
+                startupReady: true,
+                fleetPath: .constant(NavigationPath()),
+                sidebarSelection: .constant(dest)
+            ))
+        }
+        if let device = store.devices.first {
+            evaluate(FleetSplitView(
+                store: store,
+                insights: insights,
+                coordinator: coordinator,
+                startupReady: true,
+                fleetPath: .constant(NavigationPath()),
+                sidebarSelection: .constant(.miner(device.id))
+            ))
+        }
     }
 }
