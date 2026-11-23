@@ -249,6 +249,8 @@ jobs:
             Scripts/release/test_release_extra.py \
             Scripts/tests/test_build_bundle.py \
             Scripts/tests/test_sonar_scan_ci.py \
+            Scripts/tests/test_generate_cli_logo.py \
+            website/Tools/test_prepare_captures.py \
             Tools.test_sonar_scope \
             Tools.test_xccov_to_generic \
             Tools.test_swiftpm_coverage \
