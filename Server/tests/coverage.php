@@ -24,7 +24,8 @@ register_shutdown_function(function () use ($output, $root): void {
         $node->setAttribute('path', substr($real, strlen($root) + 1));
         ksort($lines);
         foreach ($lines as $number => $hits) {
-            if ($hits === -1) continue;
+            // Xdebug: 1 executed, -1 executable but not executed, -2 dead code (not executable).
+            if ($hits === -2) continue;
             $line = $node->appendChild($xml->createElement('lineToCover'));
             $line->setAttribute('lineNumber', (string)$number);
             $line->setAttribute('covered', $hits > 0 ? 'true' : 'false');
