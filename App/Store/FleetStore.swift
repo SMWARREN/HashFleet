@@ -91,6 +91,15 @@ final class FleetStore {
     @ObservationIgnored var pendingLiveUpdates: [UUID: PendingLiveUpdate] = [:]
     @ObservationIgnored var liveAppliedDeviceIDs: Set<UUID> = []
     @ObservationIgnored var liveFlushTask: Task<Void, Never>?
+    @ObservationIgnored var httpPollingTask: Task<Void, Never>?
+    /// Pauses live telemetry flushes and HTTP polling while the user is actively scrolling.
+    @ObservationIgnored var isUserScrolling = false {
+        didSet {
+            if !isUserScrolling && !pendingLiveUpdates.isEmpty {
+                flushPendingLiveUpdates()
+            }
+        }
+    }
     static let snapshotCacheKey = "app.hashfleet.last-known-settings.v1"
     static let storageKey = "app.hashfleet.devices.v1"
     static let blockObservationStorageKey = "app.hashfleet.block-observations.v1"
@@ -266,6 +275,30 @@ final class FleetStore {
         return true
     }
 
+    /// Updates and persists the device's `firmwareFamily` when telemetry or `/api/system/asic`
+    /// provides positive evidence of its firmware family (or refines a generic `"bitaxe"` tag
+    /// to a more specific family such as `"bitforge"`, `"nerdqaxe"`, or `"bitfortun"`).
+    @discardableResult
+    func updateDetectedFirmwareFamily(
+        for id: UUID,
+        info: MinerInfo,
+        asic: JSONValue? = nil,
+        persistImmediately: Bool = true
+    ) -> Bool {
+        guard !isDemo,
+              let index = devices.firstIndex(where: { $0.id == id }),
+              devices[index].kind == .espMiner,
+              let detected = MinerFirmwareAdapter.detectedFamily(from: info, asic: asic) else {
+            return false
+        }
+        let current = devices[index].firmwareFamily?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let canUpgrade = current.isEmpty || (current == "bitaxe" && detected != "bitaxe")
+        guard canUpgrade, current != detected else { return false }
+        devices[index].firmwareFamily = detected
+        if persistImmediately { persist() }
+        return true
+    }
+
     func remove(_ device: MinerDevice, deleteAchievementHistory: Bool = true) {
         // The database may already have committed while its MainActor continuation is waiting.
         // Purging either identity now could destroy the other miner entry's transferred events.
@@ -435,11 +468,14 @@ final class FleetStore {
             capabilities.remove(result.id)
         }
         guard let device = devices.first(where: { $0.id == result.id }), device.kind == .espMiner else { return }
+        updateDetectedFirmwareFamily(for: device.id, info: info)
         Task { [weak self] in
             guard let self, !Task.isCancelled, token == self.generation, !self.isDemo,
                 self.visibleDevices.contains(where: { $0.id == device.id })
             else { return }
             await self.capabilities.autoDetect(device: device, observedInfo: info, isDemo: self.isDemo)
+            let asic = self.capabilities.reports[device.id]?.asic
+            self.updateDetectedFirmwareFamily(for: device.id, info: info, asic: asic)
         }
     }
 
@@ -486,7 +522,7 @@ final class FleetStore {
 /// Fetches one bounded batch away from FleetStore's main actor. URLSession itself is asynchronous,
 /// but keeping request construction and JSON decoding in this nonisolated type prevents a large
 /// fleet refresh from inheriting the UI actor for the synchronous portions of each request.
-private enum FleetTelemetryBatchFetcher {
+internal enum FleetTelemetryBatchFetcher {
     static func fetch(_ devices: [MinerDevice], session: URLSession) async -> [PollResult] {
         let indexedResults = await withTaskGroup(of: (Int, PollResult).self, returning: [(Int, PollResult)].self) { group in
             for (index, device) in devices.enumerated() {
@@ -495,7 +531,7 @@ private enum FleetTelemetryBatchFetcher {
                         let info: MinerInfo
                         switch device.kind {
                         case .espMiner:
-                            info = try await MinerAPIClient(device: device, session: session).info()
+                            info = try await MinerFirmwareAdapter(device: device, session: session).info()
                         case .xmrig:
                             let token = MinerCredentialStore.token(for: device.keychainCredentialReference)
                             info = try await XMRigAPIClient(

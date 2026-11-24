@@ -63,6 +63,7 @@ struct HashFleetApp: App {
                 && fleetPath.isEmpty && (sidebarSelection == .overview || sidebarSelection == nil))
             .preferredColorScheme(store.preferences.appearance.colorScheme)
             .environment(\.fleetPresentationResetID, presentationResetID)
+            .fleetWindowViewport()
             .background(FleetMacWindowAccessor { window, openWindow in
                 appDelegate.mainWindow = window
                 FleetMacChrome.configure(window)

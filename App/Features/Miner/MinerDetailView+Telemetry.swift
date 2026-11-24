@@ -28,7 +28,15 @@ extension MinerDetailView {
             xmrigControlLink
             identity(info)
         } else if dashboardMode == .essentials {
+            #if os(macOS)
+            if FleetLayout.isMac && usesWideDetail {
+                desktopEssentialsTelemetrySections(info)
+            } else {
+                essentialsTelemetrySections(info)
+            }
+            #else
             essentialsTelemetrySections(info)
+            #endif
         } else {
         let diagnostics = MinerDiagnosticsModel(info: info)
         if FleetLayout.isMac && usesWideDetail {
@@ -74,18 +82,27 @@ extension MinerDetailView {
     }
 
     func essentialsTelemetrySections(_ info: MinerInfo) -> some View {
+        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+        let usesEssentialsPools = !store.isDemo && dashboardMode == .essentials
+        let showsSettings = availability.showsSettingsHub(in: dashboardMode, usesEssentialsPools: usesEssentialsPools)
+        let hasBestShares = MiningDifficultyFormat.parse(info.raw["bestDiff"]) != nil
+            || MiningDifficultyFormat.parse(info.raw["bestSessionDiff"]) != nil
         // Never put the history behind a disclosure or in a secondary column.
-        VStack(alignment: .leading, spacing: 14) {
-            hashrateHero(info)
-            heroConditions(info)
+        return VStack(alignment: .leading, spacing: 10) {
+            hashrateHero(info, compact: true)
+            heroConditions(info, compact: true)
             minerHistoryCard
-            AnyView(controlMinerCard)
+            if availability.cooling || availability.tuning || !availability.quickActions.isEmpty || showsSettings {
+                numberFirstControls(availability, showsSettings: showsSettings)
+            }
+            if hasBestShares {
+                bestShares(info, compact: true)
+            }
             AnyView(essentialsAPITools)
             DisclosureGroup(isExpanded: $showsSecondaryReadings) {
                 VStack(alignment: .leading, spacing: 14) {
                     firmwareTelemetryView(info)
                     if !isXMRig { uptimeHeatmap }
-                    bestShares(info)
                     identity(info)
                     metrics(info, diagnostics: MinerDiagnosticsModel(info: info))
                     poolsSection
@@ -97,8 +114,53 @@ extension MinerDetailView {
                     .foregroundStyle(FleetTheme.ink)
                     .frame(minHeight: 44)
             }
-            .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+            .fleetCard(padding: 10, cornerRadius: 16)
             fleetManagementControls.buttonStyle(.plain)
         }
     }
+
+    #if os(macOS)
+    func desktopEssentialsTelemetrySections(_ info: MinerInfo) -> some View {
+        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+        let usesEssentialsPools = !store.isDemo && dashboardMode == .essentials
+        let showsSettings = availability.showsSettingsHub(in: dashboardMode, usesEssentialsPools: usesEssentialsPools)
+        let hasBestShares = MiningDifficultyFormat.parse(info.raw["bestDiff"]) != nil
+            || MiningDifficultyFormat.parse(info.raw["bestSessionDiff"]) != nil
+        return HStack(alignment: .top, spacing: 15) {
+            VStack(alignment: .leading, spacing: 12) {
+                hashrateHero(info, compact: true)
+                heroConditions(info, compact: true)
+                minerHistoryCard
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            VStack(alignment: .leading, spacing: 12) {
+                if availability.cooling || availability.tuning || !availability.quickActions.isEmpty || showsSettings {
+                    numberFirstControls(availability, showsSettings: showsSettings)
+                }
+                if hasBestShares {
+                    bestShares(info, compact: true)
+                }
+                essentialsAPITools
+                DisclosureGroup(isExpanded: $showsSecondaryReadings) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        firmwareTelemetryView(info)
+                        if !isXMRig { uptimeHeatmap }
+                        identity(info)
+                        metrics(info, diagnostics: MinerDiagnosticsModel(info: info))
+                        poolsSection
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("More miner readings")
+                        .fleetFont(.headline)
+                        .foregroundStyle(FleetTheme.ink)
+                        .frame(minHeight: 44)
+                }
+                .fleetCard(padding: 10, cornerRadius: 16)
+                fleetManagementControls.buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+    #endif
 }

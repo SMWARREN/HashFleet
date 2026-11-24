@@ -7,6 +7,24 @@ struct MinerDiscoveryCandidate: Identifiable, Hashable, Sendable {
     let address: String
     let name: String
     let model: String?
+    /// Firmware project read from the scan's own `/api/system/info` response. Nil when unidentified.
+    var firmwareFamily: MinerFirmwareFamily?
+    /// Driver family identifier (including `"nmaxe"`, `"bitforge"`, `"harloOS"`, `"axeForge"`, etc.).
+    var detectedFamily: String?
+
+    init(
+        address: String,
+        name: String,
+        model: String?,
+        firmwareFamily: MinerFirmwareFamily? = nil,
+        detectedFamily: String? = nil
+    ) {
+        self.address = address
+        self.name = name
+        self.model = model
+        self.firmwareFamily = firmwareFamily
+        self.detectedFamily = detectedFamily ?? firmwareFamily?.rawValue
+    }
 
     var id: String { address }
 }
@@ -31,6 +49,7 @@ final class MinerDiscoveryCoordinator {
 
     private(set) var state: MinerDiscoveryState = .idle
     private(set) var candidates: [MinerDiscoveryCandidate] = []
+    private(set) var isRescanning = false
     /// Hosts probed so far during the current scan, so the UI can show real progress
     /// instead of an indeterminate spinner for up to 254 addresses.
     private(set) var probedHosts: Int = 0
@@ -65,6 +84,7 @@ final class MinerDiscoveryCoordinator {
         cancel()
         candidates = []
         probedHosts = 0
+        isRescanning = false
         guard let plan = planProvider() else {
             state = .unavailable("A local IPv4 network was not available. Connect to Wi-Fi, then try again.")
             return
@@ -83,12 +103,16 @@ final class MinerDiscoveryCoordinator {
                         // Progressive disclosure: miners appear as soon as their batch
                         // finishes instead of all at once after the whole /24.
                         probedHosts = max(probedHosts, probed)
+                        if probed >= plan.hosts.count {
+                            isRescanning = true
+                        }
                         if !batch.isEmpty {
                             candidates = MinerDiscoveryService.sorted(candidates + batch)
                         }
                     }
                 }
                 guard !Task.isCancelled, scanID == id else { return }
+                isRescanning = false
                 candidates = MinerDiscoveryService.sorted(found)
                 probedHosts = plan.hosts.count
                 state = found.isEmpty ? .noResults : .results
@@ -109,6 +133,7 @@ final class MinerDiscoveryCoordinator {
     }
 
     func cancel() {
+        isRescanning = false
         scanID = nil
         task?.cancel()
         task = nil
@@ -191,6 +216,9 @@ struct MinerDiscoveryService: Sendable {
     private static let requestTimeout: TimeInterval = 1
     private static let fallbackTimeout: TimeInterval = 2.5
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    /// cgminer TCP API on port 4028 (Canaan Avalon, Braiins, LuxOS). Injected by tests.
+    typealias CgminerTransport = CgminerClient.Transport
+    private static let cgminerTimeout: TimeInterval = 1.5
 
     private enum ProbeResult: Sendable {
         case found(MinerDiscoveryCandidate)
@@ -198,10 +226,17 @@ struct MinerDiscoveryService: Sendable {
         case noMatch
     }
 
+    /// Whether the scan asks port 4028, and through which transport (nil uses a real socket).
+    enum CgminerProbe: Sendable {
+        case disabled
+        case enabled(CgminerTransport?)
+    }
+
     static func scan(
         plan: MinerDiscoveryScanPlan,
         onProgress: (@Sendable ([MinerDiscoveryCandidate], Int) -> Void)? = nil,
-        transport injectedTransport: Transport? = nil
+        transport injectedTransport: Transport? = nil,
+        cgminerTransport: CgminerTransport? = nil
     ) async throws -> [MinerDiscoveryCandidate] {
         let initialSession = makeSession(timeout: requestTimeout)
         defer { initialSession.invalidateAndCancel() }
@@ -210,8 +245,11 @@ struct MinerDiscoveryService: Sendable {
         var candidates: [MinerDiscoveryCandidate] = []
         var retryHosts: [String] = []
         var probedCount = 0
+        // A test that injects only HTTP must never open real TCP sockets to its fixture hosts.
+        let cgminerProbe: CgminerProbe = (injectedTransport != nil && cgminerTransport == nil)
+            ? .disabled : .enabled(cgminerTransport)
         for batch in batches(plan.hosts) {
-            let results = try await probeBatch(batch, transport: initialTransport, timeout: requestTimeout)
+            let results = try await probeBatch(batch, transport: initialTransport, cgminer: cgminerProbe, timeout: requestTimeout)
             candidates.append(contentsOf: results.found)
             retryHosts.append(contentsOf: results.retry)
             probedCount += batch.count
@@ -224,7 +262,7 @@ struct MinerDiscoveryService: Sendable {
             defer { retrySession.invalidateAndCancel() }
             let retryTransport: Transport = injectedTransport ?? { request in try await retrySession.data(for: request) }
             for batch in batches(retryHosts) {
-                let results = try await probeBatch(batch, transport: retryTransport, timeout: fallbackTimeout)
+                let results = try await probeBatch(batch, transport: retryTransport, cgminer: cgminerProbe, timeout: fallbackTimeout)
                 candidates.append(contentsOf: results.found)
                 if !results.found.isEmpty { onProgress?(results.found, probedCount) }
             }
@@ -250,12 +288,24 @@ struct MinerDiscoveryService: Sendable {
     }
 
     private static func probeBatch(
-        _ hosts: ArraySlice<String>, transport: @escaping Transport, timeout: TimeInterval
+        _ hosts: ArraySlice<String>, transport: @escaping Transport,
+        cgminer: CgminerProbe = .disabled, timeout: TimeInterval
     ) async throws -> (found: [MinerDiscoveryCandidate], retry: [String]) {
         try Task.checkCancellation()
         return try await withThrowingTaskGroup(of: ProbeResult.self) { group in
             for host in hosts {
-                group.addTask { try await probe(host: host, transport: transport, timeout: timeout) }
+                group.addTask {
+                    let result = try await probe(host: host, transport: transport, timeout: timeout)
+                    if case .found = result { return result }
+                    // No miner HTTP API on port 80. Canaan Avalon, Braiins and LuxOS answer only the
+                    // cgminer TCP API on 4028, so ask that port before giving up on this host.
+                    if case .enabled(let cgminerTransport) = cgminer, let found = await probeCgminer(
+                        host: host, transport: cgminerTransport, timeout: max(cgminerTimeout, timeout)
+                    ) {
+                        return .found(found)
+                    }
+                    return result
+                }
             }
             var found: [MinerDiscoveryCandidate] = []
             var retry: [String] = []
@@ -299,18 +349,35 @@ struct MinerDiscoveryService: Sendable {
     static func candidate(host: String, statusCode: Int, contentType: String?, body: Data) -> MinerDiscoveryCandidate? {
         guard statusCode == 200 else { return nil }
         if let contentType, !contentType.lowercased().contains("json") { return nil }
-        guard let info = try? JSONDecoder().decode(MinerInfo.self, from: body),
-            MinerShapeValidator.isValidInfoShape(.object(info.raw))
-        else { return nil }
+        guard let decoded = try? JSONDecoder().decode(MinerInfo.self, from: body) else { return nil }
+        let info: MinerInfo
+        if MinerFirmwareAdapter.isNestedNmaxePayload(decoded.raw) {
+            info = MinerHTTPDrivers.parseNmaxe(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isAxeForgeStatusShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseAxeForge(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isHarloOSShape(decoded.raw) {
+            info = MinerHTTPDrivers.parseHarloOS(telemetry: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else {
+            info = decoded
+        }
+        guard MinerShapeValidator.isValidInfoShape(.object(info.raw)) else { return nil }
         let name =
             ["hostname", "fullHostname", "mdnsHostname", "deviceName"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
             ?? "Miner at \(host)"
-        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion"]
+        let model = ["ASICModel", "asicModel", "deviceModel", "boardVersion", "board"]
             .compactMap { info.raw[$0]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
-        return MinerDiscoveryCandidate(address: host, name: name, model: model)
+        let familyEnum = MinerFirmwareFamily.identify(from: info)
+        let driverFamily = MinerFirmwareAdapter.detectedFamily(from: info) ?? familyEnum?.rawValue
+        return MinerDiscoveryCandidate(
+            address: host,
+            name: name,
+            model: model,
+            firmwareFamily: familyEnum,
+            detectedFamily: driverFamily
+        )
     }
 
     private static func probe(host: String, transport: Transport, timeout: TimeInterval) async throws -> ProbeResult {
@@ -327,13 +394,24 @@ struct MinerDiscoveryService: Sendable {
         do {
             let (body, response) = try await transport(request)
             try Task.checkCancellation()
-            guard let http = response as? HTTPURLResponse, let match = candidate(
+            guard let http = response as? HTTPURLResponse else { return .noMatch }
+            if let match = candidate(
                 host: host,
                 statusCode: http.statusCode,
                 contentType: http.value(forHTTPHeaderField: "Content-Type"),
                 body: body
-            ) else { return .noMatch }
-            return .found(match)
+            ) {
+                return .found(match)
+            }
+            // If an HTTP server is alive on port 80 and returned 404/405/501 for /api/system/info,
+            // probe AxeForge (/api/status) and Harlo-OS (/api/telemetry).
+            if [404, 405, 501].contains(http.statusCode),
+               let fallbackMatch = try await probeAlternativeHTTPEndpoints(
+                   host: host, transport: transport, timeout: timeout
+               ) {
+                return .found(fallbackMatch)
+            }
+            return .noMatch
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
@@ -346,6 +424,57 @@ struct MinerDiscoveryService: Sendable {
         } catch {
             return .noMatch
         }
+    }
+
+    /// Read-only cgminer `version` identification on port 4028. Returns a candidate saved with the
+    /// cgminer family (`canaan`, `braiins`, `luxos`) and the explicit `:4028` origin.
+    static func probeCgminer(
+        host: String, transport: CgminerTransport?, timeout: TimeInterval
+    ) async -> MinerDiscoveryCandidate? {
+        guard !Task.isCancelled,
+              let identity = await MinerFirmwareAdapter.identifyCgminer(
+                  host: host, port: MinerFirmwareAdapter.portCgminer, timeout: timeout, transport: transport
+              )
+        else { return nil }
+        return MinerDiscoveryCandidate(
+            address: "\(host):\(MinerFirmwareAdapter.portCgminer)",
+            name: identity.name,
+            model: identity.model,
+            firmwareFamily: nil,
+            detectedFamily: identity.family
+        )
+    }
+
+    private static func probeAlternativeHTTPEndpoints(
+        host: String,
+        transport: Transport,
+        timeout: TimeInterval
+    ) async throws -> MinerDiscoveryCandidate? {
+        for path in ["/api/status", "/api/telemetry"] {
+            try Task.checkCancellation()
+            guard let url = URL(string: "http://\(host)\(path)") else { continue }
+            var req = URLRequest(
+                url: url,
+                cachePolicy: .reloadIgnoringLocalCacheData,
+                timeoutInterval: timeout
+            )
+            req.httpMethod = "GET"
+            req.httpShouldHandleCookies = false
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            guard let (body, response) = try? await transport(req),
+                  let http = response as? HTTPURLResponse else {
+                continue
+            }
+            if let match = candidate(
+                host: host,
+                statusCode: http.statusCode,
+                contentType: http.value(forHTTPHeaderField: "Content-Type"),
+                body: body
+            ) {
+                return match
+            }
+        }
+        return nil
     }
 }
 

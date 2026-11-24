@@ -136,13 +136,13 @@ public final class FleetMinerControlExecutor: Sendable {
         self.demoChecker = demoChecker ?? { Self.sharedDemoChecker() }
         self.infoFetcher =
             infoFetcher ?? { device in
-                let client = MinerAPIClient(device: device)
-                return try await client.info()
+                let adapter = MinerFirmwareAdapter(device: device)
+                return try await adapter.info()
             }
         self.writeExecutor =
             writeExecutor ?? { device, endpoint, body in
-                let client = MinerAPIClient(device: device)
-                return try await client.execute(endpoint, body: body)
+                let adapter = MinerFirmwareAdapter(device: device)
+                return try await adapter.execute(endpoint, body: body)
             }
         self.dateProvider = dateProvider ?? { Date() }
     }

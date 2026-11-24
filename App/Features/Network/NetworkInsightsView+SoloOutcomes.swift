@@ -88,7 +88,7 @@ extension NetworkInsightsView {
             }
         }
         .fleetSectionGridCardContent()
-        .fleetCard()
+        .fleetCard(padding: 16, cornerRadius: 16)
         .accessibilityIdentifier("insights.solo")
     }
 

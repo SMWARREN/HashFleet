@@ -11,12 +11,16 @@ import HashFleetCore
 enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
     case bitaxe
     case nerdqaxe
+    case bitfortun
+    case axeForge
 
     /// Human-readable project name for UI copy.
     var displayName: String {
         switch self {
         case .bitaxe: "Bitaxe ESP-Miner"
         case .nerdqaxe: "NerdQAxe ESP-Miner"
+        case .bitfortun: "Bitfortun BS-1 firmware"
+        case .axeForge: "AxeForge"
         }
     }
 
@@ -26,18 +30,37 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
             URL(string: "https://api.github.com/repos/bitaxeorg/ESP-Miner/releases?per_page=20")!
         case .nerdqaxe:
             URL(string: "https://api.github.com/repos/shufps/ESP-Miner-NerdQAxePlus/releases?per_page=20")!
+        case .bitfortun:
+            URL(string: "https://api.github.com/repos/liaojinguu/bitfortun-BS-1/releases?per_page=20")!
+        case .axeForge:
+            URL(string: "https://api.github.com/repos/IsSasoriDev/AxeForge/releases?per_page=20")!
         }
+    }
+
+    /// Whether the pinned upstream registrar serves `/api/ws/live`. Only ESP-Miner does. NerdQAxe and
+    /// Bitfortun register only the text log socket `/api/ws`, and AxeForge registers no WebSocket.
+    /// Monitoring must poll HTTP for the others instead of expecting a live stream.
+    var supportsLiveWebSocket: Bool {
+        self == .bitaxe
     }
 
     /// Identifies the family from reported telemetry. Returns nil when nothing in the response
     /// names a known project, rather than guessing a default.
     static func identify(from info: MinerInfo?) -> MinerFirmwareFamily? {
         guard let info else { return nil }
+        // WarpAxe runs across Bitaxe, BitForge, and NerdQAxe boards and sets deviceModel to the
+        // board slug (e.g. "bitaxe-gamma-duo"), but uses its own git.warppool.org release stream
+        // and has no /api/ws/live socket. Never classify WarpAxe as stock ESP-Miner or NerdOS.
+        if MinerHTTPDrivers.isWarpAxeShape(info.raw)
+            || info.raw["firmwareFamily"]?.stringValue?.lowercased() == "warpaxe" {
+            return nil
+        }
         // Board and device model are the strongest signals, then hostname, then the version
         // strings, which some builds tag with the project name.
         let evidence = [
             info.boardVersion,
             info.raw["deviceModel"]?.stringValue ?? "",
+            info.raw["board"]?.stringValue ?? "",
             info.hostname,
             info.version,
             info.axeOSVersion
@@ -45,7 +68,15 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
         for value in evidence {
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
-            // Check the more specific family first: "nerdqaxe" also contains "axe".
+            // Check the more specific projects first. "nerdqaxe" contains "axe", and the Bitfortun
+            // board names ("BitfortunAxe") contain "axe" too, and AxeForge's BS-1 profile is named
+            // "Bitfortun BS-1".
+            if trimmed.localizedCaseInsensitiveContains("axeforge") {
+                return .axeForge
+            }
+            if trimmed.localizedCaseInsensitiveContains("bitfortun") {
+                return .bitfortun
+            }
             if trimmed.localizedCaseInsensitiveContains("nerdqaxe")
                 || trimmed.localizedCaseInsensitiveContains("nerdoctaxe") {
                 return .nerdqaxe
@@ -53,6 +84,16 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
             if trimmed.localizedCaseInsensitiveContains("bitaxe") {
                 return .bitaxe
             }
+        }
+        // MinerWatch fork-only telemetry signals for NerdQAxe (fanCount > 1 or currentA).
+        if let fanCount = info.raw["fanCount"]?.intValue, fanCount > 1 {
+            return .nerdqaxe
+        }
+        if info.raw["currentA"]?.doubleValue != nil {
+            return .nerdqaxe
+        }
+        if MinerHTTPDrivers.isAxeForgeStatusShape(info.raw) {
+            return .axeForge
         }
         return nil
     }

@@ -10,6 +10,11 @@ final class DeveloperSupportAvailability {
     private(set) var storefrontCountryCode: String?
     private(set) var isResolved = false
     @ObservationIgnored private let currentCountryCode: @MainActor () async -> String?
+    @ObservationIgnored private var updatesTask: Task<Void, Never>?
+
+    deinit {
+        updatesTask?.cancel()
+    }
 
     init(currentCountryCode: @escaping @MainActor () async -> String? = {
         await Storefront.current?.countryCode
@@ -61,9 +66,11 @@ final class DeveloperSupportAvailability {
         guard !Task.isCancelled else { return }
         storefrontCountryCode = countryCode
         isResolved = true
-        for await storefront in Storefront.updates {
-            guard !Task.isCancelled else { return }
-            storefrontCountryCode = storefront.countryCode
+        updatesTask = Task { [weak self] in
+            for await storefront in Storefront.updates {
+                guard !Task.isCancelled else { return }
+                self?.storefrontCountryCode = storefront.countryCode
+            }
         }
     }
 

@@ -58,6 +58,7 @@ extension MinerSettingsView {
                     }
                 }
                 .pickerStyle(.menu)
+                .onChange(of: statsFrequency) { FleetHaptics.selection() }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 fieldNote("statsFrequency", label: "the statistics interval")
                 if let statsFrequency, let history = MinerTuningDraft.statsHistoryLabel(statsFrequency) {
@@ -144,6 +145,9 @@ extension MinerSettingsView {
         guard await store.refreshAfterWrite(for: device), let refreshed = info else {
             throw MinerToolError.message("Request accepted, but a fresh reading was unavailable. Refresh before trying again.")
         }
+        // Avalon reports no fan mode or setpoint to read back (only the live FanR duty), so the
+        // accepted cgminer reply is the confirmation and the chosen mode stays selected.
+        if !requested.reportsMode { return requested }
         let readback = MinerCoolingPreviewDraft(info: refreshed)
         guard readback.automatic == requested.automatic,
               requested.activeFields.allSatisfy({ readback[$0] == requested[$0] }) else {
@@ -216,6 +220,7 @@ extension MinerSettingsView {
                     Text("Automatic fan control").foregroundStyle(FleetTheme.ink)
                     Spacer()
                     Toggle("Automatic fan control", isOn: $autoFan).labelsHidden().tint(FleetTheme.positive)
+                        .onChange(of: autoFan) { FleetHaptics.light() }
                 }
                 .fleetFont(.subheadline)
                 .padding(.vertical, 7)
@@ -355,6 +360,7 @@ extension MinerSettingsView {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .onChange(of: screenRotation) { FleetHaptics.selection() }
                     .disabled(isSaving || isRestartingDisplay)
                 }
                 .fleetFont(.subheadline)
@@ -379,6 +385,7 @@ extension MinerSettingsView {
                     Toggle("Invert screen colors", isOn: $screenInverted).labelsHidden().tint(FleetTheme.positive)
                         .disabled(isSaving || isRestartingDisplay)
                         .accessibilityIdentifier("settings.display.inversion")
+                        .onChange(of: screenInverted) { FleetHaptics.light() }
                 }
                 .fleetFont(.subheadline)
                 .padding(.vertical, 7)

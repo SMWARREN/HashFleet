@@ -37,9 +37,9 @@ struct FleetStatusTicker: View {
         reduceMotion || voiceOver || dynamicTypeSize.isAccessibilitySize
     }
 
-    /// Live cycling only makes sense while the strip is visible and the scene is active.
+    /// Live cycling only makes sense while the strip is visible, the scene is active, and the user is not scrolling.
     private var shouldCycle: Bool {
-        !usesStaticLayout && !isPaused && scenePhase == .active && isVisible
+        !usesStaticLayout && !isPaused && scenePhase == .active && isVisible && !fleet.isUserScrolling
     }
 
     var body: some View {

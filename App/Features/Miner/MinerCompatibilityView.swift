@@ -146,7 +146,7 @@ struct MinerCompatibilityView: View {
         switch (info.isSupported, asic.isSupported) {
         case (true, true):
             return Summary(
-                title: "Detected ESP-Miner-compatible API",
+                title: "Detected miner-compatible API",
                 detail:
                     "This miner answered both the system info and ASIC configuration reads. "
                         + "The app adapts its forms to the fields it actually reported.",
@@ -157,7 +157,7 @@ struct MinerCompatibilityView: View {
             return Summary(
                 title: "Partly supported",
                 detail:
-                    "Detected ESP-Miner-compatible API for system info. The ASIC read is unavailable on this firmware, "
+                    "Detected compatible miner API for system info. The ASIC read is unavailable on this firmware, "
                         + "but monitoring and manual settings remain usable.",
                 symbol: "checkmark.circle",
                 tint: FleetTheme.accent

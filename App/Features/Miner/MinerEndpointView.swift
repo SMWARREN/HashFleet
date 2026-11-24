@@ -274,11 +274,13 @@ struct MinerEndpointView: View {
         guard isWrite else { return }
         let alert: MinerCompletionAlert
         if let failure = model.error {
+            FleetHaptics.error()
             alert = MinerCompletionAlert(
                 title: "Change not completed",
                 message: failure
             )
         } else {
+            FleetHaptics.success()
             await store.refresh()
             alert = MinerCompletionAlert(
                 title: "Request accepted",

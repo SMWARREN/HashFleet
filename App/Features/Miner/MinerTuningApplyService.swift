@@ -51,7 +51,7 @@ struct MinerTuningApplyService {
         }
         let validated = try Self.validatedPayload(payload)
         try Self.checkPolicy(device: device, payload: validated)
-        let client = MinerAPIClient(device: device, session: session)
+        let client = MinerFirmwareAdapter(device: device, session: session)
         let preflight = try await client.info()
         try Task.checkCancellation()
         try validatePreflight?(preflight)
@@ -99,6 +99,15 @@ struct MinerTuningApplyService {
             device: device, voltage: payload.objectValue?["coreVoltage"]?.doubleValue, info: info
         ) {
             throw ApplyError.blocked(message)
+        }
+        let family = (info?.raw["firmwareFamily"]?.stringValue ?? device.firmwareFamily ?? "").lowercased()
+        guard family == "canaan" else { return }
+        if payload.objectValue?["coreVoltage"] != nil {
+            throw ApplyError.blocked("Avalon core voltage is not set from this page. No request was sent.")
+        }
+        // Avalon_Nano3s driver-avalon.c:1806 rejects > 1195 MHz; MinerWatch canaan.py floors at 200.
+        if let mhz = payload.objectValue?["frequency"]?.doubleValue, !(200...1195).contains(mhz) {
+            throw ApplyError.blocked("Avalon frequency must be 200 to 1195 MHz. No request was sent.")
         }
     }
 }

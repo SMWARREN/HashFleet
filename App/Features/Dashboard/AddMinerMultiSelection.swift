@@ -15,13 +15,13 @@ enum AddMinerMultiSelection {
     /// Retain successes on a partial failure and treat existing fleet entries as complete.
     static func addAll(
         candidates: [MinerDiscoveryCandidate], alreadyAdded: Set<String>, customName: String,
-        add: (String, String) throws -> Void
+        add: (String, MinerDiscoveryCandidate) throws -> Void
     ) -> BulkResult {
         var result = BulkResult(addedAddresses: alreadyAdded, failures: [])
         for candidate in MinerDiscoveryService.sorted(candidates) {
             guard !result.addedAddresses.contains(candidate.address) else { continue }
             do {
-                try add(name(forCustomName: customName, alreadyAdded: result.addedAddresses), candidate.address)
+                try add(name(forCustomName: customName, alreadyAdded: result.addedAddresses), candidate)
                 result.addedAddresses.insert(candidate.address)
             } catch FleetError.duplicate {
                 result.addedAddresses.insert(candidate.address)
@@ -30,6 +30,15 @@ enum AddMinerMultiSelection {
             }
         }
         return result
+    }
+
+    static func addAll(
+        candidates: [MinerDiscoveryCandidate], alreadyAdded: Set<String>, customName: String,
+        add: (String, String) throws -> Void
+    ) -> BulkResult {
+        addAll(candidates: candidates, alreadyAdded: alreadyAdded, customName: customName) { name, candidate in
+            try add(name, candidate.address)
+        }
     }
 
     /// A native in-app page must finish through one owner. A system open request would

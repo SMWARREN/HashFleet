@@ -96,27 +96,82 @@ extension NetworkInsightsView {
     }
 
     internal var hubLinks: some View {
-        Group {
-            NavigationLink {
-                PoolStatsHubView(fleet: fleet)
-            } label: {
-                Label("Connected pool stats", systemImage: "square.stack.3d.up")
-                    .fleetFont(.headline).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .fleetCard()
-            }
-            .accessibilityIdentifier("insights.poolHub")
-            NavigationLink {
-                CKPoolLookupView(
-                    insights: insights,
-                    externalDataEnabled: fleet.preferences.externalDataEnabled
+        toolsAndLookupsSection
+    }
+
+    internal var toolsAndLookupsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FleetSectionLabel(title: "Tools & pool lookups")
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 220), spacing: 12)],
+                spacing: 12
+            ) {
+                insightsActionTile(
+                    title: "Connected pool stats",
+                    subtitle: "Hashrate & shares from your configured pools",
+                    icon: "square.stack.3d.up",
+                    destination: AnyView(PoolStatsHubView(fleet: fleet)),
+                    identifier: "insights.poolHub"
                 )
-            } label: {
-                Label("Look up my CKPool statistics", systemImage: "person.crop.circle.badge.magnifyingglass")
-                    .fleetFont(.headline).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .fleetCard()
+                insightsActionTile(
+                    title: "CKPool statistics",
+                    subtitle: "Look up solo worker stats for any address",
+                    icon: "person.crop.circle.badge.magnifyingglass",
+                    destination: AnyView(CKPoolLookupView(
+                        insights: insights,
+                        externalDataEnabled: fleet.preferences.externalDataEnabled
+                    )),
+                    identifier: "insights.lookup"
+                )
+                insightsActionTile(
+                    title: "Pool network data",
+                    subtitle: "SoloFury network stats for multiple coins",
+                    icon: "network",
+                    destination: AnyView(poolNetworkPage),
+                    identifier: "insights.poolNetworks"
+                )
             }
-            .accessibilityIdentifier("insights.lookup")
         }
+    }
+
+    private func insightsActionTile(
+        title: String,
+        subtitle: String,
+        icon: String,
+        destination: AnyView,
+        identifier: String
+    ) -> some View {
+        NavigationLink {
+            destination
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(FleetTheme.accent.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .fleetFont(.callout, weight: .semibold)
+                        .foregroundStyle(FleetTheme.accent)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .fleetFont(.headline, weight: .semibold)
+                        .foregroundStyle(FleetTheme.ink)
+                    Text(subtitle)
+                        .fleetFont(.caption)
+                        .foregroundStyle(FleetTheme.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .fleetFont(.caption, weight: .semibold)
+                    .foregroundStyle(FleetTheme.secondary.opacity(0.5))
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .fleetCard(padding: 0, cornerRadius: 16)
+        }
+        .accessibilityIdentifier(identifier)
     }
 
 }

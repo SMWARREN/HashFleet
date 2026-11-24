@@ -97,20 +97,20 @@ struct MinerSettingsView: View {
     var info: MinerInfo? { store.snapshot(for: device.id)?.info }
 
     var usesCoolingPreview: Bool {
-        #if os(iOS)
+        #if os(macOS)
+        !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        #else
         (store.isDemo ? NumberFirstPreview.cooling : NumberFirstPreview.usesLivePhoneLayouts)
             && horizontalSizeClass == .compact && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
-        #else
-        false
         #endif
     }
 
     var usesCompactSettingsHubPreview: Bool {
-        #if os(iOS)
+        #if os(macOS)
+        store.preferences.dashboardMode == .essentials && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        #else
         (store.isDemo ? NumberFirstPreview.settingsHub : NumberFirstPreview.usesLivePhoneLayouts)
             && horizontalSizeClass == .compact && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
-        #else
-        false
         #endif
     }
 

@@ -485,10 +485,17 @@ struct SettingsAndRoutingEvaluationTests {
 
     @Test func evaluateDeveloperSupportAvailability() async {
         let availability = DeveloperSupportAvailability(currentCountryCode: { "US" })
+        #if os(macOS) && HASHFLEET_DIRECT_DISTRIBUTION
         #expect(availability.directDistribution)
         #expect(!availability.usesNativeTipJar)
         #expect(availability.checkoutURL != nil)
         #expect(!availability.cryptoDestinations.isEmpty)
+        #else
+        #expect(!availability.directDistribution)
+        #expect(availability.usesNativeTipJar)
+        #expect(availability.checkoutURL == nil)
+        #expect(availability.cryptoDestinations.isEmpty)
+        #endif
         await availability.observe(while: .background)
         #expect(!availability.isResolved)
         await availability.observe(while: .active)

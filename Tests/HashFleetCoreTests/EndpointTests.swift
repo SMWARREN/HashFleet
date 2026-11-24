@@ -42,8 +42,10 @@ struct FirmwareOperation: Sendable {
         .init(.otaWWW, "POST", "/api/system/OTAWWW", contentType: "application/octet-stream", timeout: 300),
         .init(.theme, "GET", "/api/theme"),
         .init(.updateTheme, "POST", "/api/theme", contentType: "application/json"),
-        .init(.logWebSocket, "GET", "/api/ws", webSocket: true),
-        .init(.liveWebSocket, "GET", "/api/ws/live", webSocket: true),
+        // WebSocket request timeouts are idle timeouts; ESP-Miner's diff-only live stream can be
+        // quiet for longer than 15 s, so sockets use a long idle window.
+        .init(.logWebSocket, "GET", "/api/ws", timeout: 600, webSocket: true),
+        .init(.liveWebSocket, "GET", "/api/ws/live", timeout: 600, webSocket: true),
         .init(.recovery, "GET", "/recovery"),
         // /api/* is a firmware wildcard, not a literal URL to send.
         .init(.options, "OPTIONS", "/api/system/info")

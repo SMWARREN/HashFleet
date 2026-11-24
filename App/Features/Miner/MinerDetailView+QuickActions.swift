@@ -70,12 +70,26 @@ final class MinerInlineActionState {
     private static var inFlight: Set<UUID> = []
 
     nonisolated static func identity(from info: MinerInfo) -> Identity? {
-        guard let rawMAC = info.raw["macAddr"]?.stringValue ?? info.raw["mac"]?.stringValue,
-              let firmware = info.raw["version"]?.stringValue, !firmware.isEmpty else { return nil }
-        let mac = rawMAC.lowercased().filter { $0 != ":" && $0 != "-" }
-        guard mac.utf8.count == 12, mac.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
-              mac != "000000000000", mac != "ffffffffffff" else { return nil }
-        return .init(mac: mac, firmware: firmware)
+        guard let firmware = info.raw["version"]?.stringValue, !firmware.isEmpty else { return nil }
+        if let rawMAC = info.raw["macAddr"]?.stringValue ?? info.raw["mac"]?.stringValue {
+            let mac = rawMAC.lowercased().filter { $0 != ":" && $0 != "-" }
+            guard mac.utf8.count == 12,
+                  mac.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
+                  mac != "000000000000", mac != "ffffffffffff" else { return nil }
+            return .init(mac: mac, firmware: firmware)
+        }
+        // Firmwares whose telemetry schema omits MAC (AxeForge /api/status, NMAxe /api/system/info)
+        // use their verified family + hostname/board fingerprint paired with firmware version.
+        let family = info.raw["firmwareFamily"]?.stringValue
+            ?? (MinerHTTPDrivers.isAxeForgeStatusShape(info.raw) ? "axeForge" : nil)
+            ?? (MinerFirmwareAdapter.isNestedNmaxePayload(info.raw) ? "nmaxe" : nil)
+        guard let family, ["axeForge", "nmaxe", "canaan", "canaannano3"].contains(family) else { return nil }
+        let hostOrBoard = (info.raw["hostname"]?.stringValue
+            ?? info.raw["board"]?.stringValue
+            ?? info.raw["deviceModel"]?.stringValue ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !hostOrBoard.isEmpty else { return nil }
+        return .init(mac: "nomac:\(family):\(hostOrBoard.lowercased())", firmware: firmware)
     }
 
     func send(_ action: MinerDetailQuickAction, device: MinerDevice, store: FleetStore) async {
@@ -105,7 +119,7 @@ final class MinerInlineActionState {
 
         isSending = true
         receipt = "Sending \(action.endpoint.title.lowercased())…"
-        let client = MinerAPIClient(device: device, session: store.session)
+        let client = MinerFirmwareAdapter(device: device, session: store.session)
         var attemptingCommand = false
         do {
             let preflight = try await client.info()
@@ -118,13 +132,16 @@ final class MinerInlineActionState {
             _ = try await client.execute(action.endpoint)
             receipt = "\(action.endpoint.title): miner accepted the request."
             succeeded = true
+            FleetHaptics.success()
         } catch let MinerAPIError.http(status, _, _) where attemptingCommand && MinerCapabilityProbe.isUnsupportedStatus(status) {
             unsupported.insert(action)
             receipt = "This firmware did not accept \(action.endpoint.title.lowercased()) (HTTP \(status))."
+            FleetHaptics.warning()
         } catch {
             receipt = attemptingCommand
                 ? "No confirmed result. Check the miner before trying again."
                 : "Could not verify the miner connection. Nothing sent."
+            FleetHaptics.error()
         }
     }
 }
@@ -172,12 +189,14 @@ extension MinerDetailView {
         let active = !store.isDemo && liveQuickAction.latestAction == action ? liveQuickAction : nil
         let unsupported = !store.isDemo && liveQuickAction.unsupported.contains(action)
         return Button {
-            guard usesNumberFirstDetail, dashboardMode == .essentials,
+            guard usesNumberFirstDetail || FleetLayout.isMac, dashboardMode == .essentials,
                   let info, NumberFirstPreview.minerAvailability(info, device: device, store: store)
                     .quickActions.contains(action) else { return }
+            FleetHaptics.medium()
             if store.isDemo {
                 previewQuickActionResult = action
                 MinerQuickActionPreviewResult.announce(action)
+                FleetHaptics.success()
             } else {
                 Task { await liveQuickAction.send(action, device: device, store: store) }
             }
@@ -203,7 +222,10 @@ extension MinerDetailView {
         // Compact miner cards push an inline destination. Start the next push from
         // this screen's state instead of looking up a value route from inside that destination.
         if usesCompactHorizontalLayout {
-            Button { compactEndpointRoute = endpoint } label: {
+            Button {
+                FleetHaptics.light()
+                compactEndpointRoute = endpoint
+            } label: {
                 quickActionLabel(endpoint, symbol: symbol, compact: compact)
             }
             .buttonStyle(.plain)

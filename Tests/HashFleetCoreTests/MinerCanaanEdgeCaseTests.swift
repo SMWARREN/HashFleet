@@ -1,0 +1,198 @@
+import Foundation
+import Testing
+@testable import HashFleetCore
+
+/// Avalon cases from Canaan's A10 API manual and MinerWatch PR 17 (original Nano 3).
+struct MinerCanaanEdgeCaseTests {
+    private func version(_ json: String) throws -> [String: JSONValue] {
+        try CgminerClient.parseResponse(json)
+    }
+
+    @Test func originalNano3IsFingerprintedFromVersion() throws {
+        let v = try version(#"{"VERSION":[{"CGMiner":"4.11.1","API":"3.7","PROD":"Avalonnano","MODEL":"nano3","SWTYPE":"MM318_X2"}]}"#)
+        #expect(MinerCgminerDrivers.fingerprint(versionResponse: v) == "canaannano3")
+    }
+
+    @Test func nano3sStaysOnGenericCanaan() throws {
+        let v = try version(#"{"VERSION":[{"CGMiner":"4.11.1","API":"3.7","PROD":"Avalon Nano3s","MODEL":"Nano3s","SWTYPE":"MM319"}]}"#)
+        #expect(MinerCgminerDrivers.fingerprint(versionResponse: v) == "canaan")
+    }
+
+    /// Canaan-Creative/Avalon_Nano3s@04c84d3 driver-avalon.c device_cmds[] has no `led` or
+    /// `hashpower`; the A10 Universal API manual has both.
+    @Test func nano3sHidesA10OnlyLedAndHashPower() {
+        let nano = MinerDriverCapabilities.forFamily("canaan", info: MinerInfo(raw: ["deviceModel": .string("Avalon Nano3s")]))
+        #expect(!nano.canIdentify && !nano.canShutdown)
+        #expect(nano.canSetFan && nano.canSetFrequency && nano.canSetWorkmode && nano.canRestart)
+        let a10 = MinerDriverCapabilities.forFamily("canaan", info: MinerInfo(raw: ["deviceModel": .string("AvalonMiner 1066")]))
+        #expect(a10.canIdentify && a10.canShutdown)
+    }
+
+    /// `SF0[...]` holds the configured PLL points (driver-avalon.c:1490); `Freq` is measured.
+    @Test func configuredFrequencyComesFromSF0() {
+        let stats: [String: JSONValue] = ["STATS": .array([.object([
+            "MM ID0": .string("Ver[Nano3s-25021401] TMax[60] Freq[512.40] SF0[500 525 550 575] FanR[40%]")
+        ])])]
+        let sample = MinerCgminerDrivers.parseCanaan(version: [:], stats: stats)
+        #expect(sample.frequencyMHz == 575)
+        #expect(sample.fanPct == 40)
+    }
+
+    @Test func swtypeMM318AloneIdentifiesNano3() throws {
+        let v = try version(#"{"VERSION":[{"CGMiner":"4.11.1","API":"3.7","SWTYPE":"MM318_X2"}]}"#)
+        #expect(MinerCgminerDrivers.fingerprint(versionResponse: v) == "canaannano3")
+    }
+
+    @Test func estatsVerIdentifiesNano3AndNotNano3s() throws {
+        let nano3 = try CgminerClient.parseResponse(#"{"STATS":[{"ID":"AVALON0","MM ID0":"Ver[nano3-24071801_abc] TMax[60]"}]}"#)
+        let nano3s = try CgminerClient.parseResponse(#"{"STATS":[{"ID":"AVALON0","MM ID0":"Ver[Nano3s-25021401_56abae7] TMax[60]"}]}"#)
+        #expect(MinerCgminerDrivers.estatsSaysNano3(nano3))
+        #expect(!MinerCgminerDrivers.estatsSaysNano3(nano3s))
+    }
+
+    @Test func nano3PowerFallsBackToWallpowerThenPS6() throws {
+        let v = try version(#"{"VERSION":[{"PROD":"Avalonnano","MODEL":"nano3"}]}"#)
+        let wall = try CgminerClient.parseResponse(#"{"STATS":[{"MM ID0":"Ver[nano3-1] WALLPOWER[98] PS[0 0 27458 4 0 3990 130] WORKLEVEL[1]"}]}"#)
+        let ps6 = try CgminerClient.parseResponse(#"{"STATS":[{"MM ID0":"Ver[nano3-1] PS[0 0 27458 4 0 3990 130] WORKLEVEL[2]"}]}"#)
+        let a = MinerCgminerDrivers.parseCanaan(version: v, stats: wall, nano3: true)
+        let b = MinerCgminerDrivers.parseCanaan(version: v, stats: ps6, nano3: true)
+        #expect(a.powerW == 98)
+        #expect(b.powerW == 130)
+        #expect(a.workmode == 1)
+        #expect(b.workmode == 2)
+        #expect(a.model == "Avalon Nano 3")
+        #expect(a.family == "canaannano3")
+    }
+
+    @Test func mpoWinsOverPS() throws {
+        let v = try version(#"{"VERSION":[{"MODEL":"Nano3s"}]}"#)
+        let s = try CgminerClient.parseResponse(#"{"STATS":[{"MM ID0":"Ver[Nano3s-1] MPO[133] PS[0 0 27458 4 0 3990 130] WORKMODE[2]"}]}"#)
+        let sample = MinerCgminerDrivers.parseCanaan(version: v, stats: s)
+        #expect(sample.powerW == 133)
+        #expect(sample.workmode == 2)
+        #expect(sample.powerFault == nil)
+    }
+
+    @Test func a10SixFieldPSUsesHashBoardWatts() throws {
+        let v = try version(#"{"VERSION":[{"PROD":"AvalonMiner 1066"}]}"#)
+        let s = try CgminerClient.parseResponse(#"{"STATS":[{"MM ID0":"Ver[1066-19101244] PS[0 1217 1279 221 2834 1280] WORKMODE[1]"}]}"#)
+        #expect(MinerCgminerDrivers.parseCanaan(version: v, stats: s).powerW == 2834)
+    }
+
+    @Test func psErrorCodeBecomesPowerFault() throws {
+        let v = try version(#"{"VERSION":[{"PROD":"AvalonMiner 1066"}]}"#)
+        let s = try CgminerClient.parseResponse(#"{"STATS":[{"MM ID0":"Ver[1066-1] PS[2048 1217 1279 221 2834 1280]"}]}"#)
+        let info = MinerCgminerDrivers.parseCanaan(version: v, stats: s).toMinerInfo()
+        #expect(info.raw["power_fault"]?.stringValue == "Fan failed (PS error 2048)")
+        #expect(MinerCgminerDrivers.powerSupplyFault(code: 34) == "PSU over temperature (OT1), Output voltage low (PS error 34)")
+        #expect(MinerCgminerDrivers.powerSupplyFault(code: 0) == nil)
+    }
+
+    @Test func plainTextRepliesParse() throws {
+        // A10 manual: text replies are `KEY=val,...|` sections.
+        let text = "STATUS=S,When=6397,Code=70,Msg=CGMiner stats,Description=cgminer 4.11.1|"
+            + "STATS=0,ID=AVA100,MM ID0=Ver[1066-1] TMax[74] Fan1[3671] PS[0 1217 1279 221 2834 1280] WORKMODE[1],MM Count=1|"
+        let stats = try CgminerClient.parseResponse(text)
+        let v = try CgminerClient.parseResponse("STATUS=S,When=1,Code=22,Msg=CGMiner versions|VERSION,CGMiner=4.11.1,API=3.7,PROD=AvalonMiner 1066,MODEL=1066|")
+        let sample = MinerCgminerDrivers.parseCanaan(version: v, stats: stats)
+        #expect(sample.tempChipC == 74)
+        #expect(sample.powerW == 2834)
+        #expect(sample.workmode == 1)
+        #expect(MinerFirmwareAdapter.isCgminerVersionResponse(v))
+    }
+
+    @Test func worklevelReplyParses() throws {
+        #expect(MinerCgminerDrivers.parseWorklevelResponse(try CgminerClient.parseResponse(#"{"STATUS":[{"STATUS":"I","Msg":"worklevel 2"}]}"#)) == 2)
+        #expect(MinerCgminerDrivers.parseWorklevelResponse(try CgminerClient.parseResponse("STATUS=I,When=1,Code=118,Msg=ASC 0 set info: WORKLEVEL[1],Description=cgminer 4.11.1|")) == 1)
+    }
+
+    @Test func nano3CapabilitiesHideFanFrequencyVoltage() {
+        let caps = MinerDriverCapabilities.forFamily("canaannano3", info: nil)
+        #expect(caps.canSetWorkmode && caps.canRestart)
+        #expect(!caps.canSetFan && !caps.canSetFrequency && !caps.canSetVoltage)
+    }
+
+    @Test func nano3WritesUseNanoCliDialect() async throws {
+        let sent = Sent()
+        let transport: CgminerClient.Transport = { _, _, _, payload in
+            let obj = try JSONDecoder().decode([String: String].self, from: payload)
+            sent.add("\(obj["command"] ?? "")|\(obj["parameter"] ?? "")")
+            return Data(#"{"STATUS":[{"STATUS":"I","Msg":"ok"}]}"#.utf8)
+        }
+        let device = MinerDevice(name: "n3", address: "192.0.2.9:4028", firmwareFamily: "canaannano3")
+        let adapter = MinerFirmwareAdapter(device: device, cgminerTransport: transport)
+        #expect(try await adapter.setWorkmode(1))
+        #expect(try await adapter.restart())
+        #expect(try await adapter.setFanSpeed(50) == false)
+        #expect(try await adapter.setFrequency(500) == false)
+        #expect(sent.all == ["ascset|0,worklevel,set,1", "ascset|0,reboot,all"])
+    }
+
+    @Test func webSocketsDoNotUseShortIdleTimeout() {
+        #expect(MinerEndpoint.liveWebSocket.timeout >= 300)
+        #expect(MinerEndpoint.info.timeout == 15)
+    }
+
+    @Test func avalonA10ManualCommands() async throws {
+        let sent = Sent()
+        var rejectSetForm = true
+        let reject = RejectFlag()
+        let transport: CgminerClient.Transport = { _, _, _, payload in
+            let obj = try JSONDecoder().decode([String: String].self, from: payload)
+            let line = "\(obj["command"] ?? "")|\(obj["parameter"] ?? "")"
+            sent.add(line)
+            if reject.on, line.contains("workmode,set") {
+                return Data(#"{"STATUS":[{"STATUS":"E","Msg":"invalid"}]}"#.utf8)
+            }
+            return Data(#"{"STATUS":[{"STATUS":"I","Msg":"ASC 0 set info"}]}"#.utf8)
+        }
+        _ = rejectSetForm
+        let device = MinerDevice(name: "a10", address: "192.0.2.10:4028", firmwareFamily: "canaan")
+        let adapter = MinerFirmwareAdapter(device: device, cgminerTransport: transport)
+        #expect(try await adapter.setWorkmode(1))         // A10 falls back to workmode,1
+        reject.on = false
+        #expect(try await adapter.setLocatorLED(true))
+        #expect(try await adapter.setLocatorLED(false))
+        #expect(try await adapter.identify())
+        #expect(try await adapter.shutdown())
+        #expect(sent.all == [
+            "ascset|0,workmode,set,1", "ascset|0,workmode,1",
+            "ascset|0,led,1-1", "ascset|0,led,1-0", "ascset|0,led,1-1", "ascset|0,hashpower,0"
+        ])
+        let caps = MinerDriverCapabilities.forFamily("canaan", info: nil)
+        #expect(caps.canIdentify && caps.canShutdown && caps.canSetWorkmode && caps.canSetFan)
+    }
+
+    @Test func avalonSettingsBodyTranslatesLedAndHashpower() async throws {
+        let sent = Sent()
+        let transport: CgminerClient.Transport = { _, _, _, payload in
+            let obj = try JSONDecoder().decode([String: String].self, from: payload)
+            sent.add("\(obj["command"] ?? "")|\(obj["parameter"] ?? "")")
+            return Data(#"{"STATUS":[{"STATUS":"S"}]}"#.utf8)
+        }
+        let device = MinerDevice(name: "a", address: "192.0.2.11:4028", firmwareFamily: "canaan")
+        let adapter = MinerFirmwareAdapter(device: device, cgminerTransport: transport)
+        _ = try await adapter.execute(.settings, body: Data(#"{"led":1}"#.utf8))
+        _ = try await adapter.execute(.settings, body: Data(#"{"hashpower":0}"#.utf8))
+        await #expect(throws: (any Error).self) {
+            _ = try await adapter.execute(.settings, body: Data(#"{"hashpower":1}"#.utf8))
+        }
+        #expect(sent.all == ["ascset|0,led,1-1", "ascset|0,hashpower,0"])
+    }
+
+    private final class RejectFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = true
+        var on: Bool {
+            get { lock.lock(); defer { lock.unlock() }; return value }
+            set { lock.lock(); value = newValue; lock.unlock() }
+        }
+    }
+
+    private final class Sent: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [String] = []
+        func add(_ s: String) { lock.lock(); items.append(s); lock.unlock() }
+        var all: [String] { lock.lock(); defer { lock.unlock() }; return items }
+    }
+}

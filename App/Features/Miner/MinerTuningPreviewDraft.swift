@@ -37,7 +37,9 @@ struct MinerTuningPreviewDraft {
 
     static func configuration(from info: MinerInfo) -> [Field: Double] {
         let frequency = MinerTuningSessionMath.validFrequency(info.raw["frequency"]?.doubleValue)
-        let voltage = MinerTuningSessionMath.validVoltage(info.raw["coreVoltage"]?.doubleValue)
+        // Canaan reports a measured chip average, not a writable core-voltage setpoint.
+        let family = info.raw["firmwareFamily"]?.stringValue?.lowercased()
+        let voltage = family == "canaan" ? nil : MinerTuningSessionMath.validVoltage(info.raw["coreVoltage"]?.doubleValue)
         return [.frequency: frequency, .coreVoltage: voltage].compactMapValues { $0 }
     }
 

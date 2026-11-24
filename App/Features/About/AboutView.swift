@@ -6,11 +6,10 @@ struct AboutView: View {
     @Environment(\.fleetStandalonePage) private var standalonePage
 
     private static let heroTagline =
-        "A native, open-source companion for the independent miner. Built for Bitaxe and other open-source " +
-        "devices running ESP-Miner."
+        "A native, open-source companion for the independent miner. Built for all supported ASIC and hardware miners."
     private static let privacyNote =
-        "Use the same local network as your miners, or connect through a trusted VPN. ESP-Miner normally " +
-        "uses unencrypted HTTP. Never expose its API directly to the internet."
+        "Use the same local network as your miners, or connect through a trusted VPN. Local miner APIs normally " +
+        "use unencrypted HTTP. Never expose them directly to the internet."
     private static let publicDataNote =
         "Home shows free public data from mempool.space, Blockchair, CKPool and SoloFury while open. " +
         "These services see your internet IP. Aggregate requests do not send local miner addresses, " +

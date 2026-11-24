@@ -16,25 +16,43 @@ extension DashboardView {
         devices: [MinerDevice]
     ) -> AnyView {
         if usesNumberFirstOverview {
+            #if os(macOS)
+            if columns > 1 && devices.count > 1 {
+                return AnyView(
+                    HStack(alignment: .top, spacing: 15) {
+                        ForEach(0..<columns, id: \.self) { col in
+                            let colDevices = devices.enumerated().filter { $0.offset % columns == col }.map(\.element)
+                            if !colDevices.isEmpty {
+                                numberFirstMinerList(devices: colDevices)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                            }
+                        }
+                    }
+                    .id(columns)
+                )
+            }
+            #endif
             return AnyView(numberFirstMinerList(devices: devices))
         }
-        if FleetLayout.isMac {
-            return AnyView(
-                FleetMinerDetailGrid(
-                    maximumColumns: columns,
-                    minimumColumnWidth: 320, spacing: FleetLayout.cardGridSpacing,
-                    balancesFourItems: false
-                ) {
-                    dashboardMinerCards(devices: devices)
-                }
-            )
-        }
 
+        #if os(macOS)
+        return AnyView(
+            FleetMinerDetailGrid(
+                maximumColumns: columns,
+                minimumColumnWidth: 320,
+                spacing: 12,
+                balancesFourItems: false
+            ) {
+                dashboardMinerCards(devices: devices)
+            }
+        )
+        #else
         return AnyView(
             LazyVGrid(columns: gridItems, spacing: FleetLayout.cardGridSpacing) {
                 dashboardMinerCards(devices: devices)
             }
         )
+        #endif
     }
 
     @ViewBuilder private func numberFirstMinerList(devices: [MinerDevice]) -> some View {
@@ -66,26 +84,44 @@ extension DashboardView {
         }
     }
 
+    @ViewBuilder
     private func minerCard(_ device: MinerDevice) -> some View {
-        let expanded = minerExpansion[device.id] ?? !store.preferences.compactCards
-        return VStack(alignment: .leading, spacing: 8) {
-            minerCardLink(device, expanded: expanded)
-            Rectangle()
-                .fill(FleetTheme.separator)
-                .frame(height: 1)
-                .accessibilityHidden(true)
-            minerCardControls(device, expanded: expanded)
+        let isEssentials = store.preferences.dashboardMode == .essentials
+        let expanded = minerExpansion[device.id] ?? (isEssentials ? !numberFirstCompactCards : !store.preferences.compactCards)
+        if isEssentials {
+            VStack(alignment: .leading, spacing: 0) {
+                minerCardLink(device, expanded: expanded)
+                minerCardControls(device, expanded: expanded)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .transition(
+                reduceMotion
+                    ? .identity
+                    : .opacity.combined(with: .move(edge: .bottom))
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                minerCardLink(device, expanded: expanded)
+                Rectangle()
+                    .fill(FleetTheme.separator)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+                minerCardControls(device, expanded: expanded)
+            }
+            .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
+            .padding(.horizontal, FleetLayout.cardPadding)
+            .padding(.top, FleetLayout.cardPadding)
+            .padding(.bottom, 4)
+            .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator, cornerRadius: 24)
+            .transition(
+                reduceMotion
+                    ? .identity
+                    : .opacity.combined(with: .move(edge: .bottom))
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
-        .padding(.horizontal, FleetLayout.cardPadding)
-        .padding(.top, FleetLayout.cardPadding)
-        .padding(.bottom, 4)
-        .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator)
-        .transition(
-            reduceMotion
-                ? .identity
-                : .opacity.combined(with: .move(edge: .bottom))
-        )
     }
 
     private func minerCardLink(_ device: MinerDevice, expanded: Bool) -> some View {
@@ -102,6 +138,24 @@ extension DashboardView {
 
     @ViewBuilder
     private func minerCardNavigation(_ device: MinerDevice, expanded: Bool) -> some View {
+        #if os(macOS)
+        if let onSelectSidebarDestination {
+            Button {
+                FleetHaptics.selection()
+                onSelectSidebarDestination(.miner(device.id))
+            } label: {
+                minerCardNavigationLabel(device, expanded: expanded)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink(value: FleetMinerRoute(deviceID: device.id)) {
+                minerCardNavigationLabel(device, expanded: expanded)
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
+        }
+        #else
         if usesCompactHorizontalLayout {
             NavigationLink {
                 MinerDetailView(
@@ -117,13 +171,20 @@ extension DashboardView {
                 minerCardNavigationLabel(device, expanded: expanded)
                     .fleetMinerTransitionSource(id: device.id, in: minerTransitionNamespace, enabled: !reduceMotion)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
         } else {
             // The split workspace owns this value in fleetPath. A view-based link
             // keeps its own push, which clearing the sidebar's path cannot pop.
             NavigationLink(value: FleetMinerRoute(deviceID: device.id)) {
                 minerCardNavigationLabel(device, expanded: expanded)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
         }
+        #endif
     }
 
     private func minerCardNavigationLabel(_ device: MinerDevice, expanded: Bool) -> some View {
@@ -132,9 +193,9 @@ extension DashboardView {
             insights: insights,
             device: device,
             compact: !expanded,
-            numberFirst: usesNumberFirstOverview
+            numberFirst: usesNumberFirstOverview || store.preferences.dashboardMode == .essentials
         )
-        .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .contentShape(Rectangle())
     }
 
@@ -182,6 +243,7 @@ extension DashboardView {
 
     private func minerCardExpandButton(_ device: MinerDevice, expanded: Bool) -> some View {
         Button {
+            FleetHaptics.light()
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                 minerExpansion[device.id] = !expanded
             }
@@ -203,8 +265,12 @@ extension DashboardView {
             .foregroundStyle(FleetTheme.ink)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 4)
-            .padding(.vertical, usesNumberFirstOverview ? 4 : 8)
-            .frame(minWidth: 48, minHeight: 48, alignment: .leading)
+            .padding(.vertical, usesNumberFirstOverview ? 2 : 8)
+            .frame(
+                minWidth: usesNumberFirstOverview ? 36 : 48,
+                minHeight: usesNumberFirstOverview ? 28 : 48,
+                alignment: .leading
+            )
             .contentShape(Rectangle())
     }
 

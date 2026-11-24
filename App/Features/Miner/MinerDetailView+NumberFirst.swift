@@ -11,8 +11,11 @@ struct MinerNumberFirstAvailability {
     var actionStatuses: [MinerDetailQuickAction: MinerProbeStatus] = [:]
     var hasFreshLiveFields = false
     var liveActionCandidates: Set<MinerDetailQuickAction> = []
+    var driverCapabilities: MinerDriverCapabilities = .forFamily("bitaxe")
 
-    var canEditSettings: Bool { rawAPI && (settingsStatus.isSupported || hasFreshLiveFields) }
+    var canEditSettings: Bool {
+        !driverCapabilities.isReadOnly && rawAPI && (settingsStatus.isSupported || hasFreshLiveFields)
+    }
 
     var quickActions: [MinerDetailQuickAction] {
         guard rawAPI else { return [] }
@@ -22,17 +25,18 @@ struct MinerNumberFirstAvailability {
     }
 
     var cooling: Bool {
-        guard canEditSettings,
-              let automatic = info.raw["autofanspeed"]?.boolValue else { return false }
-        return automatic
-            ? FleetFormat.sensor(info, keys: "temptarget").map { $0 > 0 } == true
-            : FleetFormat.sensor(info, keys: "manualFanSpeed").map { $0 <= 100 } == true
+        guard canEditSettings, driverCapabilities.canSetFan else { return false }
+        // One shared Cooling page for every family; the draft reads each firmware's own keys.
+        return MinerCoolingPreviewDraft(info: info).hasControls
     }
 
     var tuning: Bool {
-        canEditSettings
-            && (FleetFormat.sensor(info, keys: "frequency") ?? 0) > 0
-            && (FleetFormat.sensor(info, keys: "coreVoltage") ?? 0) > 0
+        guard canEditSettings, driverCapabilities.canSetFrequency,
+              (FleetFormat.sensor(info, keys: "frequency") ?? 0) > 0 else { return false }
+        // Canaan's coreVoltage is the measured chip average (PVT_V0), not a setpoint, and its
+        // `voltage` ascset takes PSU units (Avalon_Nano3s driver-avalon.c:1907). Frequency only.
+        return !driverCapabilities.canSetVoltage || driverCapabilities.family == "canaan"
+            || (FleetFormat.sensor(info, keys: "coreVoltage") ?? 0) > 0
     }
 
     var rawAPI: Bool {
@@ -51,7 +55,7 @@ struct MinerNumberFirstAvailability {
             : Self.hasText(raw["stratumURL"]) && Self.hasText(raw["fallbackStratumURL"])
                 && Self.integer(raw["primaryPoolIndex"], in: 0...7) && Self.integer(raw["secondaryPoolIndex"], in: 0...7)
                 && raw["pools"]?.arrayValue?.contains(where: { Self.hasText($0["stratumURL"]) }) == true
-        if reportsPool {
+        if driverCapabilities.canSetPool, reportsPool {
             categories.append(.pools)
         }
         if let rotation = raw["rotation"]?.doubleValue, [0, 90, 180, 270].contains(rotation),
@@ -66,6 +70,9 @@ struct MinerNumberFirstAvailability {
     func showsSettingsHub(in mode: FleetPreferences.DashboardMode, usesEssentialsPools: Bool = false) -> Bool {
         !settingsCategories(usesEssentialsPools: usesEssentialsPools).isEmpty
             || quickActions.contains(.restart) || (mode == .full && rawAPI)
+            || (rawAPI && hasFreshLiveFields && ["canaan", "canaannano3"].contains(driverCapabilities.family))
+            || (rawAPI && !driverCapabilities.isReadOnly
+                && !MinerFirmwareExtras.controls(for: driverCapabilities.family).isEmpty)
     }
 
     private static func hasText(_ value: JSONValue?) -> Bool {
@@ -125,10 +132,27 @@ extension NumberFirstPreview {
             store.snapshot(for: device.id), device: device, currentDevices: store.devices, isDemo: store.isDemo
         )
         let hasDeviceIdentity = MinerInlineActionState.identity(from: info) != nil
-        return .init(info: info, infoStatus: validInfo ? .supported : .notChecked,
-                     settingsStatus: .notChecked, firmwareStatus: .notChecked,
-                     hasFreshLiveFields: canRequest,
-                     liveActionCandidates: canRequest && hasDeviceIdentity ? Set(MinerDetailQuickAction.allCases) : [])
+        let asic = store.capabilities.reports[device.id]?.asic
+        let family = device.firmwareFamily
+            ?? MinerFirmwareAdapter.detectedFamily(from: info, asic: asic)
+            ?? info.raw["firmwareFamily"]?.stringValue
+        let driverCaps = MinerDriverCapabilities.forFamily(family, info: info)
+        let supportedActions = Set(MinerDetailQuickAction.allCases.filter { action in
+            switch action {
+            case .identify: driverCaps.canIdentify
+            case .pause, .resume: driverCaps.canPause || driverCaps.canShutdown
+            case .restart: driverCaps.canRestart
+            }
+        })
+        return .init(
+            info: info,
+            infoStatus: validInfo ? .supported : .notChecked,
+            settingsStatus: .notChecked,
+            firmwareStatus: .notChecked,
+            hasFreshLiveFields: canRequest && !driverCaps.isReadOnly,
+            liveActionCandidates: canRequest && hasDeviceIdentity ? supportedActions : [],
+            driverCapabilities: driverCaps
+        )
     }
 }
 
@@ -222,6 +246,30 @@ extension MinerDetailView {
     }
 
     func numberFirstControl(_ title: String, symbol: String, category: MinerSettingsCategory?) -> some View {
+        #if os(macOS)
+        NavigationLink(value: FleetMinerSettingsRoute(deviceID: currentDevice.id, category: category)) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol).foregroundStyle(FleetTheme.accent).accessibilityHidden(true)
+                Text(title).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 2)
+                Image(systemName: "chevron.right")
+                    .fleetFont(.caption2, weight: .semibold)
+                    .foregroundStyle(FleetTheme.secondary)
+                    .accessibilityHidden(true)
+            }
+            .fleetFont(.subheadline, weight: .semibold)
+            .foregroundStyle(FleetTheme.ink)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .fleetPointerHover()
+        .accessibilityIdentifier("detail.previewControls.\(category?.rawValue ?? "settings")")
+        .accessibilityHint("Opens settings for review. No change is sent.")
+        #else
         NavigationLink {
             settingsDestination(category)
         } label: {
@@ -245,6 +293,7 @@ extension MinerDetailView {
         .buttonStyle(.plain)
         .accessibilityIdentifier("detail.previewControls.\(category?.rawValue ?? "settings")")
         .accessibilityHint("Opens settings for review. No change is sent.")
+        #endif
     }
 
     @ViewBuilder private func numberFirstFullDetails(_ availability: MinerNumberFirstAvailability) -> some View {

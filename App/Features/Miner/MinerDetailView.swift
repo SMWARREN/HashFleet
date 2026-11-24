@@ -65,9 +65,13 @@ struct MinerDetailView: View {
     var isXMRig: Bool { currentDevice.kind == .xmrig }
     var dashboardMode: FleetPreferences.DashboardMode { guidedDemo && !guidedEssentials ? .full : store.preferences.dashboardMode }
     var usesNumberFirstDetail: Bool {
+        #if os(macOS)
+        dashboardMode == .essentials && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && !isXMRig
+        #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.minerDetail : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
             && usesCompactHorizontalLayout && !isXMRig
+        #endif
     }
 
     var miningCoin: MiningPoolCoin? {
@@ -237,6 +241,7 @@ struct MinerDetailView: View {
                 compactMaxWidth: usesWideDetail ? FleetLayout.wideDetailWidth : FleetLayout.compactDetailWidth
             )
         }
+        .fleetPauseUpdatesOnScroll(store: store)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured in
             // Only a width that changes the column arrangement may re-render this page. Writing
             // every point of width forced the whole detail tree (charts included) to rebuild

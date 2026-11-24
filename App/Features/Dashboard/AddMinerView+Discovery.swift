@@ -22,9 +22,9 @@ extension AddMinerView {
         case .results:
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Compatible miners")
+                    Text("Scan complete · \(discovery.candidates.count) found")
                         .fleetFont(.caption, weight: .semibold, design: .monospaced)
-                        .foregroundStyle(FleetTheme.secondary)
+                        .foregroundStyle(FleetTheme.positive)
                     Spacer(minLength: 8)
                     if !addedAddresses.isEmpty {
                         Text("\(addedAddresses.count) added")
@@ -64,17 +64,25 @@ extension AddMinerView {
     }
 
     /// Adds every discovered miner in one step, skipping ones already in the fleet.
-    private var addAllButton: some View {
+    var addAllButton: some View {
         let remaining = discovery.candidates.filter { !addedAddresses.contains($0.address) }.count
         return Button {
-            addAllDiscovered()
+            if remaining == 0 && !addedAddresses.isEmpty {
+                FleetHaptics.success()
+                dismiss()
+            } else if remaining > 0 {
+                FleetHaptics.medium()
+                addAllDiscovered()
+            } else {
+                FleetHaptics.warning()
+            }
         } label: {
-            Label(remaining == 0 ? "Done · Open Overview" : "Add all (\(remaining))",
+            Label(remaining == 0 ? "Done · Return to Overview" : "Add all (\(remaining))",
                   systemImage: remaining == 0 ? "checkmark.circle.fill" : "plus.circle.fill")
                 .frame(maxWidth: .infinity, minHeight: 24)
         }
-        .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
-        .disabled(!localNetwork.isGranted || discovery.isScanning)
+        .buttonStyle(FleetPrimaryButtonStyle(tone: remaining == 0 ? .secondary : .accent, size: .compact))
+        .disabled(!localNetwork.isGranted || (remaining == 0 && addedAddresses.isEmpty))
         .accessibilityIdentifier("addMiner.addAll")
         .accessibilityHint("Adds every miner found without changing their settings.")
     }
@@ -106,30 +114,47 @@ extension AddMinerView {
     private func discoveryRow(_ candidate: MinerDiscoveryCandidate) -> some View {
         let isAdded = addedAddresses.contains(candidate.address)
         Button {
+            FleetHaptics.light()
             addMiner(candidate)
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "cpu")
+            HStack(spacing: 12) {
+                Image(systemName: "wifi")
+                    .font(.body)
                     .foregroundStyle(isAdded ? FleetTheme.positive : FleetTheme.accent)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
+
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(candidate.name)
-                        .fleetFont(.subheadline, weight: .semibold)
-                        .foregroundStyle(FleetTheme.ink)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(candidate.name)
+                            .fleetFont(.subheadline, weight: .semibold)
+                            .foregroundStyle(FleetTheme.ink)
+                            .lineLimit(1)
+                        if let fam = candidate.detectedFamily {
+                            Text(fam)
+                                .fleetFont(.caption2, weight: .medium, design: .monospaced)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(FleetTheme.accent.opacity(0.12), in: Capsule())
+                                .foregroundStyle(FleetTheme.accent)
+                        }
+                    }
                     Text([candidate.model, candidate.address].compactMap { $0 }.joined(separator: " · "))
                         .fleetFont(.caption, design: .monospaced)
                         .foregroundStyle(FleetTheme.secondary)
-                        // Shrinking beats truncating the address at large Dynamic Type sizes.
                         .minimumScaleFactor(0.75)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                    .font(.title3)
                     .foregroundStyle(isAdded ? FleetTheme.positive : FleetTheme.accent)
                     .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
         .disabled(isAdded || !localNetwork.isGranted)

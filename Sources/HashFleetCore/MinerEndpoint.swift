@@ -99,6 +99,11 @@ public enum MinerEndpoint: Hashable, Sendable, Identifiable, CaseIterable {
     public var timeout: TimeInterval {
         if isBinaryUpload { return 300 }
         if self == .wifiScan { return 30 }
+        // URLSessionWebSocketTask treats the request timeout as an idle timeout. ESP-Miner's
+        // /api/ws/live sends only changed fields, so quiet periods longer than 15 s dropped a
+        // healthy socket (board log: "Failed to read header byte (socket FD invalid)"). The
+        // freshness watchdog still polls HTTP when no frame arrives.
+        if isWebSocket { return 600 }
         return 15
     }
 

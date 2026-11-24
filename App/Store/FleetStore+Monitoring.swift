@@ -9,8 +9,10 @@ import GRDB
 /// WebSocket live monitoring and fallback polling for FleetStore. Moved to an extension for
 /// file and type length; connection handling and retry behavior are unchanged.
 extension FleetStore {
-    static let liveSnapshotMaximumAge: TimeInterval = 30
-    static let liveFreshnessCheckInterval: Duration = .seconds(15)
+    static let liveSnapshotMaximumAge: TimeInterval = 15
+    static let liveFreshnessCheckInterval: Duration = .seconds(10)
+    /// Foreground HTTP poll cadence for firmware without a live socket or stale snapshots.
+    static let httpPollInterval: Duration = .seconds(10)
 
     func cancelLiveMonitoring(ownedBy token: UUID? = nil) {
         // SwiftUI can start a replacement `.task(id:)` before the cancelled task reaches its
@@ -19,6 +21,8 @@ extension FleetStore {
         liveGeneration = UUID()
         liveTasks.values.forEach { $0.cancel() }
         liveTasks.removeAll()
+        httpPollingTask?.cancel()
+        httpPollingTask = nil
         liveFlushTask?.cancel()
         liveFlushTask = nil
         pendingLiveUpdates.removeAll()
@@ -49,6 +53,7 @@ extension FleetStore {
                 await self?.monitor(device: device, token: token)
             }
         }
+        startUnifiedHTTPPolling(token: token)
 
         defer { cancelLiveMonitoring(ownedBy: token) }
         while !Task.isCancelled {
@@ -88,7 +93,7 @@ extension FleetStore {
         await withTaskGroup(of: ScoreboardFetchResult?.self, returning: [ScoreboardFetchResult].self) { group in
             for device in targets where device.kind == .espMiner {
                 group.addTask(priority: .utility) {
-                    guard let entries = try? await MinerAPIClient(device: device, session: session).scoreboard(),
+                    guard let entries = try? await MinerFirmwareAdapter(device: device, session: session).scoreboard(),
                         !entries.isEmpty
                     else { return nil }
                     return ScoreboardFetchResult(deviceID: device.id, entries: entries)
@@ -108,6 +113,20 @@ extension FleetStore {
             await monitorXMRig(device: device, token: token)
             return
         }
+        // Firmware whose pinned registrar has no /api/ws/live (NerdQAxe, Bitfortun, AxeForge, WarpAxe, Harlo-OS, NMAxe, BitForge, cgminer)
+        // is read by HTTP/TCP polling. Opening the socket there only fails and shows "Live monitoring unavailable".
+        let currentFamily = (
+            devices.first(where: { $0.id == device.id })?.firmwareFamily
+            ?? device.firmwareFamily
+            ?? snapshots[device.id]?.info?.raw["firmwareFamily"]?.stringValue
+        )?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let rawFamily = currentFamily, !rawFamily.isEmpty {
+            let carriesLiveSocket = MinerFirmwareFamily(rawValue: rawFamily)?.supportsLiveWebSocket ?? false
+            if !carriesLiveSocket {
+                await monitorHTTPOnly(device: device, token: token)
+                return
+            }
+        }
         var retrySeconds = 1.0
 
         while !Task.isCancelled, token == liveGeneration {
@@ -119,6 +138,14 @@ extension FleetStore {
                 liveConnectedDeviceIDs.remove(device.id)
                 liveConnectionErrors[device.id] = error.localizedDescription
                 await fallbackPoll(device, token: token)
+                guard !Task.isCancelled, token == liveGeneration else { return }
+                // The HTTP read may have just identified HTTP-only or cgminer firmware (for example an
+                // Avalon found on port 4028). Stop retrying a socket that firmware never serves.
+                if !observedFamilyCarriesLiveSocket(for: device.id) {
+                    liveConnectionErrors.removeValue(forKey: device.id)
+                    await monitorHTTPOnly(device: device, token: token)
+                    return
+                }
                 do { try await Task.sleep(for: .seconds(retrySeconds)) } catch { return }
                 retrySeconds = min(retrySeconds * 2, 60)
             }
@@ -144,28 +171,7 @@ extension FleetStore {
         liveConnectedDeviceIDs.insert(device.id)
         var appliedFrame = false
         var nextBootstrapAttempt = Date.distantPast
-        #if os(macOS)
         liveAppliedDeviceIDs.remove(device.id)
-        #endif
-
-        // Some firmware leaves the WebSocket open after it stops delivering frames. That
-        // looks connected in the UI but freezes every reading until a manual refresh. Keep
-        // the low-cost live path while it is healthy, and issue a bounded HTTP read only
-        // when the complete snapshot has not advanced for the expected live cadence.
-        let freshnessWatchdog = Task { @MainActor [weak self] in
-            while let self, !Task.isCancelled, token == self.liveGeneration {
-                do {
-                    try await Task.sleep(for: Self.liveFreshnessCheckInterval)
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled, token == self.liveGeneration else { return }
-                if self.needsFallbackPoll(for: device.id) {
-                    await self.fallbackPoll(device, token: token)
-                }
-            }
-        }
-        defer { freshnessWatchdog.cancel() }
 
         for try await message in stream {
             try Task.checkCancellation()
@@ -176,32 +182,26 @@ extension FleetStore {
             // Refresh tap. Retry at a bounded interval while the healthy socket remains open.
             if needsLiveBootstrap(for: device.id), Date() >= nextBootstrapAttempt {
                 await fallbackPoll(device, token: token)
-                nextBootstrapAttempt = Date().addingTimeInterval(15)
+                nextBootstrapAttempt = Date().addingTimeInterval(5)
             }
             // The bootstrap await may outlive this generation. Its buffered frame must
             // not be applied to a replacement owner's snapshot or pending update batch.
             guard !Task.isCancelled, token == liveGeneration else { return }
-            #if os(macOS)
             // ESP-Miner sends several partial frames per second. Publishing each one re-renders
-            // every observing screen and starved the Mac main thread (scroll, sidebar, menus).
+            // every observing screen and starves the main thread (scroll, cards, menus).
             // Merge frames and publish the whole fleet together at most once per interval, so four
             // miners cost one render pass instead of four. The final frame is never lost.
             if let update = Self.liveUpdate(from: message) {
                 pendingLiveUpdates[device.id, default: PendingLiveUpdate()].merge(update)
                 scheduleLiveFlush(token: token)
             }
-            #else
-            appliedFrame = applyLiveMessage(message, for: device.id) || appliedFrame
-            #endif
         }
         // next() can finish after a replacement starts without yielding another frame.
         guard !Task.isCancelled, token == liveGeneration else { return }
-        #if os(macOS)
         if token == liveGeneration {
             flushLiveUpdate(for: device.id)
             appliedFrame = liveAppliedDeviceIDs.remove(device.id) != nil
         }
-        #endif
 
         liveConnectedDeviceIDs.remove(device.id)
         if !appliedFrame { await fallbackPoll(device, token: token) }
@@ -216,45 +216,96 @@ extension FleetStore {
         // A foreground or post-write refresh supersedes any earlier fallback request without
         // tearing down the socket owner. An old response must not restore pre-write settings.
         let refreshGeneration = generation
-        do {
-            let info: MinerInfo
-            switch device.kind {
-            case .espMiner:
-                info = try await MinerAPIClient(device: device, session: session).info()
-            case .xmrig:
-                info = try await XMRigAPIClient(
-                    device: device,
-                    bearerToken: MinerCredentialStore.token(for: device.keychainCredentialReference),
-                    session: session
-                ).summary()
-            }
-            guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
-                devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind })
-            else { return }
+        let results = await FleetTelemetryBatchFetcher.fetch([device], session: session)
+        guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
+            devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind }),
+            let result = results.first
+        else { return }
+        if let info = result.info {
             recordSuccessfulInfo(info, for: device.id, at: Date())
-        } catch {
-            guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
-                devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind })
-            else { return }
-            recordFailedInfo(error.localizedDescription, for: device.id)
+        } else {
+            recordFailedInfo(result.error ?? "Miner did not return a reading.", for: device.id)
         }
     }
 
-    /// XMRig exposes an HTTP summary rather than ESP-Miner's live WebSocket. Poll at a modest
-    /// foreground interval and use the same snapshot/error pipeline as every other miner.
-    func monitorXMRig(device: MinerDevice, token: UUID) async {
+    /// True unless the latest saved or observed family is known not to serve `/api/ws/live`.
+    /// An unidentified miner keeps the socket path, matching the behavior before identification.
+    func observedFamilyCarriesLiveSocket(for deviceID: UUID) -> Bool {
+        let family = (
+            devices.first(where: { $0.id == deviceID })?.firmwareFamily
+            ?? snapshots[deviceID]?.info?.raw["firmwareFamily"]?.stringValue
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !family.isEmpty else { return true }
+        return MinerFirmwareFamily(rawValue: family)?.supportsLiveWebSocket ?? false
+    }
+
+    /// HTTP-only firmware: polled by the unified background loop. Task stays active for cancellation tracking.
+    func monitorHTTPOnly(device: MinerDevice, token: UUID) async {
         while !Task.isCancelled, token == liveGeneration {
-            await fallbackPoll(device, token: token)
-            guard !Task.isCancelled, token == liveGeneration else { return }
-            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            do { try await Task.sleep(for: .seconds(86_400)) } catch { return }
         }
         if token == liveGeneration { liveTasks[device.id] = nil }
     }
 
-    /// Mac only: coalesce live frames to at most one fleet-wide publish per second.
+    /// XMRig summary: polled by the unified background loop. Task stays active for cancellation tracking.
+    func monitorXMRig(device: MinerDevice, token: UUID) async {
+        while !Task.isCancelled, token == liveGeneration {
+            do { try await Task.sleep(for: .seconds(86_400)) } catch { return }
+        }
+        if token == liveGeneration { liveTasks[device.id] = nil }
+    }
+
+    /// Unified background polling: coordinates all HTTP-only, disconnected, or stale devices
+    /// in one shared background batch, applying results in a single MainActor turn.
+    func startUnifiedHTTPPolling(token: UUID) {
+        httpPollingTask?.cancel()
+        httpPollingTask = Task { @MainActor [weak self] in
+            while let self, !Task.isCancelled, token == self.liveGeneration {
+                do {
+                    try await Task.sleep(for: Self.httpPollInterval)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled, token == self.liveGeneration else { return }
+                await self.pollHTTPBatch(token: token)
+            }
+        }
+    }
+
+    func pollHTTPBatch(token: UUID) async {
+        guard !Task.isCancelled, token == liveGeneration, !isDemo, !isUserScrolling else { return }
+        let now = Date()
+        let targets = visibleDevices.filter { device in
+            if !observedFamilyCarriesLiveSocket(for: device.id) || device.kind == .xmrig {
+                return true
+            }
+            if !liveConnectedDeviceIDs.contains(device.id) {
+                return true
+            }
+            let maxAge = liveConnectedDeviceIDs.contains(device.id) ? 30.0 : FleetStore.liveSnapshotMaximumAge
+            return needsFallbackPoll(for: device.id, now: now, maximumAge: maxAge)
+        }
+        guard !targets.isEmpty else { return }
+
+        let refreshGen = generation
+        let session = session
+        let results = await FleetTelemetryBatchFetcher.fetch(targets, session: session)
+        guard !Task.isCancelled, token == liveGeneration, refreshGen == generation else { return }
+
+        // Coalesce all results and apply to the fleet in ONE single turn on MainActor
+        for result in results {
+            guard devices.contains(where: { $0.id == result.id }) else { continue }
+            if let info = result.info {
+                recordSuccessfulInfo(info, for: result.id, at: now)
+            } else {
+                recordFailedInfo(result.error ?? "Miner did not return a reading.", for: result.id)
+            }
+        }
+    }
+
+    /// Coalesce live frames to at most one fleet-wide publish per second.
     static let livePublishInterval: TimeInterval = 1
 
-    #if os(macOS)
     /// Starts one shared flush for every miner's pending frames. Frames arriving before it fires
     /// join the same publish, so the dashboard renders once per interval for the whole fleet.
     func scheduleLiveFlush(token: UUID) {
@@ -263,6 +314,7 @@ extension FleetStore {
             try? await Task.sleep(for: .seconds(Self.livePublishInterval))
             guard let self, !Task.isCancelled, token == self.liveGeneration else { return }
             self.liveFlushTask = nil
+            guard !self.isUserScrolling else { return }
             self.flushPendingLiveUpdates()
         }
     }
@@ -277,7 +329,6 @@ extension FleetStore {
               let update = pending.take() else { return }
         if applyLiveUpdate(update, for: deviceID) { liveAppliedDeviceIDs.insert(deviceID) }
     }
-    #endif
 
     /// Partial live frames merged between publishes, using the same deep merge as snapshots.
     struct PendingLiveUpdate {

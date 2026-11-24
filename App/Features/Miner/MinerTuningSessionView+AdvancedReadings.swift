@@ -28,7 +28,11 @@ extension MinerTuningSessionView {
 
     var configuredFrequency: Double? { MinerTuningSessionMath.validFrequency(info?.raw["frequency"]?.doubleValue) }
     private var actualFrequency: Double? { MinerTuningSessionMath.validFrequency(info?.raw["actualFrequency"]?.doubleValue) }
-    var configuredVoltage: Double? { MinerTuningSessionMath.validVoltage(info?.raw["coreVoltage"]?.doubleValue) }
+    var configuredVoltage: Double? {
+        // Canaan reports the measured chip average, not a setpoint: no voltage dial for Avalon.
+        guard info?.raw["firmwareFamily"]?.stringValue?.lowercased() != "canaan" else { return nil }
+        return MinerTuningSessionMath.validVoltage(info?.raw["coreVoltage"]?.doubleValue)
+    }
     private var measuredVoltage: Double? { MinerTuningSessionMath.validMeasuredVoltage(diagnostics.electrical.actualCoreVoltageMV) }
 
     var chipCount: Int {

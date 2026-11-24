@@ -40,14 +40,14 @@ struct AddMinerBulkCompletionTests {
 
     @Test func existingEntriesAreCompleteWithoutDuplicateWrites() {
         var calls = 0
-        let result = AddMinerMultiSelection.addAll(candidates: [a], alreadyAdded: [a.address], customName: "") { _, _ in calls += 1 }
+        let result = AddMinerMultiSelection.addAll(candidates: [a], alreadyAdded: [a.address], customName: "") { (_: String, _: String) in calls += 1 }
         #expect(calls == 0)
         #expect(result.failures.isEmpty)
         #expect(result.addedAddresses == [a.address])
     }
 
     @Test func storeDuplicateCountsAsSuccess() {
-        let result = AddMinerMultiSelection.addAll(candidates: [a], alreadyAdded: [], customName: "") { _, _ in throw FleetError.duplicate }
+        let result = AddMinerMultiSelection.addAll(candidates: [a], alreadyAdded: [], customName: "") { (_: String, _: String) in throw FleetError.duplicate }
         #expect(result.failures.isEmpty)
         #expect(result.addedAddresses == [a.address])
     }

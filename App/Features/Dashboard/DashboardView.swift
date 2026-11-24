@@ -10,6 +10,7 @@ struct DashboardView: View {
     var coordinator: FleetGlanceCoordinator?
     var startupReady: Bool
     var onToggleSidebar: (() -> Void)?
+    var onSelectSidebarDestination: ((FleetSidebarDestination) -> Void)?
     @State var showingAddMiner = false
     @State var showingSettings = false
     @State var showingAbout = false
@@ -33,12 +34,12 @@ struct DashboardView: View {
     @State var minerSettingsRoute: DashboardMinerSettingsRoute?
     @State var minerTuningSessionDevice: MinerDevice?
     @State var minerXMRigControlDevice: MinerDevice?
-    @State private var pendingPageDestination: DashboardPageDestination?
+    @State var pendingPageDestination: DashboardPageDestination?
     @State private var appearanceToggle = 0
     @State var confirmingDeleteAll = false
     /// Tour previews finish their lesson before showing a celebration. Settings previews and
     /// real notification celebrations preserve the current screen under the app-wide window.
-    @State private var pendingCelebrationPreview: FleetCelebration.Kind?
+    @State var pendingCelebrationPreview: FleetCelebration.Kind?
     @Namespace var minerTransitionNamespace
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
     #if !os(macOS)
@@ -60,8 +61,12 @@ struct DashboardView: View {
 
     /// The new layout is scoped to the phone review build or the offline simulator fixture.
     var usesNumberFirstOverview: Bool {
+        #if os(macOS)
+        dashboardMode == .essentials && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
+        #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.overview : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && usesCompactHorizontalLayout
+        #endif
     }
 
     /// Use the same size for overview text and for layout branches in DashboardView itself.
@@ -74,13 +79,15 @@ struct DashboardView: View {
         insights: MiningInsightsStore = MiningInsightsStore(),
         coordinator: FleetGlanceCoordinator? = nil,
         startupReady: Bool = true,
-        onToggleSidebar: (() -> Void)? = nil
+        onToggleSidebar: (() -> Void)? = nil,
+        onSelectSidebarDestination: ((FleetSidebarDestination) -> Void)? = nil
     ) {
         self.store = store
         self.insights = insights
         self.coordinator = coordinator
         self.startupReady = startupReady
         self.onToggleSidebar = onToggleSidebar
+        self.onSelectSidebarDestination = onSelectSidebarDestination
     }
 
     var body: some View {
@@ -90,6 +97,7 @@ struct DashboardView: View {
                     // Bound the compact preview only. Toolbar and presentations stay at the system size.
                     .environment(\.dynamicTypeSize, overviewTypeSize)
             }
+            .fleetPauseUpdatesOnScroll(store: store)
             .coordinateSpace(name: "dashboardScroll")
             .background(FleetTheme.canvas)
             .foregroundStyle(FleetTheme.ink)
@@ -500,77 +508,6 @@ extension DashboardView {
                 if !isPresented { minerToRemove = nil }
             }
         )
-    }
-
-    /// Menu actions use one route at a time. Clear every presentation binding first, then wait
-    /// for SwiftUI to finish dismissal before opening the requested page. This prevents a stale
-    /// sheet from reopening over the new destination on iPad and macOS.
-    func routeToDashboardPage(_ destination: DashboardPageDestination) {
-        let needsDismissal = showingAddMiner || showingSettings || showingAbout || showingSupport || showingFeatureTour
-            || showingSideMenu || showingEnergy || showingNetwork || showingReports || showingBackup
-            || showingAchievements || selectedMinerRoute != nil || minerSettingsRoute != nil
-            || minerTuningSessionDevice != nil || minerToRemove != nil
-
-        pendingPageDestination = destination
-        clearDashboardPresentations()
-        guard needsDismissal else {
-            pendingPageDestination = nil
-            presentDashboardPage(destination)
-            return
-        }
-
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 80 : 300))
-            guard pendingPageDestination == destination else { return }
-            pendingPageDestination = nil
-            presentDashboardPage(destination)
-        }
-    }
-
-    private func clearDashboardPresentations() {
-        pendingCelebrationPreview = nil
-        showingAddMiner = false
-        showingSettings = false
-        showingAbout = false
-        showingSupport = false
-        showingFeatureTour = false
-        showingSideMenu = false
-        showingEnergy = false
-        showingNetwork = false
-        showingReports = false
-        showingBackup = false
-        showingAchievements = false
-        selectedMinerRoute = nil
-        minerSettingsRoute = nil
-        minerTuningSessionDevice = nil
-        minerToRemove = nil
-    }
-
-    private func presentDashboardPage(_ destination: DashboardPageDestination) {
-        switch destination {
-        case .overview:
-            break
-        case .miner(let id):
-            selectedMinerRoute = store.visibleDevices.first(where: { $0.id == id })
-        case .settings:
-            showingSettings = true
-        case .about:
-            showingAbout = true
-        case .support:
-            showingSupport = true
-        case .featureTour:
-            showingFeatureTour = true
-        case .energy:
-            showingEnergy = true
-        case .network:
-            showingNetwork = true
-        case .reports:
-            showingReports = true
-        case .backup:
-            showingBackup = true
-        case .achievements:
-            showingAchievements = true
-        }
     }
 
     private func refreshDashboard() async {

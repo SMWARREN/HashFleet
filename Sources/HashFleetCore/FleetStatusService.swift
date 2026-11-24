@@ -30,7 +30,7 @@ public enum FleetStatusService {
             let info: MinerInfo
             switch device.kind {
             case .espMiner:
-                info = try await MinerAPIClient(device: device).info()
+                info = try await MinerFirmwareAdapter(device: device).info()
             case .xmrig:
                 info = try await XMRigAPIClient(device: device, bearerToken: xmrigBearerToken).summary()
             }

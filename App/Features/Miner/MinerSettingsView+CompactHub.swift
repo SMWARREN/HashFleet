@@ -17,8 +17,31 @@ extension MinerSettingsView {
                 } else if offlineReadOnly {
                     MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id))
                 }
-                if !categories.isEmpty || canRestart || liveRestart.receipt != nil {
+                if !categories.isEmpty || canRestart || liveRestart.receipt != nil || showsAvalonControls(availability)
+                    || showsFirmwareExtras(availability) {
                     compactHubGroup("Controls") {
+                        if showsAvalonControls(availability) {
+                            compactHubLink("Avalon controls", subtitle: avalonControlsSubtitle, icon: "slider.horizontal.3",
+                                           id: "settings.preview.avalon") {
+                                MinerAvalonControlsPage(device: device, store: store)
+                            }
+                            if !categories.isEmpty || canRestart || showsFirmwareExtras(availability) { compactHubDivider }
+                        }
+                        if showsFirmwareExtras(availability) {
+                            compactHubLink("Firmware settings", subtitle: firmwareExtrasSubtitle, icon: "cpu",
+                                           id: "settings.preview.firmwareExtras") {
+                                MinerFirmwareExtrasPage(device: device, store: store)
+                            }
+                            if availability.driverCapabilities.family == "harloOS" {
+                                compactHubDivider
+                                compactHubLink("Harlo OS tools",
+                                               subtitle: "Updates, time, schedules, lighting, alerts, smart plug",
+                                               icon: "square.grid.2x2", id: "settings.preview.harloTools") {
+                                    MinerHarloToolsPage(device: device, store: store)
+                                }
+                            }
+                            if !categories.isEmpty || canRestart { compactHubDivider }
+                        }
                         ForEach(categories) { category in
                             compactCategory(category)
                             if category != categories.last || canRestart { compactHubDivider }
@@ -135,9 +158,11 @@ extension MinerSettingsView {
                 guard usesCompactSettingsHubPreview, store.preferences.dashboardMode == .essentials,
                       let info, NumberFirstPreview.minerAvailability(info, device: device, store: store)
                         .quickActions.contains(.restart) else { return }
+                FleetHaptics.heavy()
                 if store.isDemo {
                     previewRestartApplied = true
                     MinerQuickActionPreviewResult.announce(.restart)
+                    FleetHaptics.success()
                 } else {
                     Task { await liveRestart.send(.restart, device: device, store: store) }
                 }
@@ -203,5 +228,30 @@ extension MinerSettingsView {
         .background(FleetTheme.canvas)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension MinerSettingsView {
+    /// Canaan Avalon miners (port 4028) get their own page only for what has no shared screen:
+    /// work mode, and on A10 the LED locator and hash power. Fan and frequency use Cooling and
+    /// Frequency & voltage like every other miner.
+    func showsAvalonControls(_ availability: MinerNumberFirstAvailability) -> Bool {
+        ["canaan", "canaannano3"].contains(availability.driverCapabilities.family)
+            && availability.rawAPI && !availability.driverCapabilities.isReadOnly
+    }
+
+    func showsFirmwareExtras(_ availability: MinerNumberFirstAvailability) -> Bool {
+        availability.rawAPI && !availability.driverCapabilities.isReadOnly
+            && !MinerFirmwareExtras.controls(for: availability.driverCapabilities.family).isEmpty
+    }
+
+    var firmwareExtrasSubtitle: String {
+        MinerFirmwareExtras.controls(for: device.firmwareFamily ?? "bitaxe").prefix(3).map(\.title).joined(separator: ", ")
+    }
+
+    var avalonControlsSubtitle: String {
+        let caps = MinerDriverCapabilities.forFamily(device.firmwareFamily, info: info)
+        if device.firmwareFamily == "canaannano3" { return "Work level" }
+        return caps.canIdentify ? "Work mode, LED, hash power" : "Work mode"
     }
 }

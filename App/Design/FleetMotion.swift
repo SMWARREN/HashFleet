@@ -111,15 +111,7 @@ extension View {
     /// Reduce Motion.
     @ViewBuilder
     func fleetMinerCardScrollTransition(reduceMotion: Bool) -> some View {
-        if #available(iOS 17.0, *), !reduceMotion {
-            scrollTransition(.animated(.easeOut(duration: 0.2))) { content, phase in
-                content
-                    .scaleEffect(phase.isIdentity ? 1 : 0.975)
-                    .opacity(phase.isIdentity ? 1 : 0.82)
-            }
-        } else {
-            self
-        }
+        self
     }
 }
 

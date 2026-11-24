@@ -115,8 +115,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.mac
         PRODUCT_NAME: Hash Fleet
         PRODUCT_MODULE_NAME: HashFleetMac
-        # Direct-distribution Mac app only. Remove this flag for any Mac App Store target.
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) HASHFLEET_DIRECT_DISTRIBUTION"
+        # Mac App Store target. Direct-distribution flag removed.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited)"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "12"
         GENERATE_INFOPLIST_FILE: NO

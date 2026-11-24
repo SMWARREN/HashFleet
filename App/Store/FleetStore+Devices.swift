@@ -5,7 +5,12 @@ import HashFleetCore
 /// Local device list management for FleetStore (add, rename, validation).
 /// These change the app's local list only, never miner settings.
 extension FleetStore {
-    func add(name: String, address: String) throws {
+    func add(
+        name: String,
+        address: String,
+        firmwareFamily: MinerFirmwareFamily? = nil,
+        detectedFamily: String? = nil
+    ) throws {
         let trimmedName = try validatedLocalName(name)
         let candidate = MinerDevice(
             name: trimmedName,
@@ -27,7 +32,8 @@ extension FleetStore {
                 name: trimmedName.isEmpty
                     ? MinerDisplayName.automatic(info: nil, address: url.absoluteString) : trimmedName,
                 address: url.absoluteString,
-                usesAutomaticName: trimmedName.isEmpty
+                usesAutomaticName: trimmedName.isEmpty,
+                firmwareFamily: detectedFamily ?? firmwareFamily?.rawValue
             )
         )
         persist()
