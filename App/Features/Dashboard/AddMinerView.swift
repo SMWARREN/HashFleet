@@ -30,21 +30,6 @@ struct AddMinerView: View {
     var body: some View {
         FleetPageNavigationStack { form }
         .presentationBackground(FleetTheme.canvas)
-        #if os(iOS)
-        // Only present full screen cover if the user explicitly chose Sonar Grid or AirDrop Fleet.
-        // Unified Sheet expands natively right inside this sheet without taking over the screen.
-        .fullScreenCover(isPresented: Binding(
-            get: { discovery.isScanning && selectedStyle != .unifiedSheet },
-            set: { presented in if !presented, discovery.isScanning { discovery.cancel() } }
-        )) {
-            AddMinerFullScreenScan(
-                probedHosts: discovery.probedHosts,
-                hostCount: discoveryHostCount,
-                candidates: discovery.candidates,
-                onCancel: { discovery.cancel() }
-            )
-        }
-        #endif
     }
 
     private var designGalleryButton: some View {
