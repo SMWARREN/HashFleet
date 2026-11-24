@@ -24,6 +24,10 @@ struct MinerHarloToolsPage: View {
     @State private var cooldown = 300
     @State private var plugCode = ""
     @State private var plugAddress = ""
+    @State private var minerName = ""
+    @State private var wifiSSID = ""
+    @State private var wifiPassword = ""
+    @State private var wifiNetworks: [String] = []
 
     @State private var schedSlot = 1
     @State private var schedTime = "21:00"
@@ -67,12 +71,14 @@ struct MinerHarloToolsPage: View {
                         .accessibilityIdentifier("harlo.error")
                 }
                 updatesCard
+                nameCard
                 timeCard
                 schedulesCard
                 if lighting["zones"] != nil { lightingCard }
                 alertsCard
                 matterCard
                 networkCard
+                wifiCard
                 fleetCard
                 maintenanceCard
             }
@@ -111,6 +117,58 @@ struct MinerHarloToolsPage: View {
                     .accessibilityIdentifier("harlo.updateInstall")
                 }
             }
+            if updates["available"]?.boolValue == true, let version = updates["version"]?.stringValue {
+                Toggle("Hide notice for \(version)", isOn: Binding(
+                    get: { updates["ignored"]?.boolValue == true },
+                    set: { hide in
+                        perform(hide ? "Update notice hidden" : "Update notice restored") {
+                            try await client.setUpdateIgnored(version: version, ignored: hide)
+                        }
+                    }
+                ))
+                .accessibilityIdentifier("harlo.updateIgnore")
+            }
+        }
+    }
+
+    private var nameCard: some View {
+        card("Miner name", "Shown on the miner's screen and web page. Blank uses the model name.", "tag") {
+            HStack {
+                TextField("Miner name", text: $minerName).textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                button("Save", id: "harlo.nameSave") { try await client.setMinerName(minerName) }
+            }
+        }
+    }
+
+    private var wifiCard: some View {
+        card("Wi-Fi", "Joining a new network moves the miner off this one", "wifi") {
+            HStack {
+                button("Scan", id: "harlo.wifiScan", tone: .secondary) {
+                    wifiNetworks = try await client.wifiNetworks()
+                }
+                if !wifiNetworks.isEmpty {
+                    Menu(wifiSSID.isEmpty ? "Choose network" : wifiSSID) {
+                        ForEach(wifiNetworks, id: \.self) { ssid in Button(ssid) { wifiSSID = ssid } }
+                    }
+                }
+            }
+            TextField("Network name", text: $wifiSSID).textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+            SecureField("Password", text: $wifiPassword).textFieldStyle(.roundedBorder)
+            Button("Connect") {
+                let ssid = wifiSSID, pass = wifiPassword
+                confirm = ConfirmAction(
+                    title: "Connect the miner to \(ssid)?",
+                    detail: "The miner leaves its current network. If the password is wrong you may need its HARLO-SETUP access point to recover."
+                ) {
+                    try await client.connectWiFi(ssid: ssid, password: pass)
+                    wifiPassword = ""
+                }
+            }
+            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
+            .disabled(wifiSSID.isEmpty)
+            .accessibilityIdentifier("harlo.wifiConnect")
         }
     }
 
@@ -394,6 +452,7 @@ struct MinerHarloToolsPage: View {
         if timezone.isEmpty { timezone = time["timezone"]?.stringValue ?? TimeZone.current.identifier }
         alertsEnabled = discord["enabled"]?.boolValue ?? false
         cooldown = discord["cooldown_seconds"]?.intValue ?? cooldown
+        if minerName.isEmpty { minerName = (try? await c.minerName()) ?? "" }
     }
 }
 

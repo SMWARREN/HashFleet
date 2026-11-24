@@ -188,6 +188,20 @@ public struct HarloOSClient: Sendable {
     // MARK: Network, fleet, logs, reset
 
     public func network() async throws -> [String: JSONValue] { try await get("/api/network") }
+
+    /// Nearby SSIDs from `GET /api/wifi/scan` (`{"networks":[{"ssid","rssi"}]}`), de-duplicated.
+    public func wifiNetworks() async throws -> [String] {
+        let data = try await adapter.sendCustomHTTPData(method: "GET", path: "/api/wifi/scan", body: nil, query: [], timeout: 30)
+        let list = (try JSONDecoder().decode(JSONValue.self, from: data)).objectValue?["networks"]?.arrayValue ?? []
+        var seen = Set<String>()
+        return list.compactMap { $0.objectValue?["ssid"]?.stringValue }.filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+
+    public func connectWiFi(ssid: String, password: String) async throws {
+        guard !ssid.isEmpty, ssid.count <= 32 else { throw HarloOSError.rejected("Enter a network name (1-32 characters).") }
+        guard password.count <= 64 else { throw HarloOSError.rejected("Wi-Fi passwords are at most 64 characters.") }
+        try await send("POST", "/api/wifi/connect", ["ssid": .string(ssid), "password": .string(password)])
+    }
     public func fleet() async throws -> [String: JSONValue] { try await get("/api/fleet") }
     public func scanFleet() async throws { try await send("POST", "/api/fleet/scan", [:]) }
     public func setWebLogging(_ running: Bool) async throws {
