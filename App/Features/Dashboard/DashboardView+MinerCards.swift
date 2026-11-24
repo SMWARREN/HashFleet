@@ -15,23 +15,21 @@ extension DashboardView {
         gridItems: [GridItem],
         devices: [MinerDevice]
     ) -> AnyView {
+        if usesNumberFirstOverview {
+            return AnyView(numberFirstMinerList(devices: devices))
+        }
         #if os(macOS)
-        let isEssentials = store.preferences.dashboardMode == .essentials
         return AnyView(
             FleetMinerDetailGrid(
                 maximumColumns: columns,
                 minimumColumnWidth: 320,
-                spacing: isEssentials ? 10 : FleetLayout.cardGridSpacing,
+                spacing: FleetLayout.cardGridSpacing,
                 balancesFourItems: false
             ) {
                 dashboardMinerCards(devices: devices)
             }
         )
         #else
-        if usesNumberFirstOverview {
-            return AnyView(numberFirstMinerList(devices: devices))
-        }
-
         return AnyView(
             LazyVGrid(columns: gridItems, spacing: FleetLayout.cardGridSpacing) {
                 dashboardMinerCards(devices: devices)
@@ -170,7 +168,7 @@ extension DashboardView {
             compact: !expanded,
             numberFirst: usesNumberFirstOverview || store.preferences.dashboardMode == .essentials
         )
-        .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .contentShape(Rectangle())
     }
 
