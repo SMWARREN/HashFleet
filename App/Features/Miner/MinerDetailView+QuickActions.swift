@@ -189,7 +189,7 @@ extension MinerDetailView {
         let active = !store.isDemo && liveQuickAction.latestAction == action ? liveQuickAction : nil
         let unsupported = !store.isDemo && liveQuickAction.unsupported.contains(action)
         return Button {
-            guard usesNumberFirstDetail, dashboardMode == .essentials,
+            guard usesNumberFirstDetail || FleetLayout.isMac, dashboardMode == .essentials,
                   let info, NumberFirstPreview.minerAvailability(info, device: device, store: store)
                     .quickActions.contains(action) else { return }
             FleetHaptics.medium()

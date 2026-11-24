@@ -13,12 +13,12 @@ struct MinerTuningPreviewRoute: View {
     #endif
 
     private var usesPreview: Bool {
-        #if os(iOS)
+        #if os(macOS)
+        !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        #else
         (store.isDemo ? NumberFirstPreview.tuning : NumberFirstPreview.usesLivePhoneLayouts)
             && horizontalSizeClass == .compact
             && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
-        #else
-        false
         #endif
     }
 

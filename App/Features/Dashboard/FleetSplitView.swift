@@ -91,7 +91,7 @@ struct FleetSplitView: View {
                         if let device = store.visibleDevices.first(where: { $0.id == route.deviceID }) {
                             Group {
                                 if route.category == .tuning {
-                                    MinerTuningSessionView(device: device, store: store, insights: insights)
+                                    MinerTuningPreviewRoute(device: device, store: store, insights: insights)
                                 } else {
                                     MinerSettingsView(device: device, store: store, insights: insights,
                                                       initialCategory: route.category)

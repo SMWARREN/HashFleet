@@ -246,6 +246,30 @@ extension MinerDetailView {
     }
 
     func numberFirstControl(_ title: String, symbol: String, category: MinerSettingsCategory?) -> some View {
+        #if os(macOS)
+        NavigationLink(value: FleetMinerSettingsRoute(deviceID: currentDevice.id, category: category)) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol).foregroundStyle(FleetTheme.accent).accessibilityHidden(true)
+                Text(title).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 2)
+                Image(systemName: "chevron.right")
+                    .fleetFont(.caption2, weight: .semibold)
+                    .foregroundStyle(FleetTheme.secondary)
+                    .accessibilityHidden(true)
+            }
+            .fleetFont(.subheadline, weight: .semibold)
+            .foregroundStyle(FleetTheme.ink)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .fleetPointerHover()
+        .accessibilityIdentifier("detail.previewControls.\(category?.rawValue ?? "settings")")
+        .accessibilityHint("Opens settings for review. No change is sent.")
+        #else
         NavigationLink {
             settingsDestination(category)
         } label: {
@@ -269,6 +293,7 @@ extension MinerDetailView {
         .buttonStyle(.plain)
         .accessibilityIdentifier("detail.previewControls.\(category?.rawValue ?? "settings")")
         .accessibilityHint("Opens settings for review. No change is sent.")
+        #endif
     }
 
     @ViewBuilder private func numberFirstFullDetails(_ availability: MinerNumberFirstAvailability) -> some View {

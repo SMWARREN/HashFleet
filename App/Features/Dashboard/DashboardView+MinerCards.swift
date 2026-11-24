@@ -157,7 +157,7 @@ extension DashboardView {
             insights: insights,
             device: device,
             compact: !expanded,
-            numberFirst: usesNumberFirstOverview
+            numberFirst: usesNumberFirstOverview || store.preferences.dashboardMode == .essentials
         )
         .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
         .contentShape(Rectangle())

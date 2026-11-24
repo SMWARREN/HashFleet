@@ -82,12 +82,17 @@ extension MinerDetailView {
     }
 
     func essentialsTelemetrySections(_ info: MinerInfo) -> some View {
+        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+        let usesEssentialsPools = !store.isDemo && dashboardMode == .essentials
+        let showsSettings = availability.showsSettingsHub(in: dashboardMode, usesEssentialsPools: usesEssentialsPools)
         // Never put the history behind a disclosure or in a secondary column.
-        VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 14) {
             hashrateHero(info)
             heroConditions(info)
             minerHistoryCard
-            AnyView(controlMinerCard)
+            if availability.cooling || availability.tuning || !availability.quickActions.isEmpty || showsSettings {
+                numberFirstControls(availability, showsSettings: showsSettings)
+            }
             AnyView(essentialsAPITools)
             DisclosureGroup(isExpanded: $showsSecondaryReadings) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -112,7 +117,10 @@ extension MinerDetailView {
 
     #if os(macOS)
     func desktopEssentialsTelemetrySections(_ info: MinerInfo) -> some View {
-        HStack(alignment: .top, spacing: 16) {
+        let availability = NumberFirstPreview.minerAvailability(info, device: device, store: store)
+        let usesEssentialsPools = !store.isDemo && dashboardMode == .essentials
+        let showsSettings = availability.showsSettingsHub(in: dashboardMode, usesEssentialsPools: usesEssentialsPools)
+        return HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 14) {
                 hashrateHero(info)
                 heroConditions(info)
@@ -120,7 +128,9 @@ extension MinerDetailView {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
             VStack(alignment: .leading, spacing: 14) {
-                controlMinerCard
+                if availability.cooling || availability.tuning || !availability.quickActions.isEmpty || showsSettings {
+                    numberFirstControls(availability, showsSettings: showsSettings)
+                }
                 essentialsAPITools
                 DisclosureGroup(isExpanded: $showsSecondaryReadings) {
                     VStack(alignment: .leading, spacing: 14) {
