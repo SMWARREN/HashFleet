@@ -109,12 +109,11 @@ extension AddMinerView {
             addMiner(candidate)
         } label: {
             HStack(spacing: 12) {
-                CoinGeckoIcon(
-                    coin: candidate.inferredCoin,
-                    fallbackTicker: candidate.inferredCoin?.ticker ?? "BTC",
-                    size: 26
-                )
-                .frame(width: 26, height: 26)
+                Image(systemName: "cpu")
+                    .font(.title3)
+                    .foregroundStyle(isAdded ? FleetTheme.positive : FleetTheme.accent)
+                    .frame(width: 28, height: 28)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
@@ -125,28 +124,17 @@ extension AddMinerView {
                         if let fam = candidate.detectedFamily {
                             Text(fam)
                                 .fleetFont(.caption2, weight: .medium, design: .monospaced)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
                                 .background(FleetTheme.accent.opacity(0.12), in: Capsule())
                                 .foregroundStyle(FleetTheme.accent)
                         }
                     }
-                    HStack(spacing: 6) {
-                        Text(candidate.address)
-                            .fleetFont(.caption, design: .monospaced)
-                            .foregroundStyle(FleetTheme.secondary)
-                            .minimumScaleFactor(0.75)
-                            .lineLimit(1)
-                        Text("·")
-                            .foregroundStyle(FleetTheme.secondary)
-                        Text(candidate.hardwareChip)
-                            .fleetFont(.caption2, weight: .medium, design: .monospaced)
-                            .foregroundStyle(FleetTheme.ink)
-                        Spacer(minLength: 4)
-                        Text(candidate.speedEstimate)
-                            .fleetFont(.caption2, weight: .bold, design: .monospaced)
-                            .foregroundStyle(FleetTheme.positive)
-                    }
+                    Text([candidate.model, candidate.address].compactMap { $0 }.joined(separator: " · "))
+                        .fleetFont(.caption, design: .monospaced)
+                        .foregroundStyle(FleetTheme.secondary)
+                        .minimumScaleFactor(0.75)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle.fill")
@@ -155,7 +143,7 @@ extension AddMinerView {
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.vertical, 10)
             .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 10))
             .frame(maxWidth: .infinity, alignment: .leading)
         }

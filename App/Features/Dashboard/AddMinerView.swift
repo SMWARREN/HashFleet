@@ -17,9 +17,7 @@ struct AddMinerView: View {
     @State var discoveryAddError: String?
     @State var discovery = MinerDiscoveryCoordinator()
     @State var localNetwork = LocalNetworkAuthorization()
-    @State private var isShowingDesignGallery = false
     @State private var isManualExpanded = false
-    @AppStorage("addMiner.discoveryDesignStyle") private var selectedStyle: MinerDiscoveryDesignStyle = .unifiedSheet
     /// Addresses added during this sheet session. Discovery can surface several miners at once,
     /// so adding one must not dismiss the sheet and lose the rest of the results.
     @State var addedAddresses: Set<String> = []
@@ -30,34 +28,6 @@ struct AddMinerView: View {
     var body: some View {
         FleetPageNavigationStack { form }
         .presentationBackground(FleetTheme.canvas)
-    }
-
-    private var designGalleryButton: some View {
-        Button {
-            isShowingDesignGallery = true
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(FleetTheme.accent)
-                Text("Preview Discovery Designs (A · B · C)")
-                    .fleetFont(.footnote, weight: .semibold)
-                    .foregroundStyle(FleetTheme.ink)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(FleetTheme.secondary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(FleetTheme.accent.opacity(0.3), lineWidth: 1)
-            )
-        }
-        .sheet(isPresented: $isShowingDesignGallery) {
-            AddMinerDesignGalleryView()
-        }
     }
 
     private var form: some View {
@@ -81,7 +51,6 @@ struct AddMinerView: View {
                         size: 68
                     )
                     .accessibilityIdentifier("addMiner.bitsy")
-                    designGalleryButton
                     if minerKind == .espMiner { discoveryCard }
                     if minerKind == .xmrig && !localNetwork.isGranted { localNetworkApprovalControls }
                     if minerKind == .espMiner && (discovery.isScanning || !discovery.candidates.isEmpty) {
