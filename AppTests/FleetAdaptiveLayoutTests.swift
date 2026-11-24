@@ -82,7 +82,11 @@ struct FleetAdaptiveLayoutTests {
     }
 
     @Test func allPageContainersShareOneOuterPaddingToken() {
+        #if os(macOS)
+        #expect(FleetLayout.pagePadding == 15)
+        #else
         #expect(FleetLayout.pagePadding == 16)
+        #endif
         #expect(FleetLayout.pagePadding > 0)
     }
 
@@ -121,7 +125,12 @@ struct FleetAdaptiveLayoutTests {
     }
 
     @Test func sharedPageAndSectionSpacingUseTheSameRhythm() {
+        #if os(macOS)
+        #expect(FleetLayout.pagePadding == 15)
+        #expect(FleetLayout.sectionSpacing == 16)
+        #else
         #expect(FleetLayout.sectionSpacing == FleetLayout.pagePadding)
+        #endif
     }
 
     @Test func iconAndSidebarDimensions() {

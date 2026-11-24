@@ -18,7 +18,6 @@ struct InsightsSourceCard<Value: Sendable, Content: View>: View {
                 Text(result.error?.localizedDescription ?? "No recognized data returned.")
                     .fleetFont(.callout).foregroundStyle(FleetTheme.secondary)
             }
-            Divider().opacity(0.3).padding(.top, 2)
             if isDemo {
                 Text("Sample data · not live")
                     .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
@@ -46,7 +45,7 @@ struct InsightsSourceCard<Value: Sendable, Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fleetSectionGridCardContent()
-        .fleetCard(padding: 16, cornerRadius: 16)
+        .fleetCard()
     }
 }
 

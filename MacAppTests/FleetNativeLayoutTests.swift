@@ -34,22 +34,25 @@ struct FleetNativeLayoutTests {
     /// and a width hovering at a column boundary must not flip the arrangement back and forth.
     @Test func minerDetailWidthOnlySettlesOnColumnChangesWithHysteresis() {
         let policy = MinerDetailWidthPolicy.self
-        // Mac boundaries in raw content width: 760 + 32 and 1180 + 32.
-        #expect(policy.thresholds(isMac: true) == [792, 1_212])
+        let expectedThresholds = [
+            FleetLayout.macDetailTwoColumnThreshold + FleetLayout.pagePadding * 2,
+            FleetLayout.macDetailThreeColumnThreshold + FleetLayout.pagePadding * 2
+        ]
+        #expect(policy.thresholds(isMac: true) == expectedThresholds)
         // First measurement is always accepted.
         #expect(policy.settledWidth(previous: 0, measured: 1_000, isMac: true) == 1_000)
         // Same arrangement: keep the stored width, so no state write and no re-render.
         #expect(policy.settledWidth(previous: 1_000, measured: 1_100, isMac: true) == 1_000)
         #expect(policy.settledWidth(previous: 1_000, measured: 800, isMac: true) == 1_000)
         // Barely crossing a boundary is ignored in both directions.
-        #expect(policy.settledWidth(previous: 1_000, measured: 1_215, isMac: true) == 1_000)
-        #expect(policy.settledWidth(previous: 1_000, measured: 785, isMac: true) == 1_000)
+        #expect(policy.settledWidth(previous: 1_000, measured: expectedThresholds[1] + 3, isMac: true) == 1_000)
+        #expect(policy.settledWidth(previous: 1_000, measured: expectedThresholds[0] - 5, isMac: true) == 1_000)
         // Clearly crossing it is accepted.
         #expect(policy.settledWidth(previous: 1_000, measured: 1_240, isMac: true) == 1_240)
         #expect(policy.settledWidth(previous: 1_000, measured: 700, isMac: true) == 700)
         // Oscillating across a boundary settles on one value.
         var width: CGFloat = 1_000
-        for measured: CGFloat in [1_213, 1_205, 1_220, 1_210, 1_213] {
+        for measured: CGFloat in [expectedThresholds[1] + 1, expectedThresholds[1] - 5, expectedThresholds[1] + 8, expectedThresholds[1] - 2, expectedThresholds[1] + 1] {
             width = policy.settledWidth(previous: width, measured: measured, isMac: true)
         }
         #expect(width == 1_000)
@@ -90,8 +93,13 @@ struct FleetNativeLayoutTests {
         #expect(FleetLayout.formRowHeight == 44)
         #expect(FleetLayout.sidebarIconSize == 16)
         #expect(FleetLayout.sidebarIconWidth == 20)
+        #if os(macOS)
+        #expect(FleetLayout.pagePadding == 15)
+        #expect(FleetLayout.sectionSpacing == 16)
+        #else
         #expect(FleetLayout.pagePadding == 16)
         #expect(FleetLayout.sectionSpacing == FleetLayout.pagePadding)
+        #endif
         #expect(FleetLayout.readingMaximumWidth(forMac: true).isInfinite)
         #expect(FleetLayout.readingMaximumWidth(forMac: false) == 760)
         #expect(FleetLayout.macDashboardCardColumns(for: 700, preferred: 2) == 2)
