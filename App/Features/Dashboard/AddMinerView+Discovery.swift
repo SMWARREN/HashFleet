@@ -22,9 +22,9 @@ extension AddMinerView {
         case .results:
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Compatible miners")
+                    Text("Scan complete · \(discovery.candidates.count) found")
                         .fleetFont(.caption, weight: .semibold, design: .monospaced)
-                        .foregroundStyle(FleetTheme.secondary)
+                        .foregroundStyle(FleetTheme.positive)
                     Spacer(minLength: 8)
                     if !addedAddresses.isEmpty {
                         Text("\(addedAddresses.count) added")

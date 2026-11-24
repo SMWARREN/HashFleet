@@ -49,6 +49,7 @@ final class MinerDiscoveryCoordinator {
 
     private(set) var state: MinerDiscoveryState = .idle
     private(set) var candidates: [MinerDiscoveryCandidate] = []
+    private(set) var isRescanning = false
     /// Hosts probed so far during the current scan, so the UI can show real progress
     /// instead of an indeterminate spinner for up to 254 addresses.
     private(set) var probedHosts: Int = 0
@@ -83,6 +84,7 @@ final class MinerDiscoveryCoordinator {
         cancel()
         candidates = []
         probedHosts = 0
+        isRescanning = false
         guard let plan = planProvider() else {
             state = .unavailable("A local IPv4 network was not available. Connect to Wi-Fi, then try again.")
             return
@@ -101,12 +103,16 @@ final class MinerDiscoveryCoordinator {
                         // Progressive disclosure: miners appear as soon as their batch
                         // finishes instead of all at once after the whole /24.
                         probedHosts = max(probedHosts, probed)
+                        if probed >= plan.hosts.count {
+                            isRescanning = true
+                        }
                         if !batch.isEmpty {
                             candidates = MinerDiscoveryService.sorted(candidates + batch)
                         }
                     }
                 }
                 guard !Task.isCancelled, scanID == id else { return }
+                isRescanning = false
                 candidates = MinerDiscoveryService.sorted(found)
                 probedHosts = plan.hosts.count
                 state = found.isEmpty ? .noResults : .results
@@ -127,6 +133,7 @@ final class MinerDiscoveryCoordinator {
     }
 
     func cancel() {
+        isRescanning = false
         scanID = nil
         task?.cancel()
         task = nil

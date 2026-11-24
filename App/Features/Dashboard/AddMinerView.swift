@@ -308,19 +308,18 @@ struct AddMinerView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Image(systemName: "wifi")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(FleetTheme.accent)
-                                Text("Scanning Wi-Fi Fleet…")
+                                Text(isRescanning ? "Rescanning for late replies…" : "Scanning Wi-Fi Fleet…")
                                     .fleetFont(.subheadline, weight: .bold)
                                     .foregroundStyle(FleetTheme.ink)
                                 Circle()
                                     .fill(FleetTheme.positive)
                                     .frame(width: 7, height: 7)
                             }
-                            Text(AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount) + " · " + AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)))
+                            Text(isRescanning
+                                ? "Checking unresponsive addresses one more time…"
+                                : AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount) + " · " + AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)))
                                 .fleetFont(.caption, design: .monospaced)
-                                .foregroundStyle(FleetTheme.secondary)
+                                .foregroundStyle(isRescanning ? FleetTheme.accent : FleetTheme.secondary)
 
                             if !discovery.candidates.isEmpty {
                                 Text("\(discovery.candidates.count) \(discovery.candidates.count == 1 ? "miner" : "miners") responding live")
@@ -375,7 +374,8 @@ struct AddMinerView: View {
                 Button {
                     startDiscovery()
                 } label: {
-                    Label("Scan nearby miners", systemImage: "wifi")
+                    Label(discovery.candidates.isEmpty ? "Scan nearby miners" : "Rescan Wi-Fi",
+                          systemImage: discovery.candidates.isEmpty ? "wifi" : "arrow.clockwise")
                         .frame(maxWidth: .infinity, minHeight: 24)
                 }
                 .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
@@ -451,6 +451,10 @@ struct AddMinerView: View {
     var discoveryHostCount: Int {
         guard case .scanning(let count) = discovery.state else { return 254 }
         return count
+    }
+
+    var isRescanning: Bool {
+        discovery.isRescanning || (discovery.isScanning && discoveryHostCount > 0 && discovery.probedHosts >= discoveryHostCount)
     }
 
     @ViewBuilder
