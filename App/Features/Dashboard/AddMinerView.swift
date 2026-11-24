@@ -316,9 +316,11 @@ struct AddMinerView: View {
                                     .frame(width: 7, height: 7)
                             }
                             Text(isRescanning
-                                ? "Checking unresponsive addresses one more time…"
+                                ? "Re-checking late replies…"
                                 : AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount) + " · " + AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)))
                                 .fleetFont(.caption, design: .monospaced)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
                                 .foregroundStyle(isRescanning ? FleetTheme.accent : FleetTheme.secondary)
 
                             if !discovery.candidates.isEmpty {
@@ -354,32 +356,65 @@ struct AddMinerView: View {
                         } label: {
                             Label("Stop Scan", systemImage: "stop.fill")
                                 .fleetFont(.footnote, weight: .semibold)
-                                .frame(minHeight: 28)
+                                .frame(maxWidth: .infinity, minHeight: 28)
                         }
                         .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
                         .accessibilityIdentifier("addMiner.discoveryCancel")
 
-                        Spacer()
                         if !discovery.candidates.isEmpty {
                             addAllButton
                         }
                     }
+                    .animation(.spring(duration: 0.3, bounce: 0.15), value: discovery.candidates.isEmpty)
                 }
                 .padding(14)
                 .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 14))
                 .animation(.spring(duration: 0.35, bounce: 0.2), value: discovery.isScanning)
-            } else if !localNetwork.isGranted {
-                localNetworkApprovalControls
             } else {
-                Button {
-                    startDiscovery()
-                } label: {
-                    Label(discovery.candidates.isEmpty ? "Scan nearby miners" : "Rescan Wi-Fi",
-                          systemImage: discovery.candidates.isEmpty ? "wifi" : "arrow.clockwise")
-                        .frame(maxWidth: .infinity, minHeight: 24)
+                if !localNetwork.isGranted {
+                    Text(localNetwork.status == .denied
+                         ? "Local network access is off. Turn on Hash Fleet in \(FleetDeviceCopy.hostSettingsAppName) › Privacy & Security › Local Network, then try again."
+                         : "Hash Fleet finds and talks to your miners directly on your Wi-Fi network. Nothing is sent to the internet. "
+                            + "Next, iOS will ask whether to allow this. You can choose either option and change it later in Settings.")
+                        .fleetFont(.footnote)
+                        .foregroundStyle(localNetwork.status == .denied ? FleetTheme.warning : FleetTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
-                .accessibilityIdentifier("addMiner.discoveryStart")
+
+                Button {
+                    if !localNetwork.isGranted {
+                        #if os(iOS)
+                            if localNetwork.status == .denied,
+                               let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                                return
+                            }
+                        #endif
+                        localNetwork.request()
+                    } else {
+                        startDiscovery()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        if localNetwork.status == .requesting {
+                            ProgressView().controlSize(.small)
+                            Text("Waiting for permission…")
+                        } else if !localNetwork.isGranted {
+                            Label(localNetworkButtonTitle, systemImage: localNetwork.status == .denied ? "gear" : "arrow.right")
+                        } else {
+                            Label(discovery.candidates.isEmpty ? "Scan nearby miners" : "Rescan Wi-Fi",
+                                  systemImage: discovery.candidates.isEmpty ? "wifi" : "arrow.clockwise")
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 24)
+                }
+                .buttonStyle(FleetPrimaryButtonStyle(
+                    tone: !localNetwork.isGranted ? .accent : .secondary,
+                    size: .compact
+                ))
+                .disabled(localNetwork.status == .requesting)
+                .accessibilityIdentifier(localNetwork.isGranted ? "addMiner.discoveryStart" : "addMiner.allowLocalNetwork")
+                .animation(.spring(duration: 0.35, bounce: 0.2), value: localNetwork.status)
             }
 
             discoveryContent
@@ -419,25 +454,19 @@ struct AddMinerView: View {
                 #endif
                 localNetwork.request()
             } label: {
-                HStack {
-                    if localNetwork.status == .requesting { ProgressView().controlSize(.small) }
-                    Label(localNetwork.status == .requesting ? "Waiting…" : localNetworkButtonTitle,
-                          systemImage: "arrow.right")
+                HStack(spacing: 8) {
+                    if localNetwork.status == .requesting {
+                        ProgressView().controlSize(.small)
+                        Text("Waiting for permission…")
+                    } else {
+                        Label(localNetworkButtonTitle, systemImage: localNetwork.status == .denied ? "gear" : "arrow.right")
+                    }
                 }
                 .frame(maxWidth: .infinity, minHeight: 24)
             }
-            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
+            .buttonStyle(FleetPrimaryButtonStyle(tone: .accent, size: .compact))
             .disabled(localNetwork.status == .requesting)
             .accessibilityIdentifier("addMiner.allowLocalNetwork")
-            Button {
-            } label: {
-                Label("Scan nearby miners", systemImage: "magnifyingglass")
-                    .frame(maxWidth: .infinity, minHeight: 24)
-            }
-            .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
-            .disabled(true)
-            .accessibilityIdentifier("addMiner.discoveryStart")
-            .accessibilityHint("Available after you respond to the local network prompt.")
         }
     }
 
