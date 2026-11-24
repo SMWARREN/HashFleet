@@ -18,6 +18,8 @@ struct AddMinerView: View {
     @State var discovery = MinerDiscoveryCoordinator()
     @State var localNetwork = LocalNetworkAuthorization()
     @State private var isShowingDesignGallery = false
+    @State private var isManualExpanded = false
+    @AppStorage("addMiner.discoveryDesignStyle") private var selectedStyle: MinerDiscoveryDesignStyle = .unifiedSheet
     /// Addresses added during this sheet session. Discovery can surface several miners at once,
     /// so adding one must not dismiss the sheet and lose the rest of the results.
     @State var addedAddresses: Set<String> = []
@@ -29,9 +31,10 @@ struct AddMinerView: View {
         FleetPageNavigationStack { form }
         .presentationBackground(FleetTheme.canvas)
         #if os(iOS)
-        // The scan takes the whole screen while it runs, then returns to the results list.
+        // Only present full screen cover if the user explicitly chose Sonar Grid or AirDrop Fleet.
+        // Unified Sheet expands natively right inside this sheet without taking over the screen.
         .fullScreenCover(isPresented: Binding(
-            get: { discovery.isScanning },
+            get: { discovery.isScanning && selectedStyle != .unifiedSheet },
             set: { presented in if !presented, discovery.isScanning { discovery.cancel() } }
         )) {
             AddMinerFullScreenScan(
@@ -96,130 +99,20 @@ struct AddMinerView: View {
                     designGalleryButton
                     if minerKind == .espMiner { discoveryCard }
                     if minerKind == .xmrig && !localNetwork.isGranted { localNetworkApprovalControls }
-                    VStack(alignment: .leading, spacing: 22) {
-                        inputLabel(
-                            "MINER NAME (OPTIONAL)",
-                            detail:
-                                "Give your hardware a name, or leave this blank " +
-                                    "to use its model name automatically."
-                        )
-                        TextField("Miner name (optional)", text: $name,
-                                  prompt: Text("Desk miner").foregroundStyle(FleetTheme.secondary))
-                            .fleetFont(.body)
-                            .foregroundStyle(FleetTheme.ink)
-                            .textContentType(.nickname)
-                            .submitLabel(.next)
-                            .focused($focusedField, equals: .name)
-                            .onSubmit { focusedField = .address }
-                            .padding(16)
-                            .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
-                            .id(Field.name)
-                            .accessibilityLabel("Miner name (optional)")
-                            .accessibilityIdentifier("addMiner.name")
-                        inputLabel(
-                            "NETWORK ADDRESS",
-                            detail: minerKind == .espMiner
-                                ? "Find this on your miner’s display or in your router settings."
-                                : "Use the Mac hostname or IP and XMRig HTTP port, such as 192.168.1.20:18099."
-                        )
-                        TextField(
-                            "Miner IP address or hostname",
-                            text: $address,
-                            prompt: Text(minerKind == .espMiner ? "192.168.1.42 or bitaxe.local" : "127.0.0.1:18099")
+                    if minerKind == .espMiner && (discovery.isScanning || !discovery.candidates.isEmpty) {
+                        DisclosureGroup(isExpanded: $isManualExpanded) {
+                            manualInputSection
+                                .padding(.top, 10)
+                        } label: {
+                            Label("Add Manually by IP & Address", systemImage: "network")
+                                .fleetFont(.subheadline, weight: .semibold)
                                 .foregroundStyle(FleetTheme.secondary)
-                        )
-                            .fleetFont(.body)
-                            .foregroundStyle(FleetTheme.ink)
-                            .keyboardType(.URL)
-                            .textContentType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focusedField, equals: .address)
-                            #if os(iOS)
-                            .submitLabel(minerKind == .xmrig ? .next : .go)
-                            .onSubmit {
-                                if minerKind == .xmrig { focusedField = .token } else { addMiner() }
-                            }
-                            #else
-                            .submitLabel(.done)
-                            .onSubmit(addMiner)
-                            #endif
-                            .padding(16)
-                            .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
-                            .id(Field.address)
-                            .accessibilityLabel("Miner IP address or hostname")
-                            .accessibilityIdentifier("addMiner.address")
-                        if minerKind == .xmrig {
-                            inputLabel(
-                                "ACCESS TOKEN (OPTIONAL)",
-                                detail: "Stored in this device's Keychain. Hash Fleet never saves the token in its fleet data."
-                            )
-                            SecureField("XMRig bearer token (optional)", text: $bearerToken,
-                                        prompt: Text("XMRig bearer token").foregroundStyle(FleetTheme.secondary))
-                                .fleetFont(.body)
-                                .foregroundStyle(FleetTheme.ink)
-                                .textContentType(.password)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .focused($focusedField, equals: .token)
-                                .submitLabel(.done)
-                                .onSubmit { focusedField = nil }
-                                .padding(16)
-                                .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
-                                .id(Field.token)
-                                .accessibilityLabel("XMRig bearer token (optional)")
-                                .accessibilityIdentifier("addMiner.xmrigToken")
-                            if FleetLayout.isMac {
-                                Button {
-                                    findXMRigOnThisMac()
-                                } label: {
-                                    if isFindingThisMac {
-                                        ProgressView().frame(maxWidth: .infinity, minHeight: 24)
-                                    } else {
-                                        Label("Find XMRig on This Mac", systemImage: "desktopcomputer.and.macbook")
-                                            .frame(maxWidth: .infinity, minHeight: 24)
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(isFindingThisMac || isValidating)
-                                .accessibilityIdentifier("addMiner.findXMRigThisMac")
-                            }
                         }
-                        if let validationError {
-                            Label(validationError, systemImage: "exclamationmark.circle.fill")
-                                .fleetFont(.subheadline)
-                                .foregroundStyle(FleetTheme.accent)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .accessibilityLabel("Unable to add miner. \(validationError)")
-                        }
+                        .padding(14)
+                        .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        manualInputSection
                     }
-                    .fleetCard()
-                    Label {
-                        Text(
-                            minerKind == .espMiner
-                                ? FleetDeviceCopy.current.addMinerNetworkExplanation
-                                : FleetDeviceCopy.current.xmrigConnectionExplanation
-                        )
-                    } icon: {
-                        Image(systemName: "network")
-                    }
-                    .fleetFont(.subheadline)
-                    .foregroundStyle(FleetTheme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    Button(action: addMiner) {
-                        if isValidating {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Label("Add miner", systemImage: "plus")
-                        }
-                    }
-                    .buttonStyle(FleetPrimaryButtonStyle())
-                    .accessibilityIdentifier("addMiner.save")
-                    .disabled(!localNetwork.isGranted || address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isValidating)
-                    Text("Adding a miner saves its address. A live response confirms that it is connected.")
-                        .fleetFont(.footnote)
-                        .foregroundStyle(FleetTheme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 24)
@@ -269,6 +162,139 @@ struct AddMinerView: View {
         }
     }
 
+    private var manualInputSection: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            manualInputsCard
+            Label {
+                Text(
+                    minerKind == .espMiner
+                        ? FleetDeviceCopy.current.addMinerNetworkExplanation
+                        : FleetDeviceCopy.current.xmrigConnectionExplanation
+                )
+            } icon: {
+                Image(systemName: "network")
+            }
+            .fleetFont(.subheadline)
+            .foregroundStyle(FleetTheme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            Button(action: addMiner) {
+                if isValidating {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else {
+                    Label("Add miner", systemImage: "plus")
+                }
+            }
+            .buttonStyle(FleetPrimaryButtonStyle())
+            .accessibilityIdentifier("addMiner.save")
+            .disabled(!localNetwork.isGranted || address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isValidating)
+            Text("Adding a miner saves its address. A live response confirms that it is connected.")
+                .fleetFont(.footnote)
+                .foregroundStyle(FleetTheme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var manualInputsCard: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            inputLabel(
+                "MINER NAME (OPTIONAL)",
+                detail:
+                    "Give your hardware a name, or leave this blank " +
+                        "to use its model name automatically."
+            )
+            TextField("Miner name (optional)", text: $name,
+                      prompt: Text("Desk miner").foregroundStyle(FleetTheme.secondary))
+                .fleetFont(.body)
+                .foregroundStyle(FleetTheme.ink)
+                .textContentType(.nickname)
+                .submitLabel(.next)
+                .focused($focusedField, equals: .name)
+                .onSubmit { focusedField = .address }
+                .padding(16)
+                .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                .id(Field.name)
+                .accessibilityLabel("Miner name (optional)")
+                .accessibilityIdentifier("addMiner.name")
+            inputLabel(
+                "NETWORK ADDRESS",
+                detail: minerKind == .espMiner
+                    ? "Find this on your miner’s display or in your router settings."
+                    : "Use the Mac hostname or IP and XMRig HTTP port, such as 192.168.1.20:18099."
+            )
+            TextField(
+                "Miner IP address or hostname",
+                text: $address,
+                prompt: Text(minerKind == .espMiner ? "192.168.1.42 or bitaxe.local" : "127.0.0.1:18099")
+                    .foregroundStyle(FleetTheme.secondary)
+            )
+                .fleetFont(.body)
+                .foregroundStyle(FleetTheme.ink)
+                .keyboardType(.URL)
+                .textContentType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focusedField, equals: .address)
+                #if os(iOS)
+                .submitLabel(minerKind == .xmrig ? .next : .go)
+                .onSubmit {
+                    if minerKind == .xmrig { focusedField = .token } else { addMiner() }
+                }
+                #else
+                .submitLabel(.done)
+                .onSubmit(addMiner)
+                #endif
+                .padding(16)
+                .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                .id(Field.address)
+                .accessibilityLabel("Miner IP address or hostname")
+                .accessibilityIdentifier("addMiner.address")
+            if minerKind == .xmrig {
+                inputLabel(
+                    "ACCESS TOKEN (OPTIONAL)",
+                    detail: "Stored in this device's Keychain. Hash Fleet never saves the token in its fleet data."
+                )
+                SecureField("XMRig bearer token (optional)", text: $bearerToken,
+                            prompt: Text("XMRig bearer token").foregroundStyle(FleetTheme.secondary))
+                    .fleetFont(.body)
+                    .foregroundStyle(FleetTheme.ink)
+                    .textContentType(.password)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .token)
+                    .submitLabel(.done)
+                    .onSubmit { focusedField = nil }
+                    .padding(16)
+                    .background(FleetTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                    .id(Field.token)
+                    .accessibilityLabel("XMRig bearer token (optional)")
+                    .accessibilityIdentifier("addMiner.xmrigToken")
+                if FleetLayout.isMac {
+                    Button {
+                        findXMRigOnThisMac()
+                    } label: {
+                        if isFindingThisMac {
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 24)
+                        } else {
+                            Label("Find XMRig on This Mac", systemImage: "desktopcomputer.and.macbook")
+                                .frame(maxWidth: .infinity, minHeight: 24)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isFindingThisMac || isValidating)
+                    .accessibilityIdentifier("addMiner.findXMRigThisMac")
+                }
+            }
+            if let validationError {
+                Label(validationError, systemImage: "exclamationmark.circle.fill")
+                    .fleetFont(.subheadline)
+                    .foregroundStyle(FleetTheme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("Unable to add miner. \(validationError)")
+            }
+        }
+        .fleetCard()
+    }
+
     var discoveryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -287,13 +313,67 @@ struct AddMinerView: View {
             .fixedSize(horizontal: false, vertical: true)
 
             if discovery.isScanning {
-                AddMinerScanRadar(
-                    probedHosts: discovery.probedHosts,
-                    hostCount: discoveryHostCount,
-                    candidatesCount: discovery.candidates.count,
-                    isScanning: true,
-                    onCancel: { discovery.cancel() }
-                )
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .stroke(FleetTheme.accent.opacity(0.2), lineWidth: 3)
+                                .frame(width: 38, height: 38)
+                            Circle()
+                                .trim(from: 0, to: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount))
+                                .stroke(FleetTheme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .frame(width: 38, height: 38)
+                                .rotationEffect(.degrees(-90))
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(FleetTheme.accent)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount))
+                                .fleetFont(.subheadline, weight: .semibold)
+                                .foregroundStyle(FleetTheme.ink)
+                            Text(AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)) + " complete · \(discovery.candidates.count) found")
+                                .fleetFont(.caption, design: .monospaced)
+                                .foregroundStyle(FleetTheme.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    // Smooth progress line with ShipSwift LightSweep effect
+                    GeometryReader { geo in
+                        let frac = AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(FleetTheme.separator.opacity(0.3))
+                                .frame(height: 6)
+                            SWLightSweep(lineWidth: 60, duration: 1.2, lineColor: Color.white.opacity(0.7), cornerRadius: 3) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(FleetTheme.accent)
+                                    .frame(width: max(8, geo.size.width * CGFloat(frac)), height: 6)
+                            }
+                            .animation(.easeOut(duration: 0.2), value: frac)
+                        }
+                    }
+                    .frame(height: 6)
+
+                    HStack(spacing: 10) {
+                        Button("Cancel Scan") {
+                            discovery.cancel()
+                        }
+                        .fleetFont(.footnote, weight: .semibold)
+                        .foregroundStyle(FleetTheme.secondary)
+                        .accessibilityIdentifier("addMiner.discoveryCancel")
+
+                        Spacer()
+                        if !discovery.candidates.isEmpty {
+                            addAllButton
+                        }
+                    }
+                }
+                .padding(12)
+                .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+                .animation(.spring(duration: 0.35, bounce: 0.2), value: discovery.isScanning)
             } else if !localNetwork.isGranted {
                 localNetworkApprovalControls
             } else {
