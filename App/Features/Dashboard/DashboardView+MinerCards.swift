@@ -15,6 +15,26 @@ extension DashboardView {
         gridItems: [GridItem],
         devices: [MinerDevice]
     ) -> AnyView {
+        if usesNumberFirstOverview {
+            #if os(macOS)
+            if columns > 1 && devices.count > 1 {
+                return AnyView(
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(0..<columns, id: \.self) { col in
+                            let colDevices = devices.enumerated().filter { $0.offset % columns == col }.map(\.element)
+                            if !colDevices.isEmpty {
+                                numberFirstMinerList(devices: colDevices)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                            }
+                        }
+                    }
+                    .id(columns)
+                )
+            }
+            #endif
+            return AnyView(numberFirstMinerList(devices: devices))
+        }
+
         #if os(macOS)
         return AnyView(
             FleetMinerDetailGrid(
@@ -27,10 +47,6 @@ extension DashboardView {
             }
         )
         #else
-        if usesNumberFirstOverview {
-            return AnyView(numberFirstMinerList(devices: devices))
-        }
-
         return AnyView(
             LazyVGrid(columns: gridItems, spacing: FleetLayout.cardGridSpacing) {
                 dashboardMinerCards(devices: devices)
