@@ -111,6 +111,12 @@ extension MinerHTTPDrivers {
         )
         sample.fans = fanResult.snapshots
         sample.fansExtra = fanResult.extra
+        // Harlo raises a pending fault notice (title + reason) when a protection trips.
+        if MinerDriverParse.coerceFlag(combined["fault_notice_pending"]),
+           let title = MinerDriverParse.nonEmptyString(combined["fault_notice_title"]) {
+            let reason = MinerDriverParse.nonEmptyString(combined["fault_notice_reason"])
+            sample.powerFault = reason.map { "\(title): \($0)" } ?? title
+        }
         return sample
     }
 

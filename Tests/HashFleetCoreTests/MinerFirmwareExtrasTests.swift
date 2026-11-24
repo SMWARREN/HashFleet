@@ -49,8 +49,56 @@ struct MinerFirmwareExtrasTests {
     }
 
     @Test func unverifiedFamiliesHaveNoExtras() {
-        for family in ["harloos", "nmaxe", "bitforge", "canaan", "canaannano3", "braiins", "luxos"] {
+        for family in ["nmaxe", "bitforge", "canaan", "canaannano3", "braiins", "luxos"] {
             #expect(MinerFirmwareExtras.controls(for: family).isEmpty, "\(family)")
         }
+    }
+
+    @Test func harloProtectionsSendAllFourThresholds() throws {
+        let fan = try control("harloOS", "asic_fan_c")
+        let doc: [String: JSONValue] = [
+            "asic_fan_c": .integer(70), "asic_shutdown_c": .integer(85),
+            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95), "cooldown_seconds": .integer(60),
+        ]
+        #expect(fan.writePath == "/api/protections" && fan.writeMethod == "PUT" && fan.alwaysConfirm)
+        #expect(fan.payload(72, document: doc) == [
+            "asic_fan_c": .integer(72), "asic_shutdown_c": .integer(85),
+            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95),
+        ])
+        // Full-fan must stay below shutdown, and companions are required.
+        #expect(fan.payload(85, document: doc) == nil)
+        #expect(fan.payload(72) == nil)
+        #expect(try control("harloos", "asic_shutdown_c").payload(70, document: doc) == nil)
+    }
+
+    @Test func harloDisplayUnitPowerAndCollection() throws {
+        let display = try control("harloos", "mode")
+        #expect(display.currentValue(in: ["mode": .string("clock"), "rotation": .integer(180)]) == 1)
+        #expect(display.payload(2, document: ["rotation": .integer(180)])
+                == ["mode": .string("off"), "rotation": .integer(180)])
+        let unit = try control("harloos", "unit")
+        #expect(unit.currentValue(in: ["temperature_unit": .string("F")]) == 1)
+        #expect(unit.payload(0) == ["unit": .string("C")])
+        let psu = try control("harloos", "rating_w")
+        #expect(psu.currentValue(in: ["power_supply_rating_w": .integer(60)]) == 60)
+        #expect(psu.payload(100) == ["rating_w": .integer(100)])
+        #expect(psu.payload(0) == nil)
+        #expect(try control("harloos", "enabled").payload(1) == ["enabled": .bool(true)])
+    }
+
+    @Test func harloActionsAndFaultNotice() throws {
+        let actions = MinerFirmwareExtras.actions(for: "harloOS")
+        let ack = try #require(actions.first { $0.id == "faultAck" })
+        #expect(ack.path == "/api/alerts/acknowledge")
+        #expect(!ack.isVisible(in: [:]))
+        #expect(ack.isVisible(in: ["fault_notice_pending": .bool(true)]))
+        #expect(actions.contains { $0.path == "/api/updates/check" })
+
+        let sample = MinerHTTPDrivers.parseHarloOS(telemetry: [
+            "hashrate_ghs": .number(0), "asic_temp_c": .number(91),
+            "fault_notice_pending": .bool(true), "fault_notice_title": .string("OVERHEAT"),
+            "fault_notice_reason": .string("ASIC reached 90 C"),
+        ])
+        #expect(sample.powerFault == "OVERHEAT: ASIC reached 90 C")
     }
 }
