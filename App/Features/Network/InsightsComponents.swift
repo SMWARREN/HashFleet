@@ -18,25 +18,26 @@ struct InsightsSourceCard<Value: Sendable, Content: View>: View {
                 Text(result.error?.localizedDescription ?? "No recognized data returned.")
                     .fleetFont(.callout).foregroundStyle(FleetTheme.secondary)
             }
+            Divider().opacity(0.3).padding(.top, 2)
             if isDemo {
                 Text("Sample data · not live")
                     .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
             } else {
-                BrowserLink(
-                    label: "Source: \(result.sourceURL.host ?? "Public API")",
-                    rawValue: result.sourceURL.absoluteString,
-                    font: .caption,
-                    alignment: .trailing
-                )
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            if !isDemo {
-                Text(
-                    (result.error != nil || result.value == nil ? "Failed attempt · "
+                HStack(alignment: .firstTextBaseline) {
+                    let statusPrefix = (result.error != nil || result.value == nil ? "Failed attempt · "
                         : (ChainObservation.isFresh(result, now: now) ? "" : "Stale · "))
-                        + "Fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .standard))"
-                )
-                .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
+                    Text("\(statusPrefix)Fetched \(result.fetchedAt.formatted(date: .abbreviated, time: .standard))")
+                        .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
+
+                    Spacer(minLength: 8)
+
+                    BrowserLink(
+                        label: "Source: \(result.sourceURL.host ?? "Public API")",
+                        rawValue: result.sourceURL.absoluteString,
+                        font: .caption,
+                        alignment: .trailing
+                    )
+                }
                 if let date = result.sourceTimestamp {
                     Text("Source time: \(date.formatted(date: .abbreviated, time: .standard))")
                         .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
@@ -45,7 +46,7 @@ struct InsightsSourceCard<Value: Sendable, Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fleetSectionGridCardContent()
-        .fleetCard()
+        .fleetCard(padding: 16, cornerRadius: 16)
     }
 }
 

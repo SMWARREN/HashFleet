@@ -12,15 +12,11 @@ struct NetworkInsightsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     heading
-                    loadControl(now: timeline.date)
-                    hubLinks
-                    NavigationLink {
-                        poolNetworkPage
-                    } label: {
-                        Label("Pool-reported network data", systemImage: "network")
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    statusBar(now: timeline.date)
+                    if !fleet.preferences.externalDataEnabled {
+                        offlineBanner
                     }
-                    .accessibilityIdentifier("insights.poolNetworks")
+                    toolsAndLookupsSection
                     FleetSectionGrid(spacing: 18, minimumRows: 2) {
                         if let network = insights.network {
                             networkCards(network, now: timeline.date)
@@ -48,6 +44,12 @@ struct NetworkInsightsView: View {
                 }
                 .fleetPageContainer(compactMaxWidth: FleetLayout.listContentWidth)
             }
+            #if !os(macOS)
+            .refreshable {
+                guard fleet.preferences.externalDataEnabled else { return }
+                await insights.refresh(force: true)
+            }
+            #endif
         }
         .background(FleetTheme.canvas)
         .foregroundStyle(FleetTheme.ink)
@@ -56,6 +58,22 @@ struct NetworkInsightsView: View {
         #endif
         .navigationTitle("Network insights")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: FleetToolbarLocation.trailing) {
+                Button {
+                    Task { await insights.refresh(force: true) }
+                } label: {
+                    if insights.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .disabled(!fleet.preferences.externalDataEnabled || insights.isLoading)
+                .help("Refresh network data (⌘R)")
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
         .task(id: NetworkLoadIdentity(enabled: fleet.preferences.externalDataEnabled,
             demo: fleet.isDemo, phase: scenePhase)) {
             guard fleet.preferences.externalDataEnabled, scenePhase == .active else {
@@ -71,7 +89,7 @@ struct NetworkInsightsView: View {
         .onDisappear { insights.cancel() }
     }
 
-    private var poolNetworkPage: some View {
+    internal var poolNetworkPage: some View {
         TimelineView(.periodic(from: .now, by: 15)) { timeline in
             ScrollView {
                 FleetSectionGrid(spacing: 18, minimumRows: 2) {
@@ -104,53 +122,133 @@ struct NetworkInsightsView: View {
     }
 
     private var heading: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("THE BIGGER PICTURE").fleetFont(.caption2, weight: .medium, design: .monospaced).tracking(1.5).foregroundStyle(FleetTheme.secondary)
-            Text("Beyond your fleet").fleetFont(.largeTitle, weight: .bold).accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("THE BIGGER PICTURE")
+                        .fleetFont(.caption2, weight: .medium, design: .monospaced)
+                        .tracking(1.5)
+                        .foregroundStyle(FleetTheme.secondary)
+                    Text("Beyond your fleet")
+                        .fleetFont(.largeTitle, weight: .bold)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                Spacer()
+                if fleet.isDemo {
+                    Label("Demo · not live", systemImage: "sparkles")
+                        .fleetFont(.caption, weight: .semibold)
+                        .foregroundStyle(FleetTheme.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(FleetTheme.accent.opacity(0.12), in: Capsule())
+                } else if !fleet.preferences.externalDataEnabled {
+                    Label("Offline", systemImage: "wifi.slash")
+                        .fleetFont(.caption, weight: .semibold)
+                        .foregroundStyle(FleetTheme.warning)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(FleetTheme.warning.opacity(0.12), in: Capsule())
+                }
+            }
             Text(
                 fleet.isDemo
                     ? "Sample network and pool data. No internet requests."
                     : "Coin network conditions and public pool statistics, without changing a single miner setting."
             )
             .foregroundStyle(FleetTheme.secondary)
-            if fleet.isDemo { Label("Demo · not live", systemImage: "sparkles").foregroundStyle(FleetTheme.accent) }
         }
     }
 
-    private var loadControlCaption: String {
-        fleet.isDemo
-            ? "Samples are separate from your real fleet and external services."
-            : "Read-only public chain and pool APIs are also shown on the fleet home screen. Each card identifies its source. "
-                + "Providers see your internet IP, but public summaries receive no wallet or miner credentials. "
-                + "Disable external data in Preferences to stay local-only."
-    }
+    private func statusBar(now: Date) -> some View {
+        HStack(alignment: .center) {
+            if insights.isLoading {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Updating network data…")
+                        .fleetFont(.caption)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+            } else if let latest = latestFetchDate {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 7, height: 7)
+                    Text("Updated \(latest.formatted(date: .omitted, time: .standard))")
+                        .fleetFont(.caption)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(fleet.preferences.externalDataEnabled ? Color.green : FleetTheme.secondary)
+                        .frame(width: 7, height: 7)
+                    Text(fleet.isDemo ? "Sample data" : (fleet.preferences.externalDataEnabled ? "Ready" : "Offline"))
+                        .fleetFont(.caption)
+                        .foregroundStyle(FleetTheme.secondary)
+                }
+            }
 
-    private func loadControl(now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+            Spacer()
+
             Button {
-                Task { await insights.refresh() }
+                Task { await insights.refresh(force: true) }
             } label: {
-                HStack {
-                    if insights.isLoading { ProgressView() }
-                    Label(
-                        fleet.isDemo
-                            ? "Load sample data"
-                            : (insights.network == nil ? "Load public data" : "Refresh public data"),
-                        systemImage: "arrow.clockwise"
-                    )
-                }.frame(maxWidth: .infinity, minHeight: 40)
+                HStack(spacing: 5) {
+                    if insights.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    Text(insights.isLoading ? "Refreshing…" : "Refresh")
+                        .fleetFont(.caption, weight: .medium)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(FleetTheme.ink.opacity(0.08), lineWidth: 1)
+                )
             }
-            .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
-            .disabled(
-                !fleet.preferences.externalDataEnabled || insights.isLoading || now < insights.refreshAvailableAt
-            )
+            .buttonStyle(.plain)
+            .disabled(!fleet.preferences.externalDataEnabled || insights.isLoading)
             .accessibilityIdentifier("insights.load")
-            Text(loadControlCaption)
-            .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
-            if now < insights.refreshAvailableAt {
-                Text("Refresh available shortly").fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
+            .accessibilityLabel("Refresh network data")
+            .help("Refresh network data (⌘R)")
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private var latestFetchDate: Date? {
+        insights.network?.mining.fetchedAt
+            ?? insights.pool?.fetchedAt
+            ?? insights.cash?.fetchedAt
+    }
+
+    private var offlineBanner: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: "wifi.slash")
+                .fleetFont(.title2)
+                .foregroundStyle(FleetTheme.warning)
+                .frame(width: 32, height: 32)
+                .background(FleetTheme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("External network data is turned off")
+                    .fleetFont(.headline, weight: .semibold)
+                    .foregroundStyle(FleetTheme.ink)
+                Text(
+                    "HashFleet is in local-only mode. Public Bitcoin and altcoin network conditions, "
+                        + "mempool fee estimates, and pool statistics require external read-only internet access. "
+                        + "You can enable external data anytime in Preferences."
+                )
+                .fleetFont(.footnote)
+                .foregroundStyle(FleetTheme.secondary)
             }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fleetCard(padding: 0, cornerRadius: 16)
     }
 
     @ViewBuilder private func networkCards(_ network: NetworkSnapshot, now: Date) -> some View {
