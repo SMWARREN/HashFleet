@@ -102,6 +102,24 @@ extension DashboardView {
 
     @ViewBuilder
     private func minerCardNavigation(_ device: MinerDevice, expanded: Bool) -> some View {
+        #if os(macOS)
+        if let onSelectSidebarDestination {
+            Button {
+                FleetHaptics.selection()
+                onSelectSidebarDestination(.miner(device.id))
+            } label: {
+                minerCardNavigationLabel(device, expanded: expanded)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink(value: FleetMinerRoute(deviceID: device.id)) {
+                minerCardNavigationLabel(device, expanded: expanded)
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
+        }
+        #else
         if usesCompactHorizontalLayout {
             NavigationLink {
                 MinerDetailView(
@@ -130,6 +148,7 @@ extension DashboardView {
                 FleetHaptics.selection()
             })
         }
+        #endif
     }
 
     private func minerCardNavigationLabel(_ device: MinerDevice, expanded: Bool) -> some View {

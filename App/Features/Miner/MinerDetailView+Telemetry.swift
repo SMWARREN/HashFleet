@@ -28,7 +28,15 @@ extension MinerDetailView {
             xmrigControlLink
             identity(info)
         } else if dashboardMode == .essentials {
+            #if os(macOS)
+            if FleetLayout.isMac && usesWideDetail {
+                desktopEssentialsTelemetrySections(info)
+            } else {
+                essentialsTelemetrySections(info)
+            }
+            #else
             essentialsTelemetrySections(info)
+            #endif
         } else {
         let diagnostics = MinerDiagnosticsModel(info: info)
         if FleetLayout.isMac && usesWideDetail {
@@ -101,4 +109,40 @@ extension MinerDetailView {
             fleetManagementControls.buttonStyle(.plain)
         }
     }
+
+    #if os(macOS)
+    func desktopEssentialsTelemetrySections(_ info: MinerInfo) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                hashrateHero(info)
+                heroConditions(info)
+                minerHistoryCard
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            VStack(alignment: .leading, spacing: 14) {
+                controlMinerCard
+                essentialsAPITools
+                DisclosureGroup(isExpanded: $showsSecondaryReadings) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        firmwareTelemetryView(info)
+                        if !isXMRig { uptimeHeatmap }
+                        bestShares(info)
+                        identity(info)
+                        metrics(info, diagnostics: MinerDiagnosticsModel(info: info))
+                        poolsSection
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("More miner readings")
+                        .fleetFont(.headline)
+                        .foregroundStyle(FleetTheme.ink)
+                        .frame(minHeight: 44)
+                }
+                .fleetCard(padding: FleetSurfaceSpacing.cardInset)
+                fleetManagementControls.buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+    #endif
 }

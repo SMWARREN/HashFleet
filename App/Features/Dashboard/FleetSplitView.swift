@@ -189,7 +189,8 @@ struct FleetSplitView: View {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         columnVisibility = columnVisibility == .all ? .detailOnly : .all
                     }
-                }
+                },
+                onSelectSidebarDestination: activateSidebarDestination
             )
             .fleetDesktopBranding(
                 sidebarVisible: columnVisibility != .detailOnly,

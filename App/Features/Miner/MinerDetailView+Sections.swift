@@ -222,18 +222,18 @@ extension MinerDetailView {
         category: MinerSettingsCategory,
         id: String
     ) -> some View {
+        #if os(macOS)
+        // Value route on the Mac fleet stack. Closure links here dropped clicks and left the
+        // page blank while NavigationRequestObserver updated repeatedly in one frame.
+        NavigationLink(value: FleetMinerSettingsRoute(deviceID: currentDevice.id, category: category)) {
+            quickLinkLabel(title: title, subtitle: subtitle, symbol: symbol)
+        }
+        .fleetPointerHover()
+        .accessibilityIdentifier(id)
+        .accessibilityHint("Opens the \(title.lowercased()) form. Changes still require review and confirmation.")
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
         if category == .tuning {
-            #if os(macOS)
-            // Value route on the Mac fleet stack. Closure links here dropped clicks and left the
-            // page blank while NavigationRequestObserver updated repeatedly in one frame.
-            NavigationLink(value: FleetMinerSettingsRoute(deviceID: currentDevice.id, category: .tuning)) {
-                quickLinkLabel(title: title, subtitle: subtitle, symbol: symbol)
-            }
-            .fleetPointerHover()
-            .accessibilityIdentifier(id)
-            .accessibilityHint("Opens the tuning session. Changes still require review and confirmation.")
-            .frame(maxWidth: .infinity, alignment: .leading)
-            #else
             Button {
                 tuningSessionRoute = currentDevice
             } label: {
@@ -243,7 +243,6 @@ extension MinerDetailView {
             .accessibilityIdentifier(id)
             .accessibilityHint("Opens the tuning session. Changes still require review and confirmation.")
             .frame(maxWidth: .infinity, alignment: .leading)
-            #endif
         } else {
             NavigationLink {
                 settingsDestination(category)
@@ -255,6 +254,7 @@ extension MinerDetailView {
             .accessibilityHint("Opens the \(title.lowercased()) form. Changes still require review and confirmation.")
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        #endif
     }
 
     private func quickLinkLabel(title: String, subtitle: String, symbol: String) -> some View {
