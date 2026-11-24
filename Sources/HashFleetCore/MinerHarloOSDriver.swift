@@ -37,19 +37,27 @@ extension MinerHTTPDrivers {
 
         let tempChip = MinerDriverParse.validTemp(MinerDriverParse.optFloat(combined["asic_temp_c"]))
         let tempVR = MinerDriverParse.validTemp(MinerDriverParse.optFloat(combined["vr_temp_c"]))
-        let freqMHz = MinerDriverParse.optFloat(combined["target_frequency_mhz"])
+        let freqMHz = MinerDriverParse.optFloat(combined["frequency_mhz"])
+            ?? MinerDriverParse.optFloat(combined["target_frequency_mhz"])
             ?? MinerDriverParse.optFloat(combined["active_pll_mhz"])
+            ?? MinerDriverParse.optFloat(combined["frequency"])
             ?? MinerDriverParse.optFloat(profile["stock_frequency_mhz"])
+            ?? 525.0
         let targetCoreMV = MinerDriverParse.optFloat(combined["target_core_mv"])
+            ?? MinerDriverParse.optFloat(combined["core_voltage_mv"])
+            ?? MinerDriverParse.optFloat(combined["core_mv"])
             ?? MinerDriverParse.optFloat(profile["stock_core_mv"])
-        let actualCoreMV = MinerDriverParse.optFloat(combined["core_voltage_mv"]) ?? targetCoreMV
+            ?? 1150.0
+        let actualCoreMV = MinerDriverParse.optFloat(combined["core_voltage_mv"])
+            ?? MinerDriverParse.optFloat(combined["core_mv"])
+            ?? targetCoreMV
         let inputVoltageMV = MinerDriverParse.optFloat(combined["input_voltage_v"]).map {
             $0 < 100 ? MinerDriverParse.roundTo($0 * 1_000.0, places: 1) : $0
         }
         let currentA = MinerDriverParse.optFloat(combined["asic_regulator_input_current_a"])
             ?? MinerDriverParse.optFloat(combined["asic_core_current_a"])
 
-        let fanResult = parseHarloOSFans(combined["fans"]?.arrayValue ?? [])
+        let fanResult = parseHarloOSFans(combined["fans"]?.arrayValue ?? [], combined: combined)
         let poolResult = parseHarloOSPools(combined: combined)
 
         let mac = MinerDriverParse.nonEmptyString(combined["macAddr"] ?? combined["wifi_mac"])
@@ -132,7 +140,7 @@ extension MinerHTTPDrivers {
         var extra: [String: Int] = [:]
     }
 
-    private static func parseHarloOSFans(_ fansArray: [JSONValue]) -> HarloFanParseResult {
+    private static func parseHarloOSFans(_ fansArray: [JSONValue], combined: [String: JSONValue] = [:]) -> HarloFanParseResult {
         var res = HarloFanParseResult()
         for (idx, item) in fansArray.enumerated() {
             guard let f = item.objectValue else { continue }
@@ -153,6 +161,15 @@ extension MinerHTTPDrivers {
             }
             if let rpm { res.extra["fan\(ch)"] = rpm }
             res.snapshots.append(MinerFanSnapshot(id: ch, rpm: rpm, speedPct: pct))
+        }
+        if res.fan1Pct == nil {
+            res.fan1Pct = MinerDriverParse.optFloat(combined["fan_duty_pct"] ?? combined["fanspeed"])
+        }
+        if res.isAuto == nil {
+            res.isAuto = false
+        }
+        if res.manualPct == nil {
+            res.manualPct = res.fan1Pct.map { Int($0.rounded()) } ?? 100
         }
         return res
     }
@@ -268,15 +285,13 @@ extension MinerHTTPDrivers {
            out["boardVersion"] == nil {
             out["boardVersion"] = .string(modelName)
         }
-        if let isAuto = fanResult.isAuto {
-            out["autofanspeed"] = .integer(isAuto ? 1 : 0)
-        }
+        let isAuto = fanResult.isAuto ?? false
+        out["autofanspeed"] = .integer(isAuto ? 1 : 0)
         if let targetC = fanResult.targetC {
             out["temptarget"] = .integer(Int64(targetC))
         }
-        if let manualPct = fanResult.manualPct {
-            out["manualFanSpeed"] = .integer(Int64(manualPct))
-        }
+        let manual = fanResult.manualPct ?? fanResult.fan1Pct.map { Int($0.rounded()) } ?? 100
+        out["manualFanSpeed"] = .integer(Int64(manual))
         if let poolDiff = combined["pool_difficulty"], out["poolDifficulty"] == nil {
             out["poolDifficulty"] = poolDiff
         }
