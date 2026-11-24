@@ -456,6 +456,7 @@ struct AddMinerView: View {
                 FleetLoadAnimatedArt(
                     loop: .fleetCluster,
                     size: CGSize(width: 180, height: 106),
+                    isForcePlaying: discovery.isScanning,
                     accessibilityIdentifier: "addMiner.minerCluster"
                 )
                 .frame(maxWidth: .infinity)

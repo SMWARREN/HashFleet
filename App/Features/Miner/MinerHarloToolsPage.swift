@@ -222,6 +222,7 @@ struct MinerHarloToolsPage: View {
             Picker("Action", selection: $schedKind) {
                 ForEach(Self.scheduleKinds.indices, id: \.self) { Text(Self.scheduleKinds[$0]).tag($0) }
             }
+            .onChange(of: schedKind) { FleetHaptics.selection() }
             if schedKind == 3 {
                 Stepper("\(schedFreq) MHz", value: $schedFreq, in: 100...1200, step: 5)
                 Stepper("\(schedMV) mV", value: $schedMV, in: 900...1400, step: 5)
@@ -420,10 +421,12 @@ struct MinerHarloToolsPage: View {
             defer { busy = false }
             do {
                 try await run()
+                FleetHaptics.success()
                 message = "\(label) · done"
                 await load()
                 _ = await store.refreshAfterWrite(for: device)
             } catch {
+                FleetHaptics.error()
                 failure = "Not applied: \(error.localizedDescription)"
             }
         }

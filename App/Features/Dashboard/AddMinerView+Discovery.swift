@@ -118,8 +118,8 @@ extension AddMinerView {
             addMiner(candidate)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "cpu")
-                    .font(.title3)
+                Image(systemName: "wifi")
+                    .font(.body)
                     .foregroundStyle(isAdded ? FleetTheme.positive : FleetTheme.accent)
                     .frame(width: 28, height: 28)
                     .accessibilityHidden(true)

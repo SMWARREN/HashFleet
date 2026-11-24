@@ -111,6 +111,7 @@ struct MinerFirmwareExtrasPage: View {
             Toggle(isOn: Binding(
                 get: { (current ?? 0) == 1 },
                 set: { on in
+                    FleetHaptics.light()
                     request(Pending(control: control, action: nil, value: on ? 1 : 0,
                                     title: "\(on ? "Turn on" : "Turn off") \(control.title.lowercased())?"))
                 }
@@ -126,7 +127,10 @@ struct MinerFirmwareExtrasPage: View {
         case .number(let range, let unit):
             let draft = drafts[control.key] ?? current ?? range.lowerBound
             HStack {
-                Stepper(value: Binding(get: { draft }, set: { drafts[control.key] = $0 }),
+                Stepper(value: Binding(get: { draft }, set: {
+                    FleetHaptics.light()
+                    drafts[control.key] = $0
+                }),
                         in: range, step: unit == "W" ? 5 : 1) {
                     Text("\(draft) \(unit)").fleetFont(.subheadline, design: .monospaced)
                 }
@@ -149,6 +153,7 @@ struct MinerFirmwareExtrasPage: View {
             get: { current ?? -1 },
             set: { value in
                 guard value != current, let label = options.first(where: { $0.0 == value })?.1 else { return }
+                FleetHaptics.light()
                 request(Pending(control: control, action: nil, value: value,
                                 title: "Set \(control.title.lowercased()) to \(label)?"))
             }

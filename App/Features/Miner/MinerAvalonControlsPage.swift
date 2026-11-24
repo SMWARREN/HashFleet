@@ -103,6 +103,7 @@ struct MinerAvalonControlsPage: View {
                 get: { current ?? -1 },
                 set: { mode in
                     guard mode != current, (0...2).contains(mode) else { return }
+                    FleetHaptics.light()
                     pending = PendingChange(
                         title: "Set work mode to \(Self.modeName(mode))?",
                         detail: isNano3
@@ -127,12 +128,14 @@ struct MinerAvalonControlsPage: View {
             if capabilities.canIdentify {
                 HStack {
                     Button("LED on") {
+                        FleetHaptics.light()
                         pending = PendingChange(title: "Turn the front LED on?", detail: "Sends ascset led,1-1.",
                                                 payload: ["led": .integer(1)], destructive: false)
                     }
                     .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
                     .accessibilityIdentifier("avalon.ledOn")
                     Button("LED off") {
+                        FleetHaptics.light()
                         pending = PendingChange(title: "Turn the front LED off?", detail: "Sends ascset led,1-0.",
                                                 payload: ["led": .integer(0)], destructive: false)
                     }

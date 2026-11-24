@@ -173,12 +173,14 @@ extension MinerSettingsView {
             if let failure = operation.error {
                 let message = "Couldn't save: \(failure)"
                 error = message
+                FleetHaptics.error()
                 saveAlert = MinerSettingsSaveAlert(title: "Settings not saved", message: message)
                 return
             }
             guard await store.refreshAfterWrite(for: device) else {
                 let message = "The request was accepted, but fresh settings could not be read. Your draft was kept. Reconnect and refresh before making another change."
                 error = message
+                FleetHaptics.warning()
                 saveAlert = MinerSettingsSaveAlert(title: "Request accepted · refresh unavailable", message: message)
                 return
             }
@@ -187,11 +189,13 @@ extension MinerSettingsView {
                       identity == nil || directSaveIdentity == identity else {
                     let message = "The miner accepted the request, but the new display setting could not be verified. Refresh before trying again."
                     error = message
+                    FleetHaptics.warning()
                     saveAlert = MinerSettingsSaveAlert(title: "Display change not verified", message: message)
                     return
                 }
                 loaded = false
                 load()
+                FleetHaptics.success()
                 saveMessage = "Display settings saved. They take effect after a restart."
                 saveAlert = MinerSettingsSaveAlert(
                     title: "Display settings saved",
@@ -204,6 +208,7 @@ extension MinerSettingsView {
             }
             loaded = false
             load()
+            FleetHaptics.success()
             saveMessage = "Request accepted for \(device.name)"
             saveAlert = MinerSettingsSaveAlert(
                 title: "Request accepted",
@@ -232,8 +237,10 @@ extension MinerSettingsView {
                 }
             }, writeAuthorized: { directSaveIdentity == identity })
             if let failure = operation.error {
+                FleetHaptics.error()
                 error = "Restart not confirmed: \(failure)"
             } else {
+                FleetHaptics.success()
                 saveMessage = "Miner accepted the restart request."
             }
         }

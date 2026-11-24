@@ -58,6 +58,7 @@ extension MinerSettingsView {
                     }
                 }
                 .pickerStyle(.menu)
+                .onChange(of: statsFrequency) { FleetHaptics.selection() }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 fieldNote("statsFrequency", label: "the statistics interval")
                 if let statsFrequency, let history = MinerTuningDraft.statsHistoryLabel(statsFrequency) {
@@ -219,6 +220,7 @@ extension MinerSettingsView {
                     Text("Automatic fan control").foregroundStyle(FleetTheme.ink)
                     Spacer()
                     Toggle("Automatic fan control", isOn: $autoFan).labelsHidden().tint(FleetTheme.positive)
+                        .onChange(of: autoFan) { FleetHaptics.light() }
                 }
                 .fleetFont(.subheadline)
                 .padding(.vertical, 7)
@@ -358,6 +360,7 @@ extension MinerSettingsView {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .onChange(of: screenRotation) { FleetHaptics.selection() }
                     .disabled(isSaving || isRestartingDisplay)
                 }
                 .fleetFont(.subheadline)
@@ -382,6 +385,7 @@ extension MinerSettingsView {
                     Toggle("Invert screen colors", isOn: $screenInverted).labelsHidden().tint(FleetTheme.positive)
                         .disabled(isSaving || isRestartingDisplay)
                         .accessibilityIdentifier("settings.display.inversion")
+                        .onChange(of: screenInverted) { FleetHaptics.light() }
                 }
                 .fleetFont(.subheadline)
                 .padding(.vertical, 7)

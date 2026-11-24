@@ -114,6 +114,7 @@ struct MinerTuningPreview: View {
             ToolbarItem(placement: FleetToolbarLocation.trailing) {
                 if !showsInlineAdvanced, focus == nil, draft.text != draft.configured.mapValues(MinerTuningDraft.numericText) {
                     Button("Reset draft", systemImage: "arrow.counterclockwise") {
+                        FleetHaptics.medium()
                         if isDemo {
                             draft.reset()
                         } else if let draftIdentity, MinerInlineActionState.identity(from: info) == draftIdentity {
@@ -360,6 +361,7 @@ struct MinerTuningPreview: View {
                     guard store.devices.contains(where: {
                         $0.id == device.id && $0.address == device.address && $0.kind == device.kind
                     }), !store.isDemo, MinerInlineActionState.identity(from: fresh) == draftIdentity else {
+                        FleetHaptics.error()
                         error = "The miner changed after verification. Check its current settings before retrying."
                         return
                     }
@@ -367,10 +369,13 @@ struct MinerTuningPreview: View {
                     draft = MinerTuningPreviewDraft(info: fresh)
                     statusMessage = "Fresh readback verified the change."
                     review = nil
+                    FleetHaptics.success()
                 case .unverified(let message):
+                    FleetHaptics.error()
                     error = message
                 }
             } catch {
+                FleetHaptics.error()
                 self.error = error.localizedDescription
             }
         }
@@ -379,7 +384,10 @@ struct MinerTuningPreview: View {
     private func step(_ field: MinerTuningPreviewDraft.Field, increasing: Bool) -> some View {
         let next = draft.next(field, direction: increasing ? 1 : -1)
         return Button {
-            if let next { edit(field, MinerTuningDraft.numericText(next)) }
+            if let next {
+                FleetHaptics.light()
+                edit(field, MinerTuningDraft.numericText(next))
+            }
         } label: {
             Image(systemName: increasing ? "plus" : "minus")
         }
@@ -444,7 +452,10 @@ struct MinerTuningPreview: View {
     private var modePicker: some View {
         Picker("Tuner mode", selection: Binding(
             get: { showsFullAdvanced ? MinerTuningControlMode.advanced : .easy },
-            set: { showsFullAdvanced = $0 == .advanced }
+            set: {
+                FleetHaptics.selection()
+                showsFullAdvanced = $0 == .advanced
+            }
         )) {
             ForEach(MinerTuningControlMode.allCases, id: \.self) { choice in
                 Text(choice.displayName).tag(choice)

@@ -77,6 +77,7 @@ struct FleetLoadAnimatedArt: View {
     let loop: FleetArtLoop
     let size: CGSize
     var isEnabled = true
+    var isForcePlaying = false
     var accessibilityIdentifier: String?
 
     /// One seamless pass of the bundled fan loop (48 frames at 42 ms).
@@ -102,7 +103,7 @@ struct FleetLoadAnimatedArt: View {
         Color.clear
             .frame(width: size.width, height: size.height)
             .overlay {
-                FleetAnimatedArt(loop, size: size, isPlaying: shouldPlay && isSpinning)
+                FleetAnimatedArt(loop, size: size, isPlaying: shouldPlay && (isSpinning || isForcePlaying))
             }
             .contentShape(Rectangle())
             .onTapGesture { if canAnimate { manualSpins += 1 } }

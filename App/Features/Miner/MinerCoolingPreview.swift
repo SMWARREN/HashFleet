@@ -382,6 +382,7 @@ struct MinerCoolingPreview: View {
 
     private func selectMode(automatic: Bool) {
         guard canEdit, !isApplying, draft.automatic != automatic, draft.supportsMode(automatic: automatic) else { return }
+        FleetHaptics.light()
         draft.select(automatic: automatic)
         result = nil
         failure = nil
@@ -411,6 +412,7 @@ struct MinerCoolingPreview: View {
 
     private func stepButton(_ field: MinerCoolingPreviewDraft.Field, increasing: Bool) -> some View {
         Button {
+            FleetHaptics.light()
             draft.adjust(field, increasing: increasing)
             result = nil
             failure = nil
@@ -520,8 +522,10 @@ struct MinerCoolingPreview: View {
                     draft = readback
                     result = "Cooling changes verified on \(live.target)."
                     review = nil
+                    FleetHaptics.success()
                 } catch {
                     failure = error.localizedDescription
+                    FleetHaptics.error()
                 }
             }
             return
@@ -530,5 +534,6 @@ struct MinerCoolingPreview: View {
         draft = applied
         result = "Applied in this demo. Nothing sent."
         review = nil
+        FleetHaptics.success()
     }
 }
