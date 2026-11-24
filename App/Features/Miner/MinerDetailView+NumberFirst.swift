@@ -72,6 +72,8 @@ struct MinerNumberFirstAvailability {
         !settingsCategories(usesEssentialsPools: usesEssentialsPools).isEmpty
             || quickActions.contains(.restart) || (mode == .full && rawAPI)
             || (rawAPI && hasFreshLiveFields && ["canaan", "canaannano3"].contains(driverCapabilities.family))
+            || (rawAPI && !driverCapabilities.isReadOnly
+                && !MinerFirmwareExtras.controls(for: driverCapabilities.family).isEmpty)
     }
 
     private static func hasText(_ value: JSONValue?) -> Bool {

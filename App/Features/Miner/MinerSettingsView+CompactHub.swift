@@ -17,12 +17,20 @@ extension MinerSettingsView {
                 } else if offlineReadOnly {
                     MinerOfflineSettingsNotice(snapshot: store.snapshot(for: device.id))
                 }
-                if !categories.isEmpty || canRestart || liveRestart.receipt != nil || showsAvalonControls(availability) {
+                if !categories.isEmpty || canRestart || liveRestart.receipt != nil || showsAvalonControls(availability)
+                    || showsFirmwareExtras(availability) {
                     compactHubGroup("Controls") {
                         if showsAvalonControls(availability) {
                             compactHubLink("Avalon controls", subtitle: avalonControlsSubtitle, icon: "slider.horizontal.3",
                                            id: "settings.preview.avalon") {
                                 MinerAvalonControlsPage(device: device, store: store)
+                            }
+                            if !categories.isEmpty || canRestart || showsFirmwareExtras(availability) { compactHubDivider }
+                        }
+                        if showsFirmwareExtras(availability) {
+                            compactHubLink("Firmware settings", subtitle: firmwareExtrasSubtitle, icon: "cpu",
+                                           id: "settings.preview.firmwareExtras") {
+                                MinerFirmwareExtrasPage(device: device, store: store)
                             }
                             if !categories.isEmpty || canRestart { compactHubDivider }
                         }
@@ -219,6 +227,15 @@ extension MinerSettingsView {
     func showsAvalonControls(_ availability: MinerNumberFirstAvailability) -> Bool {
         ["canaan", "canaannano3"].contains(availability.driverCapabilities.family)
             && availability.rawAPI && !availability.driverCapabilities.isReadOnly
+    }
+
+    func showsFirmwareExtras(_ availability: MinerNumberFirstAvailability) -> Bool {
+        availability.rawAPI && !availability.driverCapabilities.isReadOnly
+            && !MinerFirmwareExtras.controls(for: availability.driverCapabilities.family).isEmpty
+    }
+
+    var firmwareExtrasSubtitle: String {
+        MinerFirmwareExtras.controls(for: device.firmwareFamily ?? "bitaxe").prefix(3).map(\.title).joined(separator: ", ")
     }
 
     var avalonControlsSubtitle: String {
