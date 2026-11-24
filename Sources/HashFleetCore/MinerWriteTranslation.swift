@@ -71,6 +71,9 @@ extension MinerFirmwareAdapter {
             return try await sendCustomHTTPData(
                 method: "GET", path: "/api/v1/history", body: nil, query: query
             )
+        case .settings:
+            return try await MinerAPIClient(device: device, session: session)
+                .execute(endpoint, body: Self.translateWarpAxeSettingsBody(body), query: query)
         default:
             return try await MinerAPIClient(device: device, session: session)
                 .execute(endpoint, body: body, query: query)
@@ -281,6 +284,28 @@ extension MinerFirmwareAdapter {
             return (try? JSONEncoder().encode(JSONValue.object(dict))) ?? body
         }
         return body
+    }
+
+    /// WarpAxe `config::patch` (dvb-WarpAxe@635639a config.rs:1344) only copies keys that exist on
+    /// its `Config` struct and silently drops the rest. The fan duty field is `fanspeed` and the
+    /// fan target is `pidTargetTemp`; AxeOS `manualFanSpeed` / `temptarget` would be ignored.
+    public static func translateWarpAxeSettingsBody(_ body: Data?) -> Data? {
+        guard let body,
+              let json = try? JSONDecoder().decode(JSONValue.self, from: body),
+              case .object(var dict) = json else {
+            return body
+        }
+        var changed = false
+        if let fan = dict.removeValue(forKey: "manualFanSpeed") ?? dict.removeValue(forKey: "fanSpeed") {
+            if dict["fanspeed"] == nil { dict["fanspeed"] = fan }
+            changed = true
+        }
+        if let target = dict.removeValue(forKey: "temptarget") {
+            if dict["pidTargetTemp"] == nil { dict["pidTargetTemp"] = target }
+            changed = true
+        }
+        guard changed else { return body }
+        return (try? JSONEncoder().encode(JSONValue.object(dict))) ?? body
     }
 
     public static func translateNerdQAxeSettingsBody(_ body: Data?) -> Data? {

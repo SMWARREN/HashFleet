@@ -576,4 +576,19 @@ struct MinerWriteDriversTests {
         #expect(dict["fanspeed"] == .integer(55))
         #expect(dict["autofanspeed"] == .integer(0))
     }
+
+    @Test("WarpAxe settings use its Config field names (fanspeed, pidTargetTemp)")
+    func warpAxeSettingsKeys() throws {
+        let body = try JSONEncoder().encode(JSONValue.object([
+            "manualFanSpeed": .integer(70), "temptarget": .integer(62), "frequency": .integer(500)
+        ]))
+        let out = try #require(MinerFirmwareAdapter.translateWarpAxeSettingsBody(body))
+        guard case .object(let dict) = try JSONDecoder().decode(JSONValue.self, from: out) else {
+            Issue.record("not object"); return
+        }
+        #expect(dict["fanspeed"] == .integer(70))
+        #expect(dict["pidTargetTemp"] == .integer(62))
+        #expect(dict["frequency"] == .integer(500))
+        #expect(dict["manualFanSpeed"] == nil && dict["temptarget"] == nil)
+    }
 }
