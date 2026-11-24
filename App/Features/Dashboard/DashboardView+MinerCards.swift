@@ -16,10 +16,12 @@ extension DashboardView {
         devices: [MinerDevice]
     ) -> AnyView {
         #if os(macOS)
+        let isEssentials = store.preferences.dashboardMode == .essentials
         return AnyView(
             FleetMinerDetailGrid(
                 maximumColumns: columns,
-                minimumColumnWidth: 320, spacing: FleetLayout.cardGridSpacing,
+                minimumColumnWidth: 320,
+                spacing: isEssentials ? 10 : FleetLayout.cardGridSpacing,
                 balancesFourItems: false
             ) {
                 dashboardMinerCards(devices: devices)
@@ -70,19 +72,26 @@ extension DashboardView {
     private func minerCard(_ device: MinerDevice) -> some View {
         let isEssentials = store.preferences.dashboardMode == .essentials
         let expanded = minerExpansion[device.id] ?? (isEssentials ? !numberFirstCompactCards : !store.preferences.compactCards)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: isEssentials ? 2 : 8) {
             minerCardLink(device, expanded: expanded)
-            Rectangle()
-                .fill(FleetTheme.separator)
-                .frame(height: 1)
-                .accessibilityHidden(true)
+            if !isEssentials {
+                Rectangle()
+                    .fill(FleetTheme.separator)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+            }
             minerCardControls(device, expanded: expanded)
         }
-        .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
-        .padding(.horizontal, FleetLayout.cardPadding)
-        .padding(.top, FleetLayout.cardPadding)
-        .padding(.bottom, 4)
-        .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator, cornerRadius: isEssentials ? 16 : 24)
+        .frame(maxWidth: .infinity, maxHeight: isEssentials ? nil : (FleetLayout.isMac ? .infinity : nil), alignment: .topLeading)
+        .padding(.horizontal, isEssentials ? 12 : FleetLayout.cardPadding)
+        .padding(.top, isEssentials ? 10 : FleetLayout.cardPadding)
+        .padding(.bottom, isEssentials ? 4 : 4)
+        .fleetCard(
+            padding: 0,
+            fill: isEssentials ? FleetTheme.surface : FleetTheme.raised,
+            border: isEssentials ? .clear : FleetTheme.separator,
+            cornerRadius: isEssentials ? 16 : 24
+        )
         .transition(
             reduceMotion
                 ? .identity
@@ -231,8 +240,12 @@ extension DashboardView {
             .foregroundStyle(FleetTheme.ink)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 4)
-            .padding(.vertical, usesNumberFirstOverview ? 4 : 8)
-            .frame(minWidth: 48, minHeight: 48, alignment: .leading)
+            .padding(.vertical, usesNumberFirstOverview ? 2 : 8)
+            .frame(
+                minWidth: usesNumberFirstOverview ? 36 : 48,
+                minHeight: usesNumberFirstOverview ? 28 : 48,
+                alignment: .leading
+            )
             .contentShape(Rectangle())
     }
 
