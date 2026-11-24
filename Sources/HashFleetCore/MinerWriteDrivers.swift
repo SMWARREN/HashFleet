@@ -137,15 +137,16 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
         case "braiins", "luxos":
             return MinerDriverCapabilities(family: normalized)
         case "bitfortun":
+            // BS-1 is a NerdQAxe fork: no /api/system/pause|resume and no top-level identify
+            // route (bf_http_server.cpp registers only /api/system/shutdown + CAN-slave identify).
             return MinerDriverCapabilities(
                 family: "bitfortun",
                 canSetFan: true,
                 canSetFrequency: true,
                 canSetVoltage: true,
                 canRestart: true,
-                canPause: true,
-                canSetPool: true,
-                canIdentify: true
+                canShutdown: true,
+                canSetPool: true
             )
         default:
             return MinerDriverCapabilities(
@@ -453,13 +454,13 @@ extension MinerFirmwareAdapter {
     public func pause() async throws -> Bool {
         let family = resolvedFamilyName
         switch family {
-        case "nerdqaxe", "nerdoctaxe":
+        case "nerdqaxe", "nerdoctaxe", "bitfortun":
             return try await shutdown()
         case "harloos":
             return try await sendCustomHTTP(method: "POST", path: "/api/asic/stop", json: nil)
         case "warpaxe":
             return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/off", json: nil)
-        case "bitaxe", "bitfortun", "bitforge":
+        case "bitaxe", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/pause", json: nil)
         default:
             return false
@@ -470,13 +471,13 @@ extension MinerFirmwareAdapter {
     public func resume() async throws -> Bool {
         let family = resolvedFamilyName
         switch family {
-        case "nerdqaxe", "nerdoctaxe":
+        case "nerdqaxe", "nerdoctaxe", "bitfortun":
             return try await restart()
         case "harloos":
             return try await sendCustomHTTP(method: "POST", path: "/api/asic/start", json: nil)
         case "warpaxe":
             return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/on", json: nil)
-        case "bitaxe", "bitfortun", "bitforge":
+        case "bitaxe", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/resume", json: nil)
         default:
             return false
@@ -493,7 +494,7 @@ extension MinerFirmwareAdapter {
         if family == "warpaxe" {
             return try await sendCustomHTTP(method: "POST", path: "/api/v1/chips/off", json: nil)
         }
-        guard family == "nerdqaxe" || family == "nerdoctaxe" else {
+        guard family == "nerdqaxe" || family == "nerdoctaxe" || family == "bitfortun" else {
             if family == "canaan" { return try await powerOffHashBoards() }
             return false
         }
@@ -508,8 +509,12 @@ extension MinerFirmwareAdapter {
             return try await sendCustomHTTP(
                 method: "POST", path: "/api/identify", json: nil, headers: ["X-AxeForge": "1"]
             )
-        case "bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge":
+        case "bitaxe", "bitforge":
             return try await sendCustomHTTP(method: "POST", path: "/api/system/identify", json: nil)
+        case "nerdqaxe", "nerdoctaxe":
+            // NerdQAxe identify is GET /api/v2/identify (nq_http_server.cpp:231).
+            _ = try await sendCustomHTTPData(method: "GET", path: "/api/v2/identify", body: nil, query: [])
+            return true
         case "canaan":
             // Light the front LED so the unit can be found (A10 manual 2.3).
             return try await setLocatorLED(true)
@@ -623,7 +628,7 @@ extension MinerFirmwareAdapter {
             let translatedBody = endpoint == .settings ? Self.translateBitForgeSettingsBody(body) : body
             return try await MinerAPIClient(device: device, session: session)
                 .execute(endpoint, body: translatedBody, query: query)
-        case "nerdqaxe", "nerdoctaxe":
+        case "nerdqaxe", "nerdoctaxe", "bitfortun":
             return try await executeNerdQAxeEndpoint(endpoint, body: body, query: query)
         case "warpaxe":
             return try await executeWarpAxeEndpoint(endpoint, body: body, query: query)

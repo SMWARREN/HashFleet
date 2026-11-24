@@ -33,6 +33,12 @@ extension MinerFirmwareAdapter {
             return try await sendCustomHTTPData(
                 method: "POST", path: "/api/system/restart", body: nil, query: query
             )
+        case .identify:
+            // NerdQAxe registers identify as GET /api/v2/identify (nq_http_server.cpp:231).
+            // Bitfortun BS-1 has no top-level identify route; its capability hides the action.
+            return try await sendCustomHTTPData(
+                method: "GET", path: "/api/v2/identify", body: nil, query: query
+            )
         case .settings:
             let translated = Self.translateNerdQAxeSettingsBody(body)
             return try await MinerAPIClient(device: device, session: session)
@@ -269,6 +275,9 @@ extension MinerFirmwareAdapter {
             dict["fanspeed"] = fanVal
             dict["fanSpeed"] = fanVal
             dict["manualFanSpeed"] = fanVal
+            // MinerWatch bitforge.py:133 sends autofanspeed:0 with the duty so forge-os auto
+            // mode cannot override a manual write.
+            if dict["autofanspeed"] == nil { dict["autofanspeed"] = .integer(0) }
             return (try? JSONEncoder().encode(JSONValue.object(dict))) ?? body
         }
         return body
@@ -280,11 +289,19 @@ extension MinerFirmwareAdapter {
               case .object(var dict) = json else {
             return body
         }
+        var changed = false
         if let fanVal = dict["manualFanSpeed"], dict["fanspeed"] == nil {
             dict["fanspeed"] = fanVal
-            return (try? JSONEncoder().encode(JSONValue.object(dict))) ?? body
+            changed = true
         }
-        return body
+        // NerdQAxe and Bitfortun BS-1 have no AxeOS `temptarget`; the fan PID target is
+        // `pidTargetTemp` (nq_handler_system.cpp:530, bf_handler_system.cpp:397).
+        if let target = dict.removeValue(forKey: "temptarget") {
+            if dict["pidTargetTemp"] == nil { dict["pidTargetTemp"] = target }
+            changed = true
+        }
+        guard changed else { return body }
+        return (try? JSONEncoder().encode(JSONValue.object(dict))) ?? body
     }
 
     public static func translateNmaxePreferenceBody(_ body: Data?) -> Data? {

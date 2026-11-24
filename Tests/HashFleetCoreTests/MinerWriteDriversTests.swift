@@ -529,4 +529,51 @@ struct MinerWriteDriversTests {
         #expect(reqs[2].httpMethod == "POST" && reqs[2].url?.path == "/api/v1/chips/off")
         #expect(reqs[3].httpMethod == "POST" && reqs[3].url?.path == "/api/v1/chips/on")
     }
+
+    @Test("NerdQAxe identify is GET /api/v2/identify; BS-1 routes pause/resume like NerdQAxe")
+    func nerdFamilyUpstreamRoutes() async throws {
+        let id = UUID().uuidString
+        let session = makeSession(id: id)
+        defer { session.invalidateAndCancel() }
+
+        let nerd = MinerFirmwareAdapter(
+            device: MinerDevice(name: "NQ", address: "192.168.1.70", firmwareFamily: "nerdqaxe"),
+            session: session
+        )
+        #expect(try await nerd.identify())
+
+        let bs1 = MinerFirmwareAdapter(
+            device: MinerDevice(name: "BS-1", address: "192.168.1.71", firmwareFamily: "bitfortun"),
+            session: session
+        )
+        #expect(try await bs1.pause())
+        #expect(try await bs1.resume())
+        #expect(try await bs1.identify() == false)
+        let caps = MinerDriverCapabilities.forFamily("bitfortun")
+        #expect(!caps.canPause && caps.canShutdown && !caps.canIdentify)
+
+        let body = try JSONEncoder().encode(JSONValue.object(["temptarget": .integer(60)]))
+        _ = try await bs1.execute(.settings, body: body)
+
+        let reqs = sharedWriteRecorder.history(id: id)
+        #expect(reqs.count == 4)
+        #expect(reqs[0].httpMethod == "GET" && reqs[0].url?.path == "/api/v2/identify")
+        #expect(reqs[1].httpMethod == "POST" && reqs[1].url?.path == "/api/system/shutdown")
+        #expect(reqs[2].httpMethod == "POST" && reqs[2].url?.path == "/api/system/restart")
+        #expect(reqs[3].httpMethod == "PATCH" && reqs[3].url?.path == "/api/system")
+        let sent = try JSONDecoder().decode(JSONValue.self, from: reqs[3].httpBody ?? Data())
+        guard case .object(let dict) = sent else { Issue.record("body not object"); return }
+        #expect(dict["temptarget"] == nil)
+        #expect(dict["pidTargetTemp"] == .integer(60))
+    }
+
+    @Test("BitForge manual fan write forces autofanspeed:0 like MinerWatch")
+    func bitForgeFanForcesManualMode() throws {
+        let body = try JSONEncoder().encode(JSONValue.object(["manualFanSpeed": .integer(55)]))
+        let out = try #require(MinerFirmwareAdapter.translateBitForgeSettingsBody(body))
+        let json = try JSONDecoder().decode(JSONValue.self, from: out)
+        guard case .object(let dict) = json else { Issue.record("not object"); return }
+        #expect(dict["fanspeed"] == .integer(55))
+        #expect(dict["autofanspeed"] == .integer(0))
+    }
 }
