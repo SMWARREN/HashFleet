@@ -308,7 +308,7 @@ struct AddMinerView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text(isRescanning ? "Rescanning for late replies…" : "Scanning Wi-Fi Fleet…")
+                                Text("Scanning Wi-Fi Fleet…")
                                     .fleetFont(.subheadline, weight: .bold)
                                     .foregroundStyle(FleetTheme.ink)
                                 Circle()
