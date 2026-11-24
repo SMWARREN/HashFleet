@@ -67,14 +67,22 @@ extension AddMinerView {
     var addAllButton: some View {
         let remaining = discovery.candidates.filter { !addedAddresses.contains($0.address) }.count
         return Button {
-            addAllDiscovered()
+            if remaining == 0 && !addedAddresses.isEmpty {
+                FleetHaptics.success()
+                dismiss()
+            } else if remaining > 0 {
+                FleetHaptics.medium()
+                addAllDiscovered()
+            } else {
+                FleetHaptics.warning()
+            }
         } label: {
-            Label(remaining == 0 ? "Done · Open Overview" : "Add all (\(remaining))",
+            Label(remaining == 0 ? "Done · Return to Overview" : "Add all (\(remaining))",
                   systemImage: remaining == 0 ? "checkmark.circle.fill" : "plus.circle.fill")
                 .frame(maxWidth: .infinity, minHeight: 24)
         }
-        .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
-        .disabled(!localNetwork.isGranted || discovery.isScanning)
+        .buttonStyle(FleetPrimaryButtonStyle(tone: remaining == 0 ? .secondary : .accent, size: .compact))
+        .disabled(!localNetwork.isGranted || (remaining == 0 && addedAddresses.isEmpty))
         .accessibilityIdentifier("addMiner.addAll")
         .accessibilityHint("Adds every miner found without changing their settings.")
     }
@@ -106,6 +114,7 @@ extension AddMinerView {
     private func discoveryRow(_ candidate: MinerDiscoveryCandidate) -> some View {
         let isAdded = addedAddresses.contains(candidate.address)
         Button {
+            FleetHaptics.light()
             addMiner(candidate)
         } label: {
             HStack(spacing: 12) {

@@ -5,7 +5,7 @@ struct AddMinerView: View {
     let store: FleetStore
     /// Native workspace completion is owned by the presenting view, not a system open intent.
     var onBulkAddSuccess: (() -> Void)?
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State var name = ""
     @State var address = ""
@@ -95,10 +95,11 @@ struct AddMinerView: View {
                 address = ""
                 bearerToken = ""
             }
-            .onChange(of: discovery.candidates) { _, candidates in
-                // A rescan returns fresh candidates. Mark any that are already in the fleet so
-                // the rows stay honest instead of inviting a duplicate add.
-                markAlreadyPresent(in: candidates)
+            .onChange(of: discovery.candidates) { oldVal, newVal in
+                if newVal.count > oldVal.count {
+                    FleetHaptics.light()
+                }
+                markAlreadyPresent(in: newVal)
             }
             .onChange(of: localNetwork.status) { _, status in
                 if status != .granted { discovery.cancel() }
@@ -267,29 +268,60 @@ struct AddMinerView: View {
             .fixedSize(horizontal: false, vertical: true)
 
             if discovery.isScanning {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .stroke(FleetTheme.accent.opacity(0.2), lineWidth: 3)
-                                .frame(width: 38, height: 38)
-                            Circle()
-                                .trim(from: 0, to: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount))
-                                .stroke(FleetTheme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                                .frame(width: 38, height: 38)
-                                .rotationEffect(.degrees(-90))
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(FleetTheme.accent)
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 14) {
+                        // Spinning radar with spinning miner chip inside
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                            let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                            ZStack {
+                                Circle()
+                                    .stroke(FleetTheme.accent.opacity(0.2), lineWidth: 3)
+                                    .frame(width: 44, height: 44)
+                                Circle()
+                                    .trim(from: 0, to: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount))
+                                    .stroke(FleetTheme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                    .frame(width: 44, height: 44)
+                                    .rotationEffect(.degrees(-90))
+                                AngularGradient(
+                                    stops: [
+                                        .init(color: .clear, location: 0.0),
+                                        .init(color: .clear, location: 0.55),
+                                        .init(color: FleetTheme.accent.opacity(0.2), location: 0.8),
+                                        .init(color: FleetTheme.accent.opacity(0.85), location: 0.99),
+                                        .init(color: .clear, location: 1.0)
+                                    ],
+                                    center: .center
+                                )
+                                .frame(width: 44, height: 44)
+                                .rotationEffect(.degrees((elapsed * 160).truncatingRemainder(dividingBy: 360)))
+                                .clipShape(Circle())
+
+                                Image(systemName: "cpu")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(FleetTheme.accent)
+                                    .rotationEffect(.degrees((elapsed * 90).truncatingRemainder(dividingBy: 360)))
+                            }
                         }
+                        .frame(width: 44, height: 44)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount))
-                                .fleetFont(.subheadline, weight: .semibold)
-                                .foregroundStyle(FleetTheme.ink)
-                            Text(AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)) + " complete · \(discovery.candidates.count) found")
+                            HStack(spacing: 6) {
+                                Text("Scanning Wi-Fi Fleet…")
+                                    .fleetFont(.subheadline, weight: .bold)
+                                    .foregroundStyle(FleetTheme.ink)
+                                Circle()
+                                    .fill(FleetTheme.positive)
+                                    .frame(width: 7, height: 7)
+                            }
+                            Text(AddMinerScanRadarModel.progressText(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount) + " · " + AddMinerScanRadarModel.percentText(fraction: AddMinerScanRadarModel.progressFraction(probedHosts: discovery.probedHosts, hostCount: discoveryHostCount)))
                                 .fleetFont(.caption, design: .monospaced)
                                 .foregroundStyle(FleetTheme.secondary)
+
+                            if !discovery.candidates.isEmpty {
+                                Text("\(discovery.candidates.count) \(discovery.candidates.count == 1 ? "miner" : "miners") responding live")
+                                    .fleetFont(.caption2, weight: .semibold, design: .monospaced)
+                                    .foregroundStyle(FleetTheme.positive)
+                            }
                         }
                         Spacer()
                     }
@@ -311,12 +343,16 @@ struct AddMinerView: View {
                     }
                     .frame(height: 6)
 
-                    HStack(spacing: 10) {
-                        Button("Cancel Scan") {
+                    HStack(spacing: 12) {
+                        Button(role: .cancel) {
+                            FleetHaptics.light()
                             discovery.cancel()
+                        } label: {
+                            Label("Stop Scan", systemImage: "stop.fill")
+                                .fleetFont(.footnote, weight: .semibold)
+                                .frame(minHeight: 28)
                         }
-                        .fleetFont(.footnote, weight: .semibold)
-                        .foregroundStyle(FleetTheme.secondary)
+                        .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
                         .accessibilityIdentifier("addMiner.discoveryCancel")
 
                         Spacer()
@@ -325,8 +361,8 @@ struct AddMinerView: View {
                         }
                     }
                 }
-                .padding(12)
-                .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+                .padding(14)
+                .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 14))
                 .animation(.spring(duration: 0.35, bounce: 0.2), value: discovery.isScanning)
             } else if !localNetwork.isGranted {
                 localNetworkApprovalControls
@@ -514,7 +550,13 @@ struct AddMinerView: View {
 extension AddMinerView {
     /// Adds every discovered miner not already in the fleet. Settings are never changed.
     func addAllDiscovered() {
-        guard localNetwork.isGranted, !discovery.isScanning, !discovery.candidates.isEmpty else { return }
+        guard localNetwork.isGranted, !discovery.candidates.isEmpty else {
+            FleetHaptics.warning()
+            return
+        }
+        if discovery.isScanning {
+            discovery.cancel()
+        }
         #if os(macOS)
         FleetMacNavigationTrace.record("addAll.begin", "candidates=\(discovery.candidates.count)")
         #endif
@@ -531,6 +573,7 @@ extension AddMinerView {
         addedAddresses = result.addedAddresses
         if result.failures.isEmpty {
             discoveryAddError = nil
+            FleetHaptics.success()
             #if os(macOS)
             FleetMacNavigationTrace.record("addAll.workspaceCompletion")
             AddMinerMultiSelection.completeInWorkspace(
@@ -542,20 +585,31 @@ extension AddMinerView {
             FleetSystemNavigation.request()
             #endif
         } else {
+            FleetHaptics.error()
             discoveryAddError = result.failures.joined(separator: "\n")
         }
     }
 
     func startDiscovery() {
-        guard localNetwork.isGranted else { return }
+        guard localNetwork.isGranted else {
+            FleetHaptics.warning()
+            return
+        }
+        FleetHaptics.medium()
         discoveryAddError = nil
         discovery.start()
     }
 
     /// Adds a discovered miner and stays on the sheet so the remaining results can be added too.
     func addMiner(_ candidate: MinerDiscoveryCandidate) {
-        guard localNetwork.isGranted else { return }
-        guard !addedAddresses.contains(candidate.address) else { return }
+        guard localNetwork.isGranted else {
+            FleetHaptics.warning()
+            return
+        }
+        guard !addedAddresses.contains(candidate.address) else {
+            FleetHaptics.light()
+            return
+        }
         do {
             // A custom name belongs to a single miner, so only apply it to the first one added.
             // Every later miner resolves its own model-derived name after the first live response.
@@ -570,11 +624,14 @@ extension AddMinerView {
             )
             addedAddresses.insert(candidate.address)
             validationError = nil
+            FleetHaptics.light()
         } catch FleetError.duplicate {
             // Already in the fleet from an earlier session. Reflect that rather than erroring.
             addedAddresses.insert(candidate.address)
+            FleetHaptics.light()
         } catch {
             validationError = error.localizedDescription
+            FleetHaptics.error()
         }
     }
 }

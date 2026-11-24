@@ -302,6 +302,7 @@
 		47188C32294F4032A655040D /* FleetAdaptiveLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51679281469E347D603D7565 /* FleetAdaptiveLayout.swift */; };
 		476DE69735B4B0D002CA2DB7 /* FleetMacRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F9AA87C8F2DC1F19468EB8 /* FleetMacRuntimeTests.swift */; };
 		47AEB63D2A4145C6D0BE6279 /* FleetHistoryCard+Display.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50993F6947797A1943A34CE7 /* FleetHistoryCard+Display.swift */; };
+		47DF61B96831D71F982D340F /* FleetHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59D2A1EA44C2586A04703F1 /* FleetHaptics.swift */; };
 		47F0C7CD6B00C8B32C88E67D /* CommonControlsRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1D648B1CEB814B0ED07FC7 /* CommonControlsRoutingTests.swift */; };
 		47FC6020A5C37739C2F359E7 /* FleetPageCaptureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3AA169C40C0111D0B3C7DD /* FleetPageCaptureUITests.swift */; };
 		48482DA84A463E472277B1D2 /* FleetTickerCursorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DA00D6CBD84B0B5063CBAC /* FleetTickerCursorTests.swift */; };
@@ -343,6 +344,7 @@
 		51FF7F99B5749DD1D4F981BE /* FleetHistoryAggregationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF73048766E9F79389EBDAF /* FleetHistoryAggregationTests.swift */; };
 		5284412EBB8735F4DE0B6708 /* BestShareNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB21984F2486C6ABE5F4473 /* BestShareNotificationTests.swift */; };
 		529238A39147E3CBC10FDFDC /* FleetWindowViewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B152254B0B0B9FB814842770 /* FleetWindowViewport.swift */; };
+		52C5C914DE43BE9888E3E77D /* FleetHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59D2A1EA44C2586A04703F1 /* FleetHaptics.swift */; };
 		52D22F6A16AF9F268AAAB7F7 /* MinerFirmwareFamilyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44FE2852E0BAEEC3B217FF28 /* MinerFirmwareFamilyTests.swift */; };
 		53357F0F0AC7FECE2B279510 /* FleetMonitoringBoundaryTests+Recovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74C7CC492A1A1666CC45CC0 /* FleetMonitoringBoundaryTests+Recovery.swift */; };
 		53B10FE5532A2215B905B8BD /* FleetDashboardTypeBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5106487BFF0C6939925FD314 /* FleetDashboardTypeBoundaryTests.swift */; };
@@ -1752,6 +1754,7 @@
 		E47AB00DE29E75D71787A48D /* FleetBackupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetBackupModels.swift; sourceTree = "<group>"; };
 		E48697F0281074F51479ADD2 /* MinerDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerDiagnosticsTests.swift; sourceTree = "<group>"; };
 		E4B2E8D251596BBD5F279D46 /* DashboardCardInteractionUITests+Detail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardCardInteractionUITests+Detail.swift"; sourceTree = "<group>"; };
+		E59D2A1EA44C2586A04703F1 /* FleetHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetHaptics.swift; sourceTree = "<group>"; };
 		E625A186D58B63A873A0F2A6 /* FleetTourContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetTourContentTests.swift; sourceTree = "<group>"; };
 		E69D681D6A2138A1CF770EBE /* Hash Fleet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hash Fleet.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6DEE00711C6AA8DDB2AD94A /* FleetMinerDetailGridTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMinerDetailGridTests.swift; sourceTree = "<group>"; };
@@ -1948,6 +1951,7 @@
 				14E6E878B5828B1EDF5F08A9 /* FleetDesktopBranding.swift */,
 				CEFC9F5AA2EE382D9287CF2D /* FleetDeviceCopy.swift */,
 				90A12B403032BEAE5C2F4BC5 /* FleetExternalURL.swift */,
+				E59D2A1EA44C2586A04703F1 /* FleetHaptics.swift */,
 				19A38B808A51D2D883DC5514 /* FleetHeaderArtwork.swift */,
 				8F146A9EA464572514AAAEB8 /* FleetHeaderTitle.swift */,
 				9A8497EC53E368E7C6EAFA72 /* FleetLoadingSkeleton.swift */,
@@ -3491,6 +3495,7 @@
 				E0FE713E3B48BA987BCAE156 /* FleetGuidedDemoSandbox.swift in Sources */,
 				F1159ED7E21F26520A8679CB /* FleetGuidedDemoSteps.swift in Sources */,
 				732CB22F3FDEDC719F9B5640 /* FleetGuidedSpotlight.swift in Sources */,
+				47DF61B96831D71F982D340F /* FleetHaptics.swift in Sources */,
 				FC5A2735E762A52583FA45D8 /* FleetHardwareControlGate.swift in Sources */,
 				F51F443D0FCF957B6607CDC0 /* FleetHashrateShareCard.swift in Sources */,
 				F2117C6889BBA6BFB35122C9 /* FleetHeaderArtwork.swift in Sources */,
@@ -3791,6 +3796,7 @@
 				2CA42BD51F28F2BA059AB988 /* FleetGuidedDemoSandbox.swift in Sources */,
 				9FDFA751829D390D8F839ACF /* FleetGuidedDemoSteps.swift in Sources */,
 				79D75500A24D53B04D4D4460 /* FleetGuidedSpotlight.swift in Sources */,
+				52C5C914DE43BE9888E3E77D /* FleetHaptics.swift in Sources */,
 				D8C188B3F081494DD9E58E33 /* FleetHardwareControlGate.swift in Sources */,
 				4635F884795563A886D10295 /* FleetHashrateShareCard.swift in Sources */,
 				51076544E7FAFD0EA6783329 /* FleetHeaderArtwork.swift in Sources */,
