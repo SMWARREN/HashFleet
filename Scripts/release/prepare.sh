@@ -15,7 +15,8 @@ xcodebuild -project HashFleet.xcodeproj -scheme HashFleetMac -configuration Rele
     -destination 'platform=macOS,arch=arm64' -derivedDataPath "$STAGE/mac-derived" \
     -onlyUsePackageVersionsFromResolvedFile CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM= \
     ARCHS=arm64 MACOSX_DEPLOYMENT_TARGET=14.0 MARKETING_VERSION="$RELEASE_VERSION" \
-    CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-1}" build
+    CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER:-1}" \
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) HASHFLEET_DIRECT_DISTRIBUTION' build
 ditto "$STAGE/mac-derived/Build/Products/Release/Hash Fleet.app" "$STAGE/Hash Fleet.app"
 [[ ! -e "$STAGE/Hash Fleet.app/Contents/MacOS/hashfleet" ]]
 [[ ! -d "$STAGE/Hash Fleet.app/Contents/PlugIns" ]]

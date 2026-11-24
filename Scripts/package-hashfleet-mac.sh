@@ -42,6 +42,7 @@ else
         -configuration Release \
         -destination 'platform=macOS,arch=arm64' \
         -derivedDataPath "$DERIVED_DATA" \
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) HASHFLEET_DIRECT_DISTRIBUTION' \
         build
 fi
 
