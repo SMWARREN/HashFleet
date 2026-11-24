@@ -15,19 +15,19 @@ extension DashboardView {
         gridItems: [GridItem],
         devices: [MinerDevice]
     ) -> AnyView {
+        #if os(macOS)
+        return AnyView(
+            FleetMinerDetailGrid(
+                maximumColumns: columns,
+                minimumColumnWidth: 320, spacing: FleetLayout.cardGridSpacing,
+                balancesFourItems: false
+            ) {
+                dashboardMinerCards(devices: devices)
+            }
+        )
+        #else
         if usesNumberFirstOverview {
             return AnyView(numberFirstMinerList(devices: devices))
-        }
-        if FleetLayout.isMac {
-            return AnyView(
-                FleetMinerDetailGrid(
-                    maximumColumns: columns,
-                    minimumColumnWidth: 320, spacing: FleetLayout.cardGridSpacing,
-                    balancesFourItems: false
-                ) {
-                    dashboardMinerCards(devices: devices)
-                }
-            )
         }
 
         return AnyView(
@@ -35,6 +35,7 @@ extension DashboardView {
                 dashboardMinerCards(devices: devices)
             }
         )
+        #endif
     }
 
     @ViewBuilder private func numberFirstMinerList(devices: [MinerDevice]) -> some View {
@@ -67,7 +68,8 @@ extension DashboardView {
     }
 
     private func minerCard(_ device: MinerDevice) -> some View {
-        let expanded = minerExpansion[device.id] ?? !store.preferences.compactCards
+        let isEssentials = store.preferences.dashboardMode == .essentials
+        let expanded = minerExpansion[device.id] ?? (isEssentials ? !numberFirstCompactCards : !store.preferences.compactCards)
         return VStack(alignment: .leading, spacing: 8) {
             minerCardLink(device, expanded: expanded)
             Rectangle()
@@ -80,7 +82,7 @@ extension DashboardView {
         .padding(.horizontal, FleetLayout.cardPadding)
         .padding(.top, FleetLayout.cardPadding)
         .padding(.bottom, 4)
-        .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator)
+        .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator, cornerRadius: isEssentials ? 16 : 24)
         .transition(
             reduceMotion
                 ? .identity

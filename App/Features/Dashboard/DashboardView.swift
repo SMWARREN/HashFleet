@@ -61,8 +61,12 @@ struct DashboardView: View {
 
     /// The new layout is scoped to the phone review build or the offline simulator fixture.
     var usesNumberFirstOverview: Bool {
+        #if os(macOS)
+        dashboardMode == .essentials && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
+        #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.overview : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && usesCompactHorizontalLayout
+        #endif
     }
 
     /// Use the same size for overview text and for layout branches in DashboardView itself.
