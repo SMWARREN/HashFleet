@@ -236,7 +236,7 @@ struct FleetMonitoringBoundaryTests {
         }
     }
 
-    @Test("needsFallbackPoll evaluates complete snapshot timestamp and exact 30s threshold")
+    @Test("needsFallbackPoll evaluates complete snapshot timestamp and exact threshold")
     func needsFallbackPollBoundaryMatrixAndThresholds() throws {
         try withFixture { store, device in
             let now = Date(timeIntervalSince1970: 50_000)
@@ -247,13 +247,14 @@ struct FleetMonitoringBoundaryTests {
             )
             #expect(store.needsFallbackPoll(for: device.id, now: now) == true)
 
-            for (offset, expected) in [(-29.0, false), (-30.0, true), (-31.0, true)] {
+            let threshold = FleetStore.liveSnapshotMaximumAge
+            for (offset, expected) in [(-(threshold - 1.0), false), (-threshold, true), (-(threshold + 1.0), true)] {
                 store.snapshots[device.id]?.completeSnapshotAt = now.addingTimeInterval(offset)
                 #expect(store.needsFallbackPoll(for: device.id, now: now) == expected)
             }
 
             store.snapshots[device.id]?.updatedAt = now
-            store.snapshots[device.id]?.completeSnapshotAt = now.addingTimeInterval(-35.0)
+            store.snapshots[device.id]?.completeSnapshotAt = now.addingTimeInterval(-(threshold + 5.0))
             #expect(store.needsFallbackPoll(for: device.id, now: now) == true)
 
             store.snapshots[device.id]?.error = "Socket error"

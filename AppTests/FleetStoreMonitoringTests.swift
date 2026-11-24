@@ -78,17 +78,18 @@ extension FleetStoreTests {
         defer { fleetEnv.defaults.removePersistentDomain(forName: fleetEnv.suite) }
         let now = Date()
 
+        let threshold = FleetStore.liveSnapshotMaximumAge
         store.snapshots[real.id] = MinerSnapshot(
             info: MinerInfo(raw: ["hashRate": .number(1_200)]),
             error: nil,
-            updatedAt: now.addingTimeInterval(-29),
-            completeSnapshotAt: now.addingTimeInterval(-29),
+            updatedAt: now.addingTimeInterval(-(threshold - 1)),
+            completeSnapshotAt: now.addingTimeInterval(-(threshold - 1)),
             history: [],
             isCached: false
         )
         #expect(!store.needsFallbackPoll(for: real.id, now: now))
 
-        store.snapshots[real.id]?.completeSnapshotAt = now.addingTimeInterval(-30)
+        store.snapshots[real.id]?.completeSnapshotAt = now.addingTimeInterval(-threshold)
         #expect(store.needsFallbackPoll(for: real.id, now: now))
 
         // Partial live frames can advance the visible update time without refreshing every metric.
