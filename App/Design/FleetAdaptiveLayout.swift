@@ -197,7 +197,11 @@ enum FleetLayout {
 
     /// One outer gutter for every page, independent of destination or platform.
     /// Card interiors and 44-point interaction targets are separate design metrics.
+    #if os(macOS)
+    static let pagePadding: CGFloat = 15
+    #else
     static let pagePadding: CGFloat = 16
+    #endif
     static let sectionSpacing: CGFloat = 16
 
     /// Card grid spacing.

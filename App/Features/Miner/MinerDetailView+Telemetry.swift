@@ -126,7 +126,7 @@ extension MinerDetailView {
         let showsSettings = availability.showsSettingsHub(in: dashboardMode, usesEssentialsPools: usesEssentialsPools)
         let hasBestShares = MiningDifficultyFormat.parse(info.raw["bestDiff"]) != nil
             || MiningDifficultyFormat.parse(info.raw["bestSessionDiff"]) != nil
-        return HStack(alignment: .top, spacing: 16) {
+        return HStack(alignment: .top, spacing: 15) {
             VStack(alignment: .leading, spacing: 12) {
                 hashrateHero(info, compact: true)
                 heroConditions(info, compact: true)

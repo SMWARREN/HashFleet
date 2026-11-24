@@ -19,7 +19,7 @@ extension DashboardView {
             #if os(macOS)
             if columns > 1 && devices.count > 1 {
                 return AnyView(
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 15) {
                         ForEach(0..<columns, id: \.self) { col in
                             let colDevices = devices.enumerated().filter { $0.offset % columns == col }.map(\.element)
                             if !colDevices.isEmpty {
