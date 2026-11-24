@@ -117,8 +117,8 @@ targets:
         PRODUCT_MODULE_NAME: HashFleetMac
         # Mac App Store target. Direct-distribution flag removed.
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited)"
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: MacApp/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: MacApp/Resources/HashFleet.entitlements
@@ -250,8 +250,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.menubar
         PRODUCT_NAME: Hash Fleet Menu Bar
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: Hash Fleet Menu Bar
@@ -277,8 +277,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
@@ -312,8 +312,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.watchkitapp
         PRODUCT_NAME: Hash Fleet Watch
         PRODUCT_MODULE_NAME: HashFleetWatch
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "15"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: WatchApp/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: WatchAppIcon
@@ -328,8 +328,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.watchkitapp.widgets
         PRODUCT_NAME: HashFleetWatchWidgets
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "15"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: WatchWidgets/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "4"
@@ -357,8 +357,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.widgets
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Widgets/Resources/Info.plist
@@ -375,8 +375,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.notification-service
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "28"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: NotificationService/Resources/Info.plist
