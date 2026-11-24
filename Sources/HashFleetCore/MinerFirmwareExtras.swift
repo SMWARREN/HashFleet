@@ -183,7 +183,7 @@ public enum MinerFirmwareExtras {
                     key: "useNTP", title: "Network time (NTP)",
                     detail: "Sync the miner clock from an NTP server.",
                     kind: .toggle(sendsBool: false)
-                ),
+                )
             ]
         case "nerdqaxe", "nerdoctaxe", "bitfortun":
             // nq_handler_system.cpp:504-531 / bf_handler_system.cpp:366-398. Upstream takes any u16 for
@@ -204,7 +204,7 @@ public enum MinerFirmwareExtras {
                     key: "autoscreenoff", title: "Auto screen off",
                     detail: "Turn the display off automatically.",
                     kind: .toggle(sendsBool: true)
-                ),
+                )
             ]
         case "warpaxe":
             // dvb-WarpAxe api.rs validation range: overheat_temp 50..90. The fan target is on the
@@ -214,7 +214,7 @@ public enum MinerFirmwareExtras {
                     key: "overheat_temp", title: "Overheat shutdown",
                     detail: "The miner stops hashing above this chip temperature.",
                     kind: .number(range: 50...90, unit: "°C"), alwaysConfirm: true
-                ),
+                )
             ]
         case "axeforge":
             // AxeForge main/net/web.cpp settings_post: atune, tgoal 0..2, pcap 0..2000, overclock + confirm.
@@ -239,7 +239,7 @@ public enum MinerFirmwareExtras {
                     detail: "Lets tuning and manual values use the board's envelope instead of stock limits. Adds heat and risk.",
                     kind: .toggle(sendsBool: true), readKey: "overclock.unlocked",
                     extraFields: ["confirm": .string("OVERCLOCK")], alwaysConfirm: true, readPath: "settings"
-                ),
+                )
             ]
         case "harloos":
             return harloControls
@@ -289,7 +289,7 @@ public enum MinerFirmwareExtras {
                 detail: "Share anonymous mining statistics with Harlo Labs.",
                 kind: .toggle(sendsBool: true), readPath: "/api/collection",
                 writeMethod: "PUT", writePath: "/api/collection"
-            ),
+            )
         ]
     }
 
@@ -313,7 +313,7 @@ public enum MinerFirmwareExtras {
                     id: "updateCheck", title: "Check for firmware update",
                     detail: "Asks the miner to check Harlo's update server. Nothing is installed.",
                     path: "/api/updates/check"
-                ),
+                )
             ]
         default:
             return []

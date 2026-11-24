@@ -9,13 +9,22 @@ import Testing
 struct MinerCgminerDiscoveryTests {
 
     static let nano3sVersion = #"""
-    {"STATUS":[{"STATUS":"S","When":1,"Code":22,"Msg":"CGMiner versions","Description":"cgminer 4.11.1"}],"VERSION":[{"CGMiner":"4.11.1","API":"3.7","PROD":"Avalon Nano3s","MODEL":"Nano3s","HWTYPE":"N_MM1v1_X1","SWTYPE":"MM319","LVERSION":"25021401_56abae7","MAC":"e0e1a9000001"}],"id":1}
+    {
+      "STATUS":[{"STATUS":"S","When":1,"Code":22,"Msg":"CGMiner versions","Description":"cgminer 4.11.1"}],
+      "VERSION":[{"CGMiner":"4.11.1","API":"3.7","PROD":"Avalon Nano3s","MODEL":"Nano3s",
+                  "HWTYPE":"N_MM1v1_X1","SWTYPE":"MM319","LVERSION":"25021401_56abae7","MAC":"e0e1a9000001"}],
+      "id":1
+    }
     """#
     static let nano3sSummary = #"""
     {"STATUS":[{"STATUS":"S","Code":11,"Msg":"Summary"}],"SUMMARY":[{"Elapsed":3600,"MHS av":6000000.0,"MHS 5m":6100000.0,"Accepted":120,"Rejected":2,"Best Share":5400000}],"id":1}
     """#
     static let nano3sEstats = #"""
-    {"STATUS":[{"STATUS":"S","Code":70,"Msg":"CGMiner stats"}],"STATS":[{"STATS":0,"ID":"AVALON0","MM ID0":"Ver[Nano3s-25021401_56abae7] TMax[71] TAvg[66] Fan1[2400] FanR[45%] Freq[500.00] GHSavg[6050.00] MPO[140] WORKMODE[1]"}],"id":1}
+    {
+      "STATUS":[{"STATUS":"S","Code":70,"Msg":"CGMiner stats"}],
+      "STATS":[{"STATS":0,"ID":"AVALON0","MM ID0":"Ver[Nano3s-25021401_56abae7] TMax[71] TAvg[66] Fan1[2400] FanR[45%] Freq[500.00] GHSavg[6050.00] MPO[140] WORKMODE[1]"}],
+      "id":1
+    }
     """#
 
     /// A stub cgminer listener: replies per command, records every command it was asked.

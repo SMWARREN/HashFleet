@@ -109,12 +109,12 @@ struct SWGlowSweep<Content: View>: View {
             Text("Start Scan Today")
                 .font(.largeTitle.bold())
         }
-        
+
         SWGlowSweep(baseColor: .accentColor, glowColor: .white, duration: 1.5) {
             Text("Analyzing...")
                 .font(.title2.bold())
         }
-        
+
         SWGlowSweep(baseColor: .green.opacity(0.7), glowColor: .black) {
             Text("Processing")
                 .font(.headline)

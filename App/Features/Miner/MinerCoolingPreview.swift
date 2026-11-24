@@ -56,7 +56,7 @@ struct MinerCoolingPreviewDraft: Equatable {
             // NerdQAxe / Bitfortun BS-1 name the PID target `pidTargetTemp` and report -1 without PID.
             .target: raw["temptarget"] ?? raw["pidTargetTemp"],
             .manual: raw["manualFanSpeed"],
-            .minimum: raw["minFanSpeed"],
+            .minimum: raw["minFanSpeed"]
         ].compactMapValues { $0 }
         for (field, value) in reported {
             if let number = value.doubleValue, let value = Int(exactly: number), field.bounds.contains(value) {

@@ -90,7 +90,8 @@ struct MinerCanaanEdgeCaseTests {
 
     @Test func plainTextRepliesParse() throws {
         // A10 manual: text replies are `KEY=val,...|` sections.
-        let text = "STATUS=S,When=6397,Code=70,Msg=CGMiner stats,Description=cgminer 4.11.1|STATS=0,ID=AVA100,MM ID0=Ver[1066-1] TMax[74] Fan1[3671] PS[0 1217 1279 221 2834 1280] WORKMODE[1],MM Count=1|"
+        let text = "STATUS=S,When=6397,Code=70,Msg=CGMiner stats,Description=cgminer 4.11.1|"
+            + "STATS=0,ID=AVA100,MM ID0=Ver[1066-1] TMax[74] Fan1[3671] PS[0 1217 1279 221 2834 1280] WORKMODE[1],MM Count=1|"
         let stats = try CgminerClient.parseResponse(text)
         let v = try CgminerClient.parseResponse("STATUS=S,When=1,Code=22,Msg=CGMiner versions|VERSION,CGMiner=4.11.1,API=3.7,PROD=AvalonMiner 1066,MODEL=1066|")
         let sample = MinerCgminerDrivers.parseCanaan(version: v, stats: stats)
@@ -131,7 +132,6 @@ struct MinerCanaanEdgeCaseTests {
         #expect(MinerEndpoint.liveWebSocket.timeout >= 300)
         #expect(MinerEndpoint.info.timeout == 15)
     }
-
 
     @Test func avalonA10ManualCommands() async throws {
         let sent = Sent()

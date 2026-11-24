@@ -170,7 +170,7 @@ struct SWScanningOverlay<Content: View>: View {
                             .init(color: .white.opacity(bandOpacity * 0.4), location: 0.25),
                             .init(color: .white.opacity(bandOpacity), location: 0.5),
                             .init(color: .white.opacity(bandOpacity * 0.4), location: 0.75),
-                            .init(color: .clear, location: 1.0),
+                            .init(color: .clear, location: 1.0)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -195,7 +195,7 @@ struct SWScanningOverlay<Content: View>: View {
             colors: [
                 .white.opacity(0.0),
                 .white.opacity(1.0),
-                .white.opacity(0.0),
+                .white.opacity(0.0)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing

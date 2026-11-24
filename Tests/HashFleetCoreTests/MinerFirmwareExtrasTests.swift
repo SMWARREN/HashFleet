@@ -61,12 +61,12 @@ struct MinerFirmwareExtrasTests {
         let fan = try control("harloOS", "asic_fan_c")
         let doc: [String: JSONValue] = [
             "asic_fan_c": .integer(70), "asic_shutdown_c": .integer(85),
-            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95), "cooldown_seconds": .integer(60),
+            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95), "cooldown_seconds": .integer(60)
         ]
         #expect(fan.writePath == "/api/protections" && fan.writeMethod == "PUT" && fan.alwaysConfirm)
         #expect(fan.payload(72, document: doc) == [
             "asic_fan_c": .integer(72), "asic_shutdown_c": .integer(85),
-            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95),
+            "vr_fan_c": .integer(80), "vr_shutdown_c": .integer(95)
         ])
         // Full-fan must stay below shutdown, and companions are required.
         #expect(fan.payload(85, document: doc) == nil)
@@ -100,7 +100,7 @@ struct MinerFirmwareExtrasTests {
         let sample = MinerHTTPDrivers.parseHarloOS(telemetry: [
             "hashrate_ghs": .number(0), "asic_temp_c": .number(91),
             "fault_notice_pending": .bool(true), "fault_notice_title": .string("OVERHEAT"),
-            "fault_notice_reason": .string("ASIC reached 90 C"),
+            "fault_notice_reason": .string("ASIC reached 90 C")
         ])
         #expect(sample.powerFault == "OVERHEAT: ASIC reached 90 C")
     }

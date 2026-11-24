@@ -5,7 +5,9 @@ import Foundation
 public enum HarloOSError: LocalizedError, Equatable {
     case rejected(String)
     public var errorDescription: String? {
-        switch self { case .rejected(let text): text }
+        switch self {
+        case .rejected(let text): text
+        }
     }
 }
 
@@ -115,7 +117,7 @@ public struct HarloOSClient: Sendable {
             "time": .string(String(format: "%02d:%02d", parts[0], parts[1])),
             "method": .string(req.method),
             "path": .string(req.path),
-            "body": .object(req.body),
+            "body": .object(req.body)
         ]
     }
 
@@ -143,7 +145,7 @@ public struct HarloOSClient: Sendable {
         guard (0...100).contains(brightness) else { throw HarloOSError.rejected("Brightness must be 0-100%.") }
         guard Self.lightEffects.indices.contains(effect) else { throw HarloOSError.rejected("Unknown effect.") }
         try await send("PUT", "/api/argb/\(zone)", [
-            "on": .bool(on), "color": .string(hex), "brightness": .integer(Int64(brightness)), "effect": .integer(Int64(effect)),
+            "on": .bool(on), "color": .string(hex), "brightness": .integer(Int64(brightness)), "effect": .integer(Int64(effect))
         ])
     }
     public func setAutomaticLighting(_ enabled: Bool) async throws {
@@ -164,7 +166,7 @@ public struct HarloOSClient: Sendable {
             "include_best_share_session": current["include_best_share_session"] ?? .bool(false),
             "include_block_mined": current["include_block_mined"] ?? .bool(true),
             "cooldown_seconds": .integer(Int64(max(0, cooldownSeconds))),
-            "rules": current["rules"] ?? .array([]),
+            "rules": current["rules"] ?? .array([])
         ]
         if let url = webhookURL?.trimmingCharacters(in: .whitespaces), !url.isEmpty {
             guard url.count <= 255, url.hasPrefix("https://") else { throw HarloOSError.rejected("Enter an https webhook URL.") }
