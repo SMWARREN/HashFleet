@@ -15,21 +15,22 @@ extension DashboardView {
         gridItems: [GridItem],
         devices: [MinerDevice]
     ) -> AnyView {
-        if usesNumberFirstOverview {
-            return AnyView(numberFirstMinerList(devices: devices))
-        }
         #if os(macOS)
         return AnyView(
             FleetMinerDetailGrid(
                 maximumColumns: columns,
                 minimumColumnWidth: 320,
-                spacing: FleetLayout.cardGridSpacing,
+                spacing: 12,
                 balancesFourItems: false
             ) {
                 dashboardMinerCards(devices: devices)
             }
         )
         #else
+        if usesNumberFirstOverview {
+            return AnyView(numberFirstMinerList(devices: devices))
+        }
+
         return AnyView(
             LazyVGrid(columns: gridItems, spacing: FleetLayout.cardGridSpacing) {
                 dashboardMinerCards(devices: devices)
@@ -67,34 +68,44 @@ extension DashboardView {
         }
     }
 
+    @ViewBuilder
     private func minerCard(_ device: MinerDevice) -> some View {
         let isEssentials = store.preferences.dashboardMode == .essentials
         let expanded = minerExpansion[device.id] ?? (isEssentials ? !numberFirstCompactCards : !store.preferences.compactCards)
-        return VStack(alignment: .leading, spacing: isEssentials ? 2 : 8) {
-            minerCardLink(device, expanded: expanded)
-            if !isEssentials {
+        if isEssentials {
+            VStack(alignment: .leading, spacing: 0) {
+                minerCardLink(device, expanded: expanded)
+                minerCardControls(device, expanded: expanded)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+            .background(FleetTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .transition(
+                reduceMotion
+                    ? .identity
+                    : .opacity.combined(with: .move(edge: .bottom))
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                minerCardLink(device, expanded: expanded)
                 Rectangle()
                     .fill(FleetTheme.separator)
                     .frame(height: 1)
                     .accessibilityHidden(true)
+                minerCardControls(device, expanded: expanded)
             }
-            minerCardControls(device, expanded: expanded)
+            .frame(maxWidth: .infinity, maxHeight: FleetLayout.isMac ? .infinity : nil, alignment: .topLeading)
+            .padding(.horizontal, FleetLayout.cardPadding)
+            .padding(.top, FleetLayout.cardPadding)
+            .padding(.bottom, 4)
+            .fleetCard(padding: 0, fill: FleetTheme.raised, border: FleetTheme.separator, cornerRadius: 24)
+            .transition(
+                reduceMotion
+                    ? .identity
+                    : .opacity.combined(with: .move(edge: .bottom))
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: isEssentials ? nil : (FleetLayout.isMac ? .infinity : nil), alignment: .topLeading)
-        .padding(.horizontal, isEssentials ? 12 : FleetLayout.cardPadding)
-        .padding(.top, isEssentials ? 10 : FleetLayout.cardPadding)
-        .padding(.bottom, isEssentials ? 4 : 4)
-        .fleetCard(
-            padding: 0,
-            fill: isEssentials ? FleetTheme.surface : FleetTheme.raised,
-            border: isEssentials ? .clear : FleetTheme.separator,
-            cornerRadius: isEssentials ? 16 : 24
-        )
-        .transition(
-            reduceMotion
-                ? .identity
-                : .opacity.combined(with: .move(edge: .bottom))
-        )
     }
 
     private func minerCardLink(_ device: MinerDevice, expanded: Bool) -> some View {
