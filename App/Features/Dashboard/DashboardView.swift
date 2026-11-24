@@ -97,6 +97,7 @@ struct DashboardView: View {
                     // Bound the compact preview only. Toolbar and presentations stay at the system size.
                     .environment(\.dynamicTypeSize, overviewTypeSize)
             }
+            .fleetPauseUpdatesOnScroll(store: store)
             .coordinateSpace(name: "dashboardScroll")
             .background(FleetTheme.canvas)
             .foregroundStyle(FleetTheme.ink)

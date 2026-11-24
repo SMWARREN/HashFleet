@@ -273,7 +273,7 @@ extension FleetStore {
     }
 
     func pollHTTPBatch(token: UUID) async {
-        guard !Task.isCancelled, token == liveGeneration, !isDemo else { return }
+        guard !Task.isCancelled, token == liveGeneration, !isDemo, !isUserScrolling else { return }
         let now = Date()
         let targets = visibleDevices.filter { device in
             if !observedFamilyCarriesLiveSocket(for: device.id) || device.kind == .xmrig {
@@ -314,6 +314,7 @@ extension FleetStore {
             try? await Task.sleep(for: .seconds(Self.livePublishInterval))
             guard let self, !Task.isCancelled, token == self.liveGeneration else { return }
             self.liveFlushTask = nil
+            guard !self.isUserScrolling else { return }
             self.flushPendingLiveUpdates()
         }
     }

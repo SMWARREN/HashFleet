@@ -309,4 +309,25 @@ extension View {
     func fleetPageSheet() -> some View {
         modifier(FleetMacPageSheetModifier())
     }
+
+    /// Pauses live dashboard updates while the user is actively scrolling, preventing
+    /// layout re-evaluations and dropped frames during scroll gestures and momentum.
+    @ViewBuilder
+    func fleetPauseUpdatesOnScroll(store: FleetStore) -> some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            self.onScrollPhaseChange { _, newPhase in
+                store.isUserScrolling = (newPhase != .idle)
+            }
+        } else {
+            self.simultaneousGesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { _ in
+                        store.isUserScrolling = true
+                    }
+                    .onEnded { _ in
+                        store.isUserScrolling = false
+                    }
+            )
+        }
+    }
 }

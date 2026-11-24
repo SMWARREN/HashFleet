@@ -92,6 +92,14 @@ final class FleetStore {
     @ObservationIgnored var liveAppliedDeviceIDs: Set<UUID> = []
     @ObservationIgnored var liveFlushTask: Task<Void, Never>?
     @ObservationIgnored var httpPollingTask: Task<Void, Never>?
+    /// Pauses live telemetry flushes and HTTP polling while the user is actively scrolling.
+    @ObservationIgnored var isUserScrolling = false {
+        didSet {
+            if !isUserScrolling && !pendingLiveUpdates.isEmpty {
+                flushPendingLiveUpdates()
+            }
+        }
+    }
     static let snapshotCacheKey = "app.hashfleet.last-known-settings.v1"
     static let storageKey = "app.hashfleet.devices.v1"
     static let blockObservationStorageKey = "app.hashfleet.block-observations.v1"
