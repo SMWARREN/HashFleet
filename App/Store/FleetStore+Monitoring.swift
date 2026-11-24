@@ -22,6 +22,8 @@ extension FleetStore {
         liveGeneration = UUID()
         liveTasks.values.forEach { $0.cancel() }
         liveTasks.removeAll()
+        httpPollingTask?.cancel()
+        httpPollingTask = nil
         liveFlushTask?.cancel()
         liveFlushTask = nil
         pendingLiveUpdates.removeAll()
@@ -52,6 +54,7 @@ extension FleetStore {
                 await self?.monitor(device: device, token: token)
             }
         }
+        startUnifiedHTTPPolling(token: token)
 
         defer { cancelLiveMonitoring(ownedBy: token) }
         while !Task.isCancelled {
@@ -173,25 +176,6 @@ extension FleetStore {
         liveAppliedDeviceIDs.remove(device.id)
         #endif
 
-        // Some firmware leaves the WebSocket open after it stops delivering frames. That
-        // looks connected in the UI but freezes every reading until a manual refresh. Keep
-        // the low-cost live path while it is healthy, and issue a bounded HTTP read only
-        // when the complete snapshot has not advanced for the expected live cadence.
-        let freshnessWatchdog = Task { @MainActor [weak self] in
-            while let self, !Task.isCancelled, token == self.liveGeneration {
-                do {
-                    try await Task.sleep(for: Self.liveFreshnessCheckInterval)
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled, token == self.liveGeneration else { return }
-                if self.needsFallbackPoll(for: device.id) {
-                    await self.fallbackPoll(device, token: token)
-                }
-            }
-        }
-        defer { freshnessWatchdog.cancel() }
-
         for try await message in stream {
             try Task.checkCancellation()
             guard token == liveGeneration else { return }
@@ -241,27 +225,15 @@ extension FleetStore {
         // A foreground or post-write refresh supersedes any earlier fallback request without
         // tearing down the socket owner. An old response must not restore pre-write settings.
         let refreshGeneration = generation
-        do {
-            let info: MinerInfo
-            switch device.kind {
-            case .espMiner:
-                info = try await MinerFirmwareAdapter(device: device, session: session).info()
-            case .xmrig:
-                info = try await XMRigAPIClient(
-                    device: device,
-                    bearerToken: MinerCredentialStore.token(for: device.keychainCredentialReference),
-                    session: session
-                ).summary()
-            }
-            guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
-                devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind })
-            else { return }
+        let results = await FleetTelemetryBatchFetcher.fetch([device], session: session)
+        guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
+            devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind }),
+            let result = results.first
+        else { return }
+        if let info = result.info {
             recordSuccessfulInfo(info, for: device.id, at: Date())
-        } catch {
-            guard !Task.isCancelled, token == liveGeneration, refreshGeneration == generation,
-                devices.contains(where: { $0.id == device.id && $0.address == device.address && $0.kind == device.kind })
-            else { return }
-            recordFailedInfo(error.localizedDescription, for: device.id)
+        } else {
+            recordFailedInfo(result.error ?? "Miner did not return a reading.", for: device.id)
         }
     }
 
@@ -276,26 +248,67 @@ extension FleetStore {
         return MinerFirmwareFamily(rawValue: family)?.supportsLiveWebSocket ?? false
     }
 
-    /// HTTP-only firmware: poll `/api/system/info` at the foreground cadence, with the same snapshot
-    /// and error pipeline as every other miner. No WebSocket is attempted, so no live-error banner.
+    /// HTTP-only firmware: polled by the unified background loop. Task stays active for cancellation tracking.
     func monitorHTTPOnly(device: MinerDevice, token: UUID) async {
         while !Task.isCancelled, token == liveGeneration {
-            await fallbackPoll(device, token: token)
-            guard !Task.isCancelled, token == liveGeneration else { return }
-            do { try await Task.sleep(for: Self.httpPollInterval) } catch { return }
+            do { try await Task.sleep(for: .seconds(86_400)) } catch { return }
         }
         if token == liveGeneration { liveTasks[device.id] = nil }
     }
 
-    /// XMRig exposes an HTTP summary rather than ESP-Miner's live WebSocket. Poll at a modest
-    /// foreground interval and use the same snapshot/error pipeline as every other miner.
+    /// XMRig summary: polled by the unified background loop. Task stays active for cancellation tracking.
     func monitorXMRig(device: MinerDevice, token: UUID) async {
         while !Task.isCancelled, token == liveGeneration {
-            await fallbackPoll(device, token: token)
-            guard !Task.isCancelled, token == liveGeneration else { return }
-            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            do { try await Task.sleep(for: .seconds(86_400)) } catch { return }
         }
         if token == liveGeneration { liveTasks[device.id] = nil }
+    }
+
+    /// Unified background polling: coordinates all HTTP-only, disconnected, or stale devices
+    /// in one shared background batch, applying results in a single MainActor turn.
+    func startUnifiedHTTPPolling(token: UUID) {
+        httpPollingTask?.cancel()
+        httpPollingTask = Task { @MainActor [weak self] in
+            while let self, !Task.isCancelled, token == self.liveGeneration {
+                do {
+                    try await Task.sleep(for: Self.httpPollInterval)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled, token == self.liveGeneration else { return }
+                await self.pollHTTPBatch(token: token)
+            }
+        }
+    }
+
+    func pollHTTPBatch(token: UUID) async {
+        guard !Task.isCancelled, token == liveGeneration, !isDemo else { return }
+        let now = Date()
+        let targets = visibleDevices.filter { device in
+            if !observedFamilyCarriesLiveSocket(for: device.id) || device.kind == .xmrig {
+                return true
+            }
+            if !liveConnectedDeviceIDs.contains(device.id) {
+                return true
+            }
+            return needsFallbackPoll(for: device.id, now: now)
+        }
+        guard !targets.isEmpty else { return }
+
+        let refreshGen = generation
+        let session = session
+        let results = await FleetTelemetryBatchFetcher.fetch(targets, session: session)
+        guard !Task.isCancelled, token == liveGeneration, refreshGen == generation else { return }
+
+        // Coalesce all results and apply to the fleet in ONE single turn on MainActor
+        for result in results {
+            guard devices.contains(where: { $0.id == result.id }) else { continue }
+            if let info = result.info {
+                recordSuccessfulInfo(info, for: result.id, at: now)
+            } else {
+                recordFailedInfo(result.error ?? "Miner did not return a reading.", for: result.id)
+            }
+        }
     }
 
     /// Mac only: coalesce live frames to at most one fleet-wide publish per second.

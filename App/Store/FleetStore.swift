@@ -91,6 +91,7 @@ final class FleetStore {
     @ObservationIgnored var pendingLiveUpdates: [UUID: PendingLiveUpdate] = [:]
     @ObservationIgnored var liveAppliedDeviceIDs: Set<UUID> = []
     @ObservationIgnored var liveFlushTask: Task<Void, Never>?
+    @ObservationIgnored var httpPollingTask: Task<Void, Never>?
     static let snapshotCacheKey = "app.hashfleet.last-known-settings.v1"
     static let storageKey = "app.hashfleet.devices.v1"
     static let blockObservationStorageKey = "app.hashfleet.block-observations.v1"
@@ -513,7 +514,7 @@ final class FleetStore {
 /// Fetches one bounded batch away from FleetStore's main actor. URLSession itself is asynchronous,
 /// but keeping request construction and JSON decoding in this nonisolated type prevents a large
 /// fleet refresh from inheriting the UI actor for the synchronous portions of each request.
-private enum FleetTelemetryBatchFetcher {
+internal enum FleetTelemetryBatchFetcher {
     static func fetch(_ devices: [MinerDevice], session: URLSession) async -> [PollResult] {
         let indexedResults = await withTaskGroup(of: (Int, PollResult).self, returning: [(Int, PollResult)].self) { group in
             for (index, device) in devices.enumerated() {
