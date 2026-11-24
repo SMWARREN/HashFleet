@@ -10,10 +10,9 @@ import GRDB
 /// file and type length; connection handling and retry behavior are unchanged.
 extension FleetStore {
     static let liveSnapshotMaximumAge: TimeInterval = 15
-    static let liveFreshnessCheckInterval: Duration = .seconds(5)
-    /// Foreground HTTP poll cadence for firmware without a live socket (matches MinerWatch
-    /// `polling.interval_seconds: 5`).
-    static let httpPollInterval: Duration = .seconds(5)
+    static let liveFreshnessCheckInterval: Duration = .seconds(10)
+    /// Foreground HTTP poll cadence for firmware without a live socket or stale snapshots.
+    static let httpPollInterval: Duration = .seconds(10)
 
     func cancelLiveMonitoring(ownedBy token: UUID? = nil) {
         // SwiftUI can start a replacement `.task(id:)` before the cancelled task reaches its
@@ -172,9 +171,7 @@ extension FleetStore {
         liveConnectedDeviceIDs.insert(device.id)
         var appliedFrame = false
         var nextBootstrapAttempt = Date.distantPast
-        #if os(macOS)
         liveAppliedDeviceIDs.remove(device.id)
-        #endif
 
         for try await message in stream {
             try Task.checkCancellation()
@@ -190,27 +187,21 @@ extension FleetStore {
             // The bootstrap await may outlive this generation. Its buffered frame must
             // not be applied to a replacement owner's snapshot or pending update batch.
             guard !Task.isCancelled, token == liveGeneration else { return }
-            #if os(macOS)
             // ESP-Miner sends several partial frames per second. Publishing each one re-renders
-            // every observing screen and starved the Mac main thread (scroll, sidebar, menus).
+            // every observing screen and starves the main thread (scroll, cards, menus).
             // Merge frames and publish the whole fleet together at most once per interval, so four
             // miners cost one render pass instead of four. The final frame is never lost.
             if let update = Self.liveUpdate(from: message) {
                 pendingLiveUpdates[device.id, default: PendingLiveUpdate()].merge(update)
                 scheduleLiveFlush(token: token)
             }
-            #else
-            appliedFrame = applyLiveMessage(message, for: device.id) || appliedFrame
-            #endif
         }
         // next() can finish after a replacement starts without yielding another frame.
         guard !Task.isCancelled, token == liveGeneration else { return }
-        #if os(macOS)
         if token == liveGeneration {
             flushLiveUpdate(for: device.id)
             appliedFrame = liveAppliedDeviceIDs.remove(device.id) != nil
         }
-        #endif
 
         liveConnectedDeviceIDs.remove(device.id)
         if !appliedFrame { await fallbackPoll(device, token: token) }
@@ -291,7 +282,8 @@ extension FleetStore {
             if !liveConnectedDeviceIDs.contains(device.id) {
                 return true
             }
-            return needsFallbackPoll(for: device.id, now: now)
+            let maxAge = liveConnectedDeviceIDs.contains(device.id) ? 30.0 : FleetStore.liveSnapshotMaximumAge
+            return needsFallbackPoll(for: device.id, now: now, maximumAge: maxAge)
         }
         guard !targets.isEmpty else { return }
 
@@ -311,10 +303,9 @@ extension FleetStore {
         }
     }
 
-    /// Mac only: coalesce live frames to at most one fleet-wide publish per second.
+    /// Coalesce live frames to at most one fleet-wide publish per second.
     static let livePublishInterval: TimeInterval = 1
 
-    #if os(macOS)
     /// Starts one shared flush for every miner's pending frames. Frames arriving before it fires
     /// join the same publish, so the dashboard renders once per interval for the whole fleet.
     func scheduleLiveFlush(token: UUID) {
@@ -337,7 +328,6 @@ extension FleetStore {
               let update = pending.take() else { return }
         if applyLiveUpdate(update, for: deviceID) { liveAppliedDeviceIDs.insert(deviceID) }
     }
-    #endif
 
     /// Partial live frames merged between publishes, using the same deep merge as snapshots.
     struct PendingLiveUpdate {

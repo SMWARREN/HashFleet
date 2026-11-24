@@ -535,11 +535,7 @@ extension FleetMonitoringBoundaryTests {
             }
             pair.continuation.finish()
             try await store.consumeLiveStream(pair.stream, device: device, token: token)
-            #if os(macOS)
             #expect(store.snapshots[device.id]?.history.map(\.value) == [1400])
-            #else
-            #expect(store.snapshots[device.id]?.history.map(\.value) == [1200, 1300, 1400])
-            #endif
             #expect(store.snapshots[device.id]?.info?.raw["hashRate"]?.doubleValue == 1400)
             #expect(!store.liveConnectedDeviceIDs.contains(device.id))
             #expect(store.liveGeneration == token)
