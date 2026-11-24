@@ -25,19 +25,18 @@ struct MinerNumberFirstAvailability {
     }
 
     var cooling: Bool {
-        guard canEditSettings, driverCapabilities.canSetFan,
-              let automatic = info.raw["autofanspeed"]?.boolValue else { return false }
-        return automatic
-            ? FleetFormat.sensor(info, keys: "temptarget").map { $0 > 0 } == true
-            : FleetFormat.sensor(info, keys: "manualFanSpeed").map { $0 <= 100 } == true
+        guard canEditSettings, driverCapabilities.canSetFan else { return false }
+        // One shared Cooling page for every family; the draft reads each firmware's own keys.
+        return MinerCoolingPreviewDraft(info: info).hasControls
     }
 
     var tuning: Bool {
-        canEditSettings
-            && driverCapabilities.canSetFrequency
-            && driverCapabilities.canSetVoltage
-            && (FleetFormat.sensor(info, keys: "frequency") ?? 0) > 0
-            && (FleetFormat.sensor(info, keys: "coreVoltage") ?? 0) > 0
+        guard canEditSettings, driverCapabilities.canSetFrequency,
+              (FleetFormat.sensor(info, keys: "frequency") ?? 0) > 0 else { return false }
+        // Canaan's coreVoltage is the measured chip average (PVT_V0), not a setpoint, and its
+        // `voltage` ascset takes PSU units (Avalon_Nano3s driver-avalon.c:1907). Frequency only.
+        return !driverCapabilities.canSetVoltage || driverCapabilities.family == "canaan"
+            || (FleetFormat.sensor(info, keys: "coreVoltage") ?? 0) > 0
     }
 
     var rawAPI: Bool {

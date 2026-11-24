@@ -254,6 +254,14 @@ public enum MinerCgminerDrivers {
         if let freq = MinerDriverParse.optFloat(fields["Freq"].map(JSONValue.string)) {
             sample.frequencyMHz = freq
         }
+        // `SF<n>[p1 p2 p3 p4]` are the configured PLL points per hash board (Avalon_Nano3s
+        // driver-avalon.c:1490). `Freq` is a measured average, so prefer the top setpoint: it is
+        // what `ascset frequency,f:f:f:f` changes and what a tuning readback must compare.
+        if let setpoint = fields["SF0"].flatMap({ text in
+            text.split(whereSeparator: \.isWhitespace).compactMap { Double($0) }.filter { $0 > 0 }.max()
+        }) {
+            sample.frequencyMHz = setpoint
+        }
         let ghs = MinerDriverParse.firstNonZeroFloat(
             fields["GHSavg"].map(JSONValue.string),
             fields["GHSspd"].map(JSONValue.string)

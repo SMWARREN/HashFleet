@@ -30,29 +30,73 @@ struct MinerCoolingPreviewDraft: Equatable {
 
     private(set) var automatic: Bool?
     private var values: [Field: Int] = [:]
+    /// False when the firmware does not report its fan mode (Canaan Avalon: `FanR` is the live duty
+    /// and `fan-spd,-1` selects automatic, Avalon_Nano3s driver-avalon.c:1940). The user then picks
+    /// a mode explicitly and the manual speed is only a starting point, not a configured value.
+    private(set) var reportsMode = true
+    /// Lowest manual duty the firmware accepts (Avalon `fan-spd` 15-100).
+    private(set) var manualMinimum = 0
+    /// Wire value for automatic mode. NerdQAxe / BS-1 PID (the mode that follows the target) is 2.
+    private(set) var automaticValue: Int64 = 1
 
     init(info: MinerInfo?) {
-        automatic = info?.raw["autofanspeed"]?.boolValue
-        for field: Field in [.target, .manual, .minimum] {
-            if let number = info?.raw[field.rawValue]?.doubleValue,
-               let value = Int(exactly: number), field.bounds.contains(value) {
+        let raw = info?.raw ?? [:]
+        let family = (raw["firmwareFamily"]?.stringValue ?? "").lowercased()
+        manualMinimum = MinerDriverCapabilities.forFamily(family.isEmpty ? nil : family, info: info).fanMinPct
+        if ["nerdqaxe", "nerdoctaxe", "bitfortun"].contains(family) { automaticValue = 2 }
+        if family == "canaan" {
+            reportsMode = false
+            if let duty = raw["fanspeed"]?.doubleValue, duty.isFinite {
+                values[.manual] = min(100, max(manualMinimum, Int(duty.rounded())))
+            }
+            return
+        }
+        automatic = Self.automaticMode(raw["autofanspeed"])
+        let reported: [Field: JSONValue] = [
+            // NerdQAxe / Bitfortun BS-1 name the PID target `pidTargetTemp` and report -1 without PID.
+            .target: raw["temptarget"] ?? raw["pidTargetTemp"],
+            .manual: raw["manualFanSpeed"],
+            .minimum: raw["minFanSpeed"],
+        ].compactMapValues { $0 }
+        for (field, value) in reported {
+            if let number = value.doubleValue, let value = Int(exactly: number), field.bounds.contains(value) {
                 values[field] = value
             }
         }
     }
 
+    /// AxeOS sends 0/1 or a bool. NerdQAxe and BS-1 use 0 manual, 1 classic curve, 2 PID
+    /// (nvs_config.h CONFIG_AUTO_FAN_SPEED_VALUE), so any non-zero mode is automatic.
+    static func automaticMode(_ value: JSONValue?) -> Bool? {
+        if let flag = value?.boolValue { return flag }
+        guard let number = value?.doubleValue, number.isFinite, number >= 0 else { return nil }
+        return number != 0
+    }
+
+    /// The miner reports enough to show at least one usable fan mode.
+    var hasControls: Bool {
+        reportsMode ? automatic.map { supportsMode(automatic: $0) } == true : true
+    }
+
     subscript(field: Field) -> Int? { values[field] }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        // An unreported mode's manual seed follows the live duty; it is not configuration.
+        lhs.reportsMode == rhs.reportsMode && lhs.automatic == rhs.automatic
+            && (lhs.reportsMode ? lhs.values == rhs.values : true)
+    }
 
     var activeFields: [Field] {
         switch automatic {
-        case true?: [.target, .minimum]
+        case true?: reportsMode ? [.target, .minimum] : []
         case false?: [.manual]
         case nil: []
         }
     }
 
     func supportsMode(automatic: Bool) -> Bool {
-        self.automatic != nil && self[automatic ? .target : .manual] != nil
+        if !reportsMode { return automatic || self[.manual] != nil }
+        return self.automatic != nil && self[automatic ? .target : .manual] != nil
     }
 
     mutating func select(automatic: Bool) {
@@ -62,7 +106,8 @@ struct MinerCoolingPreviewDraft: Equatable {
     func adjusted(_ field: Field, increasing: Bool) -> Int? {
         guard activeFields.contains(field), let current = self[field] else { return nil }
         let next = current + (increasing ? 1 : -1)
-        return field.bounds.contains(next) ? next : nil
+        let lower = field == .manual ? max(field.bounds.lowerBound, manualMinimum) : field.bounds.lowerBound
+        return (lower...field.bounds.upperBound).contains(next) ? next : nil
     }
 
     mutating func adjust(_ field: Field, increasing: Bool) {
@@ -74,7 +119,7 @@ struct MinerCoolingPreviewDraft: Equatable {
         guard let automatic, supportsMode(automatic: automatic) else { return [:] }
         var changes: [String: JSONValue] = [:]
         let modeChanged = automatic != applied.automatic
-        if modeChanged { changes["autofanspeed"] = .integer(automatic ? 1 : 0) }
+        if modeChanged { changes["autofanspeed"] = .integer(automatic ? automaticValue : 0) }
         for field in activeFields {
             if let value = self[field], value != applied[field] || (modeChanged && field != .minimum) {
                 changes[field.rawValue] = .integer(Int64(value))
@@ -97,6 +142,16 @@ struct MinerCoolingPreviewDraft: Equatable {
     /// Unlike the offline fixture, a live mode change does not rewrite its unchanged setpoint.
     /// Use the same field validators as the standard Cooling page before selecting the changed keys.
     func liveChanges(from baseline: Self) throws -> [String: JSONValue] {
+        if !reportsMode {
+            // Nothing is known about the current mode, so a chosen mode is always a change.
+            switch automatic {
+            case true?: return ["autofanspeed": .integer(1)]
+            case false?:
+                guard let speed = self[.manual] else { return [:] }
+                return ["autofanspeed": .integer(0), Field.manual.rawValue: .integer(Int64(speed))]
+            case nil: return [:]
+            }
+        }
         guard let automatic, baseline.supportsMode(automatic: automatic), supportsMode(automatic: automatic) else {
             throw MinerToolError.message("Cooling configuration is unavailable. Refresh the miner first.")
         }
@@ -108,11 +163,12 @@ struct MinerCoolingPreviewDraft: Equatable {
             validated[Field.minimum.rawValue] = try MinerTuningDraft.minimumFanSpeedPayload(String(minimum))
                 .objectValue?[Field.minimum.rawValue]
         }
-        return validated.filter { key, _ in
+        return validated.compactMapValues { $0 }.filter { key, _ in
             if key == "autofanspeed" { return automatic != baseline.automatic }
             guard let field = Field(rawValue: key) else { return false }
             return baseline[field] != nil && self[field] != baseline[field]
-        }
+        }.merging(automatic && automatic != baseline.automatic
+                  ? ["autofanspeed": .integer(automaticValue)] : [:]) { _, new in new }
     }
 }
 
@@ -158,7 +214,7 @@ struct MinerCoolingPreview: View {
     }
     private var isApplying: Bool { saveTask != nil }
     private var showsControls: Bool {
-        (canEdit || isApplying) && draft.automatic.map { draft.supportsMode(automatic: $0) } == true
+        (canEdit || isApplying) && draft.hasControls
     }
 
     var body: some View {
@@ -249,7 +305,10 @@ struct MinerCoolingPreview: View {
                 .fleetFont(.headline, weight: .semibold)
                 .accessibilityAddTraits(.isHeader)
             modeSelector
-            Text(draft.automatic == true ? "Adjusts fan speed to reach your target." : "Keeps the fan at the speed you set.")
+            Text(draft.automatic == true
+                 ? (draft.reportsMode ? "Adjusts fan speed to reach your target." : "The miner adjusts its own fan speed.")
+                 : draft.automatic == false ? "Keeps the fan at the speed you set."
+                 : "This miner does not report its fan mode. Choose Automatic or Manual.")
                 .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(draft.activeFields, id: \.self) { field in

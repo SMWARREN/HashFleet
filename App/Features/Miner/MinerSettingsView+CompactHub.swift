@@ -230,8 +230,9 @@ extension MinerSettingsView {
 }
 
 extension MinerSettingsView {
-    /// Canaan Avalon miners (port 4028) get their own controls page: work mode, fan, frequency,
-    /// LED locator and hash power, all from Canaan's API manual and MinerWatch's driver.
+    /// Canaan Avalon miners (port 4028) get their own page only for what has no shared screen:
+    /// work mode, and on A10 the LED locator and hash power. Fan and frequency use Cooling and
+    /// Frequency & voltage like every other miner.
     func showsAvalonControls(_ availability: MinerNumberFirstAvailability) -> Bool {
         ["canaan", "canaannano3"].contains(availability.driverCapabilities.family)
             && availability.rawAPI && !availability.driverCapabilities.isReadOnly
@@ -247,6 +248,8 @@ extension MinerSettingsView {
     }
 
     var avalonControlsSubtitle: String {
-        device.firmwareFamily == "canaannano3" ? "Work level" : "Work mode, fan, frequency, LED, hash power"
+        let caps = MinerDriverCapabilities.forFamily(device.firmwareFamily, info: info)
+        if device.firmwareFamily == "canaannano3" { return "Work level" }
+        return caps.canIdentify ? "Work mode, LED, hash power" : "Work mode"
     }
 }

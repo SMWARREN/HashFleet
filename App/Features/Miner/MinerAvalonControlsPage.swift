@@ -7,17 +7,14 @@ import HashFleetCore
 /// implemented by MinerWatch's verified Canaan driver:
 /// - Work mode: `ascset|0,workmode,set,<0-2>` (Nano 3s), falling back to `workmode,<n>` (A10).
 ///   The original Nano 3 uses `worklevel,set,<n>`.
-/// - Fan: `ascset|0,fan-spd,<15-100>`, automatic `fan-spd,-1`.
-/// - Frequency: `ascset|0,frequency,<f>:<f>:<f>:<f>-0-0-0`.
-/// - Front LED locator: `ascset|0,led,1-1` / `1-0`.
-/// - Hash power off: `ascset|0,hashpower,0` (a reboot resumes hashing).
+/// - Front LED locator: `ascset|0,led,1-1` / `1-0` (A10 only; not in the Nano 3s table).
+/// - Hash power off: `ascset|0,hashpower,0` (A10 only; a reboot resumes hashing).
+/// Fan and frequency use the shared Cooling and Frequency pages like every other miner.
 /// Each change is a single reviewed write with a fresh pre-read and identity check.
 struct MinerAvalonControlsPage: View {
     let device: MinerDevice
     @Bindable var store: FleetStore
 
-    @State private var fanPercent: Double = 60
-    @State private var frequency: String = ""
     @State private var pending: PendingChange?
     @State private var isSending = false
     @State private var message: String?
@@ -68,8 +65,6 @@ struct MinerAvalonControlsPage: View {
                         .fleetFont(.footnote, weight: .semibold).foregroundStyle(FleetTheme.warning)
                 }
                 if capabilities.canSetWorkmode { workModeCard }
-                if capabilities.canSetFan { fanCard }
-                if capabilities.canSetFrequency { frequencyCard }
                 if capabilities.canIdentify || capabilities.canShutdown { hardwareCard }
             }
             .disabled(isSending || store.isDemo)
@@ -126,70 +121,6 @@ struct MinerAvalonControlsPage: View {
         }
     }
 
-    private var fanCard: some View {
-        let reported = info?.raw["fanspeed"]?.intValue
-        return card("Fan", subtitle: "Manual speed from \(capabilities.fanMinPct)% to 100%, or automatic.",
-                    symbol: "fan") {
-            HStack {
-                Slider(value: $fanPercent, in: Double(capabilities.fanMinPct)...100, step: 5)
-                    .accessibilityIdentifier("avalon.fan")
-                Text("\(Int(fanPercent))%")
-                    .fleetFont(.subheadline, design: .monospaced)
-                    .frame(minWidth: 48, alignment: .trailing)
-            }
-            if let reported {
-                Text("Reported: \(reported)%").fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
-            }
-            HStack {
-                Button("Apply \(Int(fanPercent))%") {
-                    pending = PendingChange(
-                        title: "Set fan to \(Int(fanPercent))%?",
-                        detail: "Sends ascset fan-spd,\(Int(fanPercent)). Automatic fan control turns off.",
-                        payload: ["manualFanSpeed": .integer(Int64(fanPercent))], destructive: false
-                    )
-                }
-                .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
-                Button("Automatic") {
-                    pending = PendingChange(
-                        title: "Return fan to automatic?", detail: "Sends ascset fan-spd,-1.",
-                        payload: ["autofanspeed": .integer(1)], destructive: false
-                    )
-                }
-                .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))
-            }
-        }
-    }
-
-    private var frequencyCard: some View {
-        card("Frequency", subtitle: "Chip clock in MHz (200-1195). Higher clocks draw more power and heat.",
-             symbol: "waveform.path.ecg") {
-            HStack {
-                TextField("MHz", text: $frequency)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 120)
-                    .accessibilityIdentifier("avalon.frequency")
-                Button("Apply") {
-                    guard let mhz = Int(frequency), (200...1195).contains(mhz) else {
-                        failure = "Enter a frequency from 200 to 1195 MHz. Nothing was sent."
-                        return
-                    }
-                    pending = PendingChange(
-                        title: "Set frequency to \(mhz) MHz?",
-                        detail: "Sends ascset frequency,\(mhz):\(mhz):\(mhz):\(mhz)-0-0-0.",
-                        payload: ["frequency": .integer(Int64(mhz))], destructive: true
-                    )
-                }
-                .buttonStyle(FleetPrimaryButtonStyle(size: .compact))
-            }
-            if let reported = info?.raw["frequency"]?.doubleValue {
-                Text("Reported: \(Int(reported)) MHz").fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
-            }
-        }
-    }
-
     private var hardwareCard: some View {
         card("Hardware", subtitle: "Locate the unit or stop hashing without cutting power to the controller.",
              symbol: "cpu") {
@@ -242,12 +173,7 @@ struct MinerAvalonControlsPage: View {
         }
     }
 
-    private func load() {
-        guard !loaded, let info else { return }
-        loaded = true
-        if let pct = info.raw["fanspeed"]?.doubleValue, pct >= 15 { fanPercent = min(100, pct) }
-        if let mhz = info.raw["frequency"]?.doubleValue { frequency = String(Int(mhz)) }
-    }
+    private func load() { loaded = true }
 
     private var canWrite: Bool {
         !store.isDemo && MinerWriteAvailability.allows(

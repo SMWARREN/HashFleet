@@ -18,6 +18,26 @@ struct MinerCanaanEdgeCaseTests {
         #expect(MinerCgminerDrivers.fingerprint(versionResponse: v) == "canaan")
     }
 
+    /// Canaan-Creative/Avalon_Nano3s@04c84d3 driver-avalon.c device_cmds[] has no `led` or
+    /// `hashpower`; the A10 Universal API manual has both.
+    @Test func nano3sHidesA10OnlyLedAndHashPower() {
+        let nano = MinerDriverCapabilities.forFamily("canaan", info: MinerInfo(raw: ["deviceModel": .string("Avalon Nano3s")]))
+        #expect(!nano.canIdentify && !nano.canShutdown)
+        #expect(nano.canSetFan && nano.canSetFrequency && nano.canSetWorkmode && nano.canRestart)
+        let a10 = MinerDriverCapabilities.forFamily("canaan", info: MinerInfo(raw: ["deviceModel": .string("AvalonMiner 1066")]))
+        #expect(a10.canIdentify && a10.canShutdown)
+    }
+
+    /// `SF0[...]` holds the configured PLL points (driver-avalon.c:1490); `Freq` is measured.
+    @Test func configuredFrequencyComesFromSF0() {
+        let stats: [String: JSONValue] = ["STATS": .array([.object([
+            "MM ID0": .string("Ver[Nano3s-25021401] TMax[60] Freq[512.40] SF0[500 525 550 575] FanR[40%]")
+        ])])]
+        let sample = MinerCgminerDrivers.parseCanaan(version: [:], stats: stats)
+        #expect(sample.frequencyMHz == 575)
+        #expect(sample.fanPct == 40)
+    }
+
     @Test func swtypeMM318AloneIdentifiesNano3() throws {
         let v = try version(#"{"VERSION":[{"CGMiner":"4.11.1","API":"3.7","SWTYPE":"MM318_X2"}]}"#)
         #expect(MinerCgminerDrivers.fingerprint(versionResponse: v) == "canaannano3")

@@ -22,9 +22,12 @@ struct MinerFirmwareExtrasTests {
         // nq_handler_system.cpp checks doc["flipscreen"].is<bool>(): 0/1 would be ignored.
         #expect(try control("nerdqaxe", "flipscreen").payload(1) == ["flipscreen": .bool(true)])
         #expect(try control("bitfortun", "autoscreenoff").payload(0) == ["autoscreenoff": .bool(false)])
-        let target = try control("nerdqaxe", "pidTargetTemp")
-        #expect(target.payload(60) == ["pidTargetTemp": .integer(60)])
+        let target = try control("nerdqaxe", "overheat_temp")
+        #expect(target.payload(70) == ["overheat_temp": .integer(70)])
         #expect(target.payload(20) == nil)
+        // The fan PID target lives on the shared Cooling page, not here.
+        #expect(MinerFirmwareExtras.controls(for: "nerdqaxe").allSatisfy { $0.key != "pidTargetTemp" })
+        #expect(MinerFirmwareExtras.controls(for: "warpAxe").allSatisfy { $0.key != "pidTargetTemp" })
         #expect(try control("nerdqaxe", "overheat_temp").alwaysConfirm)
     }
 

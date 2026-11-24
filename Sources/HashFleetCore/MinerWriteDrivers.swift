@@ -115,6 +115,11 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canSetPool: true
             )
         case "canaan":
+            // A10 Universal API documents `led` and `hashpower`; the stock Nano 3s ascset table
+            // (Canaan-Creative/Avalon_Nano3s driver-avalon.c device_cmds[]) has neither.
+            let model = [info?.raw["deviceModel"], info?.raw["ASICModel"]]
+                .compactMap { $0?.stringValue?.lowercased() }.joined(separator: " ")
+            let isNano = model.contains("nano")
             return MinerDriverCapabilities(
                 family: "canaan",
                 canSetFan: true,
@@ -122,8 +127,8 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canSetVoltage: true,
                 canSetWorkmode: true,
                 canRestart: true,
-                canShutdown: true,
-                canIdentify: true,
+                canShutdown: !isNano,
+                canIdentify: !isNano,
                 fanMinPct: 15
             )
         case "canaannano3":

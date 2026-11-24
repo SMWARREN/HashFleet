@@ -300,6 +300,7 @@
 		47188C32294F4032A655040D /* FleetAdaptiveLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51679281469E347D603D7565 /* FleetAdaptiveLayout.swift */; };
 		476DE69735B4B0D002CA2DB7 /* FleetMacRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F9AA87C8F2DC1F19468EB8 /* FleetMacRuntimeTests.swift */; };
 		47AEB63D2A4145C6D0BE6279 /* FleetHistoryCard+Display.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50993F6947797A1943A34CE7 /* FleetHistoryCard+Display.swift */; };
+		47F0C7CD6B00C8B32C88E67D /* CommonControlsRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1D648B1CEB814B0ED07FC7 /* CommonControlsRoutingTests.swift */; };
 		47FC6020A5C37739C2F359E7 /* FleetPageCaptureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3AA169C40C0111D0B3C7DD /* FleetPageCaptureUITests.swift */; };
 		48482DA84A463E472277B1D2 /* FleetTickerCursorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DA00D6CBD84B0B5063CBAC /* FleetTickerCursorTests.swift */; };
 		48501756552A1BC817C7CAB6 /* FleetTemperatureAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC24A56F7443AE8CFF527AD1 /* FleetTemperatureAlertsView.swift */; };
@@ -1180,7 +1181,6 @@
 		0018B3E4B2CEEA14880EA157 /* MinerFirmwareFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerFirmwareFamily.swift; sourceTree = "<group>"; };
 		0144CAD38053B2DFA17DE5C6 /* FleetWatchSetupSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetWatchSetupSelectionTests.swift; sourceTree = "<group>"; };
 		01AE6AE92C9A61C509EA6373 /* MinerPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerPresentation.swift; sourceTree = "<group>"; };
-		0231715CEAED08435636495C /* hashfleet-sonar-ci */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "hashfleet-sonar-ci"; path = .; sourceTree = SOURCE_ROOT; };
 		02844FD2A2377930F4D8305C /* LoadingAppearanceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingAppearanceUITests.swift; sourceTree = "<group>"; };
 		028B32AC2538F909899CFF28 /* MinerAvalonControlsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerAvalonControlsPage.swift; sourceTree = "<group>"; };
 		039A4E188458279BE49F55FD /* DashboardCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCards.swift; sourceTree = "<group>"; };
@@ -1503,6 +1503,7 @@
 		8140B8D9DCFC23D05A4D0A4F /* SettingsViewsEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewsEvaluationTests.swift; sourceTree = "<group>"; };
 		814A59C0B1B9FD5BE8C86F7E /* WatchHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHelpView.swift; sourceTree = "<group>"; };
 		81FDD5EB19F5207184DE636B /* FleetPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPreferencesView.swift; sourceTree = "<group>"; };
+		8229F89FDD916B19ED97AFAC /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		8278E7BC3CDEA8FD054643BB /* FleetChartSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChartSelectionTests.swift; sourceTree = "<group>"; };
 		827B1159C2DF129AFFA2F1D9 /* CompactMinerWorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactMinerWorkspaceTests.swift; sourceTree = "<group>"; };
 		8283BEF4828E6B9EFF740472 /* FleetInAppAlertBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetInAppAlertBanner.swift; sourceTree = "<group>"; };
@@ -1568,6 +1569,7 @@
 		9B8F8286268A0A2D2719B915 /* FleetRemotePushCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRemotePushCoordinator.swift; sourceTree = "<group>"; };
 		9BE70F9787CD1055E5527290 /* FleetMinerCardObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMinerCardObservationTests.swift; sourceTree = "<group>"; };
 		9CA9998EAB946D6778EA5F93 /* MinerSettingsAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerSettingsAccessTests.swift; sourceTree = "<group>"; };
+		9D1D648B1CEB814B0ED07FC7 /* CommonControlsRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonControlsRoutingTests.swift; sourceTree = "<group>"; };
 		9D25A6C6A7E28879547E9169 /* FleetChainCard+NetworkData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FleetChainCard+NetworkData.swift"; sourceTree = "<group>"; };
 		9D2C3BE52DBC69F8A41348E1 /* FleetPowerAlertPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPowerAlertPreferences.swift; sourceTree = "<group>"; };
 		9DEB2C0F1498ACC4B14E4779 /* FleetTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetTypography.swift; sourceTree = "<group>"; };
@@ -1673,7 +1675,6 @@
 		CA5C76F719C7D5D70D49940C /* MinerTuningEasyInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerTuningEasyInputState.swift; sourceTree = "<group>"; };
 		CA8DD65484CC65213FDC3B44 /* TelemetryPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryPresentationTests.swift; sourceTree = "<group>"; };
 		CAC7DDFFB2E24542E7A89F40 /* FleetRemotePushSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRemotePushSettingsSection.swift; sourceTree = "<group>"; };
-		CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		CBD74FF343B8D378A0E280FC /* MiningDifficultyFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiningDifficultyFormatTests.swift; sourceTree = "<group>"; };
 		CC4AC2296EC16FB49300038E /* HashFleetMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HashFleetMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC6794084399178096D10C19 /* MinerHarloToolsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerHarloToolsPage.swift; sourceTree = "<group>"; };
@@ -1774,6 +1775,7 @@
 		F3B15288AFC8E74A8ED7ED46 /* FleetEnergyEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetEnergyEstimate.swift; sourceTree = "<group>"; };
 		F3F6A5A6619DA0A84FFEFFC6 /* HashFleetMenuBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetMenuBar.entitlements; sourceTree = "<group>"; };
 		F4814F1A9CF15A13A4F14AF6 /* FleetSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetSettingsSection.swift; sourceTree = "<group>"; };
+		F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "essentials-on-main-20261123.noindex"; path = .; sourceTree = SOURCE_ROOT; };
 		F53D628CEB0D46C79B42F869 /* FleetReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportShareSheet.swift; sourceTree = "<group>"; };
 		F569E161ABC01C2F79757B0B /* HashFleetNoAppPush.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetNoAppPush.entitlements; sourceTree = "<group>"; };
 		F5EEE3A445C34AEDDEBA72C9 /* AnimatedWebPImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedWebPImage.swift; sourceTree = "<group>"; };
@@ -2039,6 +2041,15 @@
 				B4DB56F15B0323E0E3FAC874 /* DeveloperTipJarService.swift */,
 			);
 			path = About;
+			sourceTree = "<group>";
+		};
+		41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */ = {
+			isa = PBXGroup;
+			children = (
+				8229F89FDD916B19ED97AFAC /* Signing.xcconfig */,
+			);
+			name = "essentials-on-main-20261123.noindex";
+			path = .;
 			sourceTree = "<group>";
 		};
 		468A6DC2AE2DAF8D6FDFC9ED /* Fixtures */ = {
@@ -2307,7 +2318,7 @@
 		796FF5E444F401A2C5282BB7 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				0231715CEAED08435636495C /* hashfleet-sonar-ci */,
+				F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -2332,6 +2343,7 @@
 				52FB06600E9ABEF29843F12B /* AddMinerDeepEvaluationTests.swift */,
 				A6D2AFF079924FF3EABF40A7 /* AddMinerScanRadarTests.swift */,
 				80506CA1E1D8F6359674B089 /* AnimatedWebPPlaybackTests.swift */,
+				9D1D648B1CEB814B0ED07FC7 /* CommonControlsRoutingTests.swift */,
 				0FEFBDFEC26FE690EADBC647 /* CoverageBatchAEvaluationTests.swift */,
 				776BE4F9F6818C93EB373A74 /* CoverageBatchBEvaluationTests.swift */,
 				1B9DE0B41A4D7ABA3C63DF10 /* CoverageBatchCEvaluationTests.swift */,
@@ -2655,7 +2667,7 @@
 			children = (
 				0EE9E627F6F6FE67F21AD779 /* App */,
 				8D9C6F513E0C0CC31F682ACA /* AppTests */,
-				EF190AD1AFCF7C7C6674DF51 /* hashfleet-sonar-ci */,
+				41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */,
 				93078C488D1FF11636EA21C2 /* MacApp */,
 				83A874044E2D938F098DA97D /* MacAppTests */,
 				28EB50703CC2F4D18C92FB8C /* MacMenuBar */,
@@ -2821,15 +2833,6 @@
 				3D11818BC068DD9EEAAA4BC4 /* XECOddsIntegrationTests.swift */,
 			);
 			path = UITests;
-			sourceTree = "<group>";
-		};
-		EF190AD1AFCF7C7C6674DF51 /* hashfleet-sonar-ci */ = {
-			isa = PBXGroup;
-			children = (
-				CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */,
-			);
-			name = "hashfleet-sonar-ci";
-			path = .;
 			sourceTree = "<group>";
 		};
 		F4CE5BF70DCBC6064D608D11 /* WatchUITests */ = {
@@ -4368,6 +4371,7 @@
 				CFE62AA5EA69134FA8E1DFAD /* AddMinerDeepEvaluationTests.swift in Sources */,
 				D7CA5AA60494E1C2A6C25BC3 /* AddMinerScanRadarTests.swift in Sources */,
 				8D8D5C3BF368F47FC0BA8FF8 /* AnimatedWebPPlaybackTests.swift in Sources */,
+				47F0C7CD6B00C8B32C88E67D /* CommonControlsRoutingTests.swift in Sources */,
 				0BF51A77B27E0F1A5961EEE3 /* CoverageBatchAEvaluationTests.swift in Sources */,
 				22EB25CB8490E9381B5E6099 /* CoverageBatchBEvaluationTests.swift in Sources */,
 				7B03F54F47619227FDFD13B9 /* CoverageBatchCEvaluationTests.swift in Sources */,
@@ -4753,7 +4757,7 @@
 		};
 		45FFF5852BCF651758DBC5FB /* ReleaseNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */;
+			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;
@@ -4937,7 +4941,7 @@
 		};
 		53E5D76BFFEEC81F355CB975 /* DebugNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */;
+			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5629,7 +5633,7 @@
 		};
 		DEFD22CE7E98F094B1EFB6E5 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */;
+			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5773,7 +5777,7 @@
 		};
 		EF8B8785070CE5B13C7784D4 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CBBDCB13E979EB4ADA588012 /* Signing.xcconfig */;
+			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;

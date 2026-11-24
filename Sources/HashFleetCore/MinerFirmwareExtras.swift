@@ -187,14 +187,9 @@ public enum MinerFirmwareExtras {
             ]
         case "nerdqaxe", "nerdoctaxe", "bitfortun":
             // nq_handler_system.cpp:504-531 / bf_handler_system.cpp:366-398. Upstream takes any u16 for
-            // pidTargetTemp/overheat_temp; the ranges below are app-side safety bounds (WarpAxe's
-            // validated ranges), not firmware limits.
+            // overheat_temp; the range below is an app-side safety bound (WarpAxe's validated range),
+            // not a firmware limit. The PID fan target is on the shared Cooling page.
             return [
-                MinerFirmwareExtra(
-                    key: "pidTargetTemp", title: "Fan target temperature",
-                    detail: "The automatic fan PID holds the chips at this temperature.",
-                    kind: .number(range: 35...85, unit: "°C")
-                ),
                 MinerFirmwareExtra(
                     key: "overheat_temp", title: "Overheat shutdown",
                     detail: "The miner stops hashing above this chip temperature.",
@@ -212,13 +207,9 @@ public enum MinerFirmwareExtras {
                 ),
             ]
         case "warpaxe":
-            // dvb-WarpAxe api.rs validation ranges: pidTargetTemp 35..85, overheat_temp 50..90.
+            // dvb-WarpAxe api.rs validation range: overheat_temp 50..90. The fan target is on the
+            // shared Cooling page (sent as temptarget, translated to pidTargetTemp).
             return [
-                MinerFirmwareExtra(
-                    key: "pidTargetTemp", title: "Fan target temperature",
-                    detail: "The automatic fan PID holds the chips at this temperature.",
-                    kind: .number(range: 35...85, unit: "°C")
-                ),
                 MinerFirmwareExtra(
                     key: "overheat_temp", title: "Overheat shutdown",
                     detail: "The miner stops hashing above this chip temperature.",
