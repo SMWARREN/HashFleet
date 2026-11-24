@@ -544,6 +544,7 @@
 		85D7B6CE763F33FF70076B62 /* MinerDetailView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2780743C341CCF55245A663 /* MinerDetailView+Sections.swift */; };
 		85EA312E35D9955A3D6E51D5 /* MinerSettingsView+PoolsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74C513D3839C02B4F44EBAE /* MinerSettingsView+PoolsSection.swift */; };
 		8656D3573829307A0CCE60C1 /* MinerLiveAndXMRigIsolationCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9142921630DCDF669B5542F /* MinerLiveAndXMRigIsolationCoverageTests.swift */; };
+		86926513BDBE13D8469069D7 /* AddMinerDesignGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1429A037A15309EB56976CC9 /* AddMinerDesignGalleryView.swift */; };
 		869B87F1AFFEF7C22DA86CBE /* CompactMinerWorkspaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827B1159C2DF129AFFA2F1D9 /* CompactMinerWorkspaceTests.swift */; };
 		86A17C21159F1F777920702F /* FleetSystemIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFE352402C1504B2346BB38 /* FleetSystemIntegrationTests.swift */; };
 		86D06926A08EB7242AD75AB4 /* MinerCompatibilityView+ProbeStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96984B59F34BDC2DC4A7BDE8 /* MinerCompatibilityView+ProbeStatus.swift */; };
@@ -599,6 +600,7 @@
 		920F8957162DD7FEF1DDC4D0 /* FleetViewRenderHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF02984DF8327B4491AD9E1 /* FleetViewRenderHarness.swift */; };
 		92354CB5BB33769DDD446EFE /* NetworkInsightsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36843954DECDC775DB2B23E0 /* NetworkInsightsUITests.swift */; };
 		9235DE8F6FBA3C316F69799F /* FleetNotificationDeliveryTests+Reentrancy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BADC9C9250753F0F6EFCD7 /* FleetNotificationDeliveryTests+Reentrancy.swift */; };
+		9258BFDDD4B40BD39DA3AFE1 /* SWScanningOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39658DFD6428980505A9B45A /* SWScanningOverlay.swift */; };
 		9285A663CD6F69F3C1048429 /* SettingsAndRoutingEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF49818F8CB44984FB6C3311 /* SettingsAndRoutingEvaluationTests.swift */; };
 		93882F62C3B8DACB1E76755B /* FirmwareTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E47B15FC312C3E18D59D7C /* FirmwareTelemetryView.swift */; };
 		93B36048B109049CB7196580 /* FleetAppRateFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D70DBBD680BBBFA1C22772 /* FleetAppRateFormattingTests.swift */; };
@@ -651,6 +653,7 @@
 		9E0EBD35CE8641F010F03015 /* FleetAppRateFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D70DBBD680BBBFA1C22772 /* FleetAppRateFormattingTests.swift */; };
 		9EE1844E5C7E5A750508AE47 /* FleetNativeDesignParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A9248E469EC1F53ED21C74 /* FleetNativeDesignParityTests.swift */; };
 		9F1E96E022AA9E2A33321B52 /* MinerTuningPoolDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD25148DD18D2D629643733C /* MinerTuningPoolDraftTests.swift */; };
+		9F72E5D46F280D51764F7E2C /* AddMinerDesignGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1429A037A15309EB56976CC9 /* AddMinerDesignGalleryView.swift */; };
 		9F8B3D161957F67351755656 /* CompatibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22D66954B55D1727168D611 /* CompatibilityUITests.swift */; };
 		9FDFA751829D390D8F839ACF /* FleetGuidedDemoSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C904B1FFC5BDAC8A3F3E803 /* FleetGuidedDemoSteps.swift */; };
 		9FF3C7C518EF599AB2A65E73 /* FleetReportTemporaryFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7049580B4071C8A4F561EF3F /* FleetReportTemporaryFile.swift */; };
@@ -675,6 +678,7 @@
 		A431014C8CF466CC15FD4FF4 /* FleetRemotePushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44954453D019CADA9F457E0B /* FleetRemotePushTests.swift */; };
 		A514BB8207434AEF25DFE00B /* FleetMonitoringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728A758835947FB6B83B96D4 /* FleetMonitoringBoundaryTests.swift */; };
 		A55CDE7A12D88207071E05C0 /* MinerDetailView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2780743C341CCF55245A663 /* MinerDetailView+Sections.swift */; };
+		A55DC1276D736859CDC42EEB /* SWScanningOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39658DFD6428980505A9B45A /* SWScanningOverlay.swift */; };
 		A577160795C8885A028F3DE5 /* FleetRemotePushHTTPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3FB3DB80CA46A370831D36 /* FleetRemotePushHTTPTests.swift */; };
 		A5C88385A7E8A33EA2CD8736 /* FleetDashboardTypeBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5106487BFF0C6939925FD314 /* FleetDashboardTypeBoundaryTests.swift */; };
 		A658A7F2639880F3DC8502A0 /* BestShareNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB21984F2486C6ABE5F4473 /* BestShareNotificationTests.swift */; };
@@ -1221,6 +1225,7 @@
 		134A859F599B5BA11DD0EEBE /* FleetChangeEffectsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChangeEffectsTests.swift; sourceTree = "<group>"; };
 		13B39E6A15C2537E3348D67B /* FleetReportCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportCapture.swift; sourceTree = "<group>"; };
 		13F869AC7191D49F5A2F406B /* MinerTuningPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerTuningPreview.swift; sourceTree = "<group>"; };
+		1429A037A15309EB56976CC9 /* AddMinerDesignGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMinerDesignGalleryView.swift; sourceTree = "<group>"; };
 		14CFB7FA22731E8E259DCC58 /* DemoFleet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoFleet.swift; sourceTree = "<group>"; };
 		14E6E878B5828B1EDF5F08A9 /* FleetDesktopBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetDesktopBranding.swift; sourceTree = "<group>"; };
 		159C0A535F8B8B0F79BE53DE /* MinerSettingsView+Pools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MinerSettingsView+Pools.swift"; sourceTree = "<group>"; };
@@ -1319,6 +1324,7 @@
 		38CEC8F155DE0F40F967CDA4 /* FleetActivityPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetActivityPresentationTests.swift; sourceTree = "<group>"; };
 		38E65B1FD0306B2E5C565D5F /* FleetWatchSetupSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetWatchSetupSelection.swift; sourceTree = "<group>"; };
 		39219F319BA185BC2D2D5611 /* HashFleet.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HashFleet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		39658DFD6428980505A9B45A /* SWScanningOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SWScanningOverlay.swift; sourceTree = "<group>"; };
 		39912B5B0DC8EF1665311509 /* HashFleetUITests+Details.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HashFleetUITests+Details.swift"; sourceTree = "<group>"; };
 		3AC14C57C93AC83D550510C1 /* MinerTuningApplyCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerTuningApplyCoverageTests.swift; sourceTree = "<group>"; };
 		3B55C0B670F63574091C0B35 /* FleetMinerStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMinerStatusBadge.swift; sourceTree = "<group>"; };
@@ -1965,6 +1971,7 @@
 				B152254B0B0B9FB814842770 /* FleetWindowViewport.swift */,
 				EA0D2B584268AEE5054BE6C3 /* LucideIconHelper.swift */,
 				8A1D3ED7F99A4767ABE9159D /* MiningDifficultyFormat.swift */,
+				39658DFD6428980505A9B45A /* SWScanningOverlay.swift */,
 				9A4DA4AA59D15FD07D25C667 /* WebPFrameStore.swift */,
 				1DDD8DAB9B7FA274FABB70F5 /* MacSupport */,
 			);
@@ -2708,6 +2715,7 @@
 		DB3EBA4C65BFF6609F8D9D7F /* Dashboard */ = {
 			isa = PBXGroup;
 			children = (
+				1429A037A15309EB56976CC9 /* AddMinerDesignGalleryView.swift */,
 				8945EE2A7A192E9EF6EDD49F /* AddMinerMultiSelection.swift */,
 				76130EE674FC10B84530CF1F /* AddMinerScanRadar.swift */,
 				A815518172988C46AC15F8C0 /* AddMinerView.swift */,
@@ -3410,6 +3418,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				105C251C8D8FC6FA72CC0456 /* AboutView.swift in Sources */,
+				9F72E5D46F280D51764F7E2C /* AddMinerDesignGalleryView.swift in Sources */,
 				04C03FB0BFB889517D58EEC3 /* AddMinerMultiSelection.swift in Sources */,
 				3283F1F87FF946DC364298A3 /* AddMinerScanRadar.swift in Sources */,
 				764B89F66323997216A46BFB /* AddMinerView+Discovery.swift in Sources */,
@@ -3681,6 +3690,7 @@
 				8E966BFEE2A46348B1362210 /* NetworkInsightsView.swift in Sources */,
 				CC06E2F8F480DA54823A6A0C /* PlatformViewModifiers.swift in Sources */,
 				8054F85DEFE4207C33CB9779 /* PoolStatsHubView.swift in Sources */,
+				9258BFDDD4B40BD39DA3AFE1 /* SWScanningOverlay.swift in Sources */,
 				142D2FA825EEE30AEA5223C7 /* SoloPoolPreset.swift in Sources */,
 				647D069BF7EA7E92E79636B2 /* WebPFrameStore.swift in Sources */,
 				44AD1B5FB974BA69DBB6654F /* XMRigControlView.swift in Sources */,
@@ -3709,6 +3719,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DC4382E71CC0DCC14C14126B /* AboutView.swift in Sources */,
+				86926513BDBE13D8469069D7 /* AddMinerDesignGalleryView.swift in Sources */,
 				187137377B66A1A948C92ED4 /* AddMinerMultiSelection.swift in Sources */,
 				DB7F5B4F03C413F5CA9A220F /* AddMinerScanRadar.swift in Sources */,
 				ADA3E828910F6A795F713582 /* AddMinerView+Discovery.swift in Sources */,
@@ -3982,6 +3993,7 @@
 				3D80B956A3B709CC032BA3DF /* NetworkInsightsView.swift in Sources */,
 				EA700E2C55014E7EB722B97F /* PlatformViewModifiers.swift in Sources */,
 				9C4F6420C05C3EDDA5DBAB98 /* PoolStatsHubView.swift in Sources */,
+				A55DC1276D736859CDC42EEB /* SWScanningOverlay.swift in Sources */,
 				700CADF3CB7F226B9C2200DF /* SoloPoolPreset.swift in Sources */,
 				6C7DE057BA8D2684355FCA49 /* WebPFrameStore.swift in Sources */,
 				6D09540EDD2A3C6D7FA74F90 /* XMRigControlView.swift in Sources */,
