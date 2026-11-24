@@ -37,7 +37,7 @@ struct AddMinerView: View {
                     introduction
                     if FleetReleaseFeatures.xmrigEnabled {
                         Picker("Miner type", selection: $minerKind) {
-                            Text("ESP Miner").tag(MinerDevice.Kind.espMiner)
+                            Text("ASIC / Hardware").tag(MinerDevice.Kind.espMiner)
                             Text("XMRig").tag(MinerDevice.Kind.xmrig)
                         }
                         .pickerStyle(.segmented)
@@ -179,7 +179,7 @@ struct AddMinerView: View {
             TextField(
                 "Miner IP address or hostname",
                 text: $address,
-                prompt: Text(minerKind == .espMiner ? "192.168.1.42 or bitaxe.local" : "127.0.0.1:18099")
+                prompt: Text(minerKind == .espMiner ? "192.168.1.42 or miner.local" : "127.0.0.1:18099")
                     .foregroundStyle(FleetTheme.secondary)
             )
                 .fleetFont(.body)
@@ -260,7 +260,7 @@ struct AddMinerView: View {
                 Spacer(minLength: 8)
             }
             Text(
-                "Hash Fleet checks nearby private Wi-Fi addresses for a read-only ESP-Miner response. " +
+                "Hash Fleet checks nearby private Wi-Fi addresses for compatible miners on your network. " +
                     "It does not change anything."
             )
             .fleetFont(.subheadline)
@@ -296,16 +296,21 @@ struct AddMinerView: View {
                                 .rotationEffect(.degrees((elapsed * 160).truncatingRemainder(dividingBy: 360)))
                                 .clipShape(Circle())
 
-                                Image(systemName: "cpu")
-                                    .font(.system(size: 16, weight: .semibold))
+                                Image(systemName: "wifi")
+                                    .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(FleetTheme.accent)
-                                    .rotationEffect(.degrees((elapsed * 90).truncatingRemainder(dividingBy: 360)))
+                                    #if os(iOS)
+                                    .symbolEffect(.variableColor.iterative.reversing, isActive: discovery.isScanning)
+                                    #endif
                             }
                         }
                         .frame(width: 44, height: 44)
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
+                                Image(systemName: "wifi")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(FleetTheme.accent)
                                 Text("Scanning Wi-Fi Fleet…")
                                     .fleetFont(.subheadline, weight: .bold)
                                     .foregroundStyle(FleetTheme.ink)
@@ -370,7 +375,7 @@ struct AddMinerView: View {
                 Button {
                     startDiscovery()
                 } label: {
-                    Label("Scan nearby miners", systemImage: "magnifyingglass")
+                    Label("Scan nearby miners", systemImage: "wifi")
                         .frame(maxWidth: .infinity, minHeight: 24)
                 }
                 .buttonStyle(FleetPrimaryButtonStyle(tone: .secondary, size: .compact))

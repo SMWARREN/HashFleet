@@ -145,6 +145,7 @@ struct MinerAvalonControlsPage: View {
             }
             if capabilities.canShutdown {
                 Button("Stop hashing (hash power off)") {
+                    FleetHaptics.medium()
                     pending = PendingChange(
                         title: "Turn hash power off?",
                         detail: "Sends ascset hashpower,0. The hash boards stop; the controller and fans stay on. Restart the miner to resume hashing.",
@@ -208,10 +209,12 @@ struct MinerAvalonControlsPage: View {
             )
             if let error = operation.error {
                 failure = "Not applied: \(error)"
+                FleetHaptics.error()
                 return
             }
             _ = await store.refreshAfterWrite(for: device)
             message = "\(change.title.replacingOccurrences(of: "?", with: "")) · sent"
+            FleetHaptics.success()
         }
     }
 }

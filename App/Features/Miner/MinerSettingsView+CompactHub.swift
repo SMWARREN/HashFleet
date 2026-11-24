@@ -158,9 +158,11 @@ extension MinerSettingsView {
                 guard usesCompactSettingsHubPreview, store.preferences.dashboardMode == .essentials,
                       let info, NumberFirstPreview.minerAvailability(info, device: device, store: store)
                         .quickActions.contains(.restart) else { return }
+                FleetHaptics.heavy()
                 if store.isDemo {
                     previewRestartApplied = true
                     MinerQuickActionPreviewResult.announce(.restart)
+                    FleetHaptics.success()
                 } else {
                     Task { await liveRestart.send(.restart, device: device, store: store) }
                 }

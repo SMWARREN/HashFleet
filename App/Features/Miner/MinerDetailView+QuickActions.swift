@@ -132,13 +132,16 @@ final class MinerInlineActionState {
             _ = try await client.execute(action.endpoint)
             receipt = "\(action.endpoint.title): miner accepted the request."
             succeeded = true
+            FleetHaptics.success()
         } catch let MinerAPIError.http(status, _, _) where attemptingCommand && MinerCapabilityProbe.isUnsupportedStatus(status) {
             unsupported.insert(action)
             receipt = "This firmware did not accept \(action.endpoint.title.lowercased()) (HTTP \(status))."
+            FleetHaptics.warning()
         } catch {
             receipt = attemptingCommand
                 ? "No confirmed result. Check the miner before trying again."
                 : "Could not verify the miner connection. Nothing sent."
+            FleetHaptics.error()
         }
     }
 }
@@ -189,9 +192,11 @@ extension MinerDetailView {
             guard usesNumberFirstDetail, dashboardMode == .essentials,
                   let info, NumberFirstPreview.minerAvailability(info, device: device, store: store)
                     .quickActions.contains(action) else { return }
+            FleetHaptics.medium()
             if store.isDemo {
                 previewQuickActionResult = action
                 MinerQuickActionPreviewResult.announce(action)
+                FleetHaptics.success()
             } else {
                 Task { await liveQuickAction.send(action, device: device, store: store) }
             }
@@ -217,7 +222,10 @@ extension MinerDetailView {
         // Compact miner cards push an inline destination. Start the next push from
         // this screen's state instead of looking up a value route from inside that destination.
         if usesCompactHorizontalLayout {
-            Button { compactEndpointRoute = endpoint } label: {
+            Button {
+                FleetHaptics.light()
+                compactEndpointRoute = endpoint
+            } label: {
                 quickActionLabel(endpoint, symbol: symbol, compact: compact)
             }
             .buttonStyle(.plain)

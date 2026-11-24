@@ -38,7 +38,7 @@ struct FleetWatchSettingsPage: View {
                         .privacySensitive()
                     }
                     if store.savedDevices.count != eligibleMiners.count {
-                        Text("Only credential-free local ESP-Miner addresses are supported. XMRig, credential-protected and nonlocal entries are not sent.")
+                        Text("Only credential-free local miner addresses are supported. XMRig, credential-protected and nonlocal entries are not sent.")
                             .fleetFont(.footnote)
                             .foregroundStyle(FleetTheme.secondary)
                     }

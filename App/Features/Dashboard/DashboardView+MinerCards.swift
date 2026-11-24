@@ -117,12 +117,18 @@ extension DashboardView {
                 minerCardNavigationLabel(device, expanded: expanded)
                     .fleetMinerTransitionSource(id: device.id, in: minerTransitionNamespace, enabled: !reduceMotion)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
         } else {
             // The split workspace owns this value in fleetPath. A view-based link
             // keeps its own push, which clearing the sidebar's path cannot pop.
             NavigationLink(value: FleetMinerRoute(deviceID: device.id)) {
                 minerCardNavigationLabel(device, expanded: expanded)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                FleetHaptics.selection()
+            })
         }
     }
 
@@ -182,6 +188,7 @@ extension DashboardView {
 
     private func minerCardExpandButton(_ device: MinerDevice, expanded: Bool) -> some View {
         Button {
+            FleetHaptics.light()
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                 minerExpansion[device.id] = !expanded
             }

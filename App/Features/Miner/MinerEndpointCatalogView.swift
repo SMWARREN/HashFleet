@@ -128,7 +128,7 @@ struct MinerEndpointCatalogView: View {
                 Text(report.checkedAt, format: .dateTime.month().day().hour().minute())
                     .fleetFont(.caption2).foregroundStyle(FleetTheme.secondary)
             } else if !store.isDemo, store.capabilities.reports[device.id]?.infoStatus == .supported {
-                Text("Detected ESP-Miner-compatible API · support unverified").fleetFont(.caption2).foregroundStyle(
+                Text("Detected miner-compatible API · support unverified").fleetFont(.caption2).foregroundStyle(
                     FleetTheme.secondary
                 )
             } else {
