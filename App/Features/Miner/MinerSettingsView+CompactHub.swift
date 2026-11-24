@@ -32,6 +32,14 @@ extension MinerSettingsView {
                                            id: "settings.preview.firmwareExtras") {
                                 MinerFirmwareExtrasPage(device: device, store: store)
                             }
+                            if availability.driverCapabilities.family == "harloOS" {
+                                compactHubDivider
+                                compactHubLink("Harlo OS tools",
+                                               subtitle: "Updates, time, schedules, lighting, alerts, smart plug",
+                                               icon: "square.grid.2x2", id: "settings.preview.harloTools") {
+                                    MinerHarloToolsPage(device: device, store: store)
+                                }
+                            }
                             if !categories.isEmpty || canRestart { compactHubDivider }
                         }
                         ForEach(categories) { category in
