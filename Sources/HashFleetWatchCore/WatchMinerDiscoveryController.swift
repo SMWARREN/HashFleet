@@ -35,6 +35,7 @@ public final class WatchMinerDiscoveryController {
             return
         }
         guard !store.isDemo, !attemptedAutomaticScan else { return }
+        guard !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
         attemptedAutomaticScan = true
         guard store.miners.isEmpty else { return }
         start(store: store)
@@ -43,6 +44,10 @@ public final class WatchMinerDiscoveryController {
     /// Explicit retries are allowed, but never overlap another scan or run against a demo store.
     public func start(store: WatchFleetStore) {
         guard !store.isDemo, !isScanning else { return }
+        if ProcessInfo.processInfo.isLowPowerModeEnabled {
+            message = WatchDiscoveryError.lowPowerMode.errorDescription
+            return
+        }
         attemptedAutomaticScan = true
         let id = UUID()
         let initiallyKnown = Set(store.miners.map { $0.address })

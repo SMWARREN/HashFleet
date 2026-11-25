@@ -26,9 +26,10 @@ enum WatchDiscoveryIdentification {
         let deviceName: String?
 
         enum CodingKeys: String, CodingKey {
-            // AxeOS reports `ASICModel`; accept a lowercase variant defensively.
+            // AxeOS reports `ASICModel`; accept lowercase and alternative board/model keys defensively.
             case asicModelUpper = "ASICModel"
             case asicModelLower = "asicModel"
+            case deviceModel, board, boardVersion, model, miner_name, name
             case hostname, fullHostname, mdnsHostname, deviceName
         }
 
@@ -36,7 +37,8 @@ enum WatchDiscoveryIdentification {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             func string(_ key: CodingKeys) -> String? { (try? c.decodeIfPresent(String.self, forKey: key)) ?? nil }
             asicModel = string(.asicModelUpper) ?? string(.asicModelLower)
-            hostname = string(.hostname)
+                ?? string(.deviceModel) ?? string(.board) ?? string(.boardVersion) ?? string(.model)
+            hostname = string(.hostname) ?? string(.miner_name) ?? string(.name)
             fullHostname = string(.fullHostname)
             mdnsHostname = string(.mdnsHostname)
             deviceName = string(.deviceName)

@@ -201,7 +201,14 @@ enum WatchMinerInfoDecoder {
         let miningPaused: Bool?
 
         enum CodingKeys: String, CodingKey {
-            case hashRate, power, temp, temp2, vrTemp, uptimeSeconds, sharesAccepted, sharesRejected, miningPaused
+            case hashRate, hashrate, hashrate_ghs
+            case power, device_power_w, asic_rail_power_w
+            case temp, temp2, chiptemp1, chiptemp2, asic_temp_c
+            case vrTemp, vr_temp_c
+            case uptimeSeconds, uptime_seconds
+            case sharesAccepted, shares_accepted, sAccepted
+            case sharesRejected, shares_rejected, sRejected
+            case miningPaused, asic_paused, paused, shutdown
         }
 
         init(from decoder: any Decoder) throws {
@@ -209,17 +216,21 @@ enum WatchMinerInfoDecoder {
             // A field with the wrong type (string, boolean, ...) is "not reported", not zero.
             func number(_ key: CodingKeys) -> Double? { (try? c.decodeIfPresent(Double.self, forKey: key)) ?? nil }
             func integer(_ key: CodingKeys) -> Int? { (try? c.decodeIfPresent(Int.self, forKey: key)) ?? nil }
-            hashRate = number(.hashRate)
-            power = number(.power)
-            temp = number(.temp)
-            temp2 = number(.temp2)
-            vrTemp = number(.vrTemp)
-            uptimeSeconds = number(.uptimeSeconds)
-            sharesAccepted = integer(.sharesAccepted)
-            sharesRejected = integer(.sharesRejected)
-            if let flag = (try? c.decodeIfPresent(Bool.self, forKey: .miningPaused)) ?? nil {
+            hashRate = number(.hashRate) ?? number(.hashrate) ?? number(.hashrate_ghs)
+            power = number(.power) ?? number(.device_power_w) ?? number(.asic_rail_power_w)
+            temp = number(.temp) ?? number(.chiptemp1) ?? number(.asic_temp_c)
+            temp2 = number(.temp2) ?? number(.chiptemp2)
+            vrTemp = number(.vrTemp) ?? number(.vr_temp_c)
+            uptimeSeconds = number(.uptimeSeconds) ?? number(.uptime_seconds)
+            sharesAccepted = integer(.sharesAccepted) ?? integer(.shares_accepted) ?? integer(.sAccepted)
+            sharesRejected = integer(.sharesRejected) ?? integer(.shares_rejected) ?? integer(.sRejected)
+            if let flag = (try? c.decodeIfPresent(Bool.self, forKey: .miningPaused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .asic_paused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .paused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .shutdown)) {
                 miningPaused = flag
-            } else if let value = integer(.miningPaused), value == 0 || value == 1 {
+            } else if let value = integer(.miningPaused) ?? integer(.asic_paused) ?? integer(.paused) ?? integer(.shutdown),
+                      value == 0 || value == 1 {
                 miningPaused = value == 1
             } else {
                 miningPaused = nil
