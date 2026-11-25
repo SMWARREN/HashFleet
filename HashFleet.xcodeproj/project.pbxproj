@@ -1414,6 +1414,7 @@
 		5A4E15A216D3E55D6AB462C0 /* FleetGlanceWorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetGlanceWorkflowTests.swift; sourceTree = "<group>"; };
 		5A98E04CE7F164A6FC745C6B /* FleetStore+Evaluation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FleetStore+Evaluation.swift"; sourceTree = "<group>"; };
 		5AB492EA8EE8BDADA7EEE658 /* FleetStore+Devices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FleetStore+Devices.swift"; sourceTree = "<group>"; };
+		5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		5B609B07AFB60BF0AE5A5E80 /* FleetChangeEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChangeEffects.swift; sourceTree = "<group>"; };
 		5B61ABBF4DAB608E2C30D96C /* HashFleetUITests+Tour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HashFleetUITests+Tour.swift"; sourceTree = "<group>"; };
 		5B882DD5035DA5ADFB5DE3BF /* HashFleetApp+RemotePush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HashFleetApp+RemotePush.swift"; sourceTree = "<group>"; };
@@ -1520,7 +1521,6 @@
 		8140B8D9DCFC23D05A4D0A4F /* SettingsViewsEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewsEvaluationTests.swift; sourceTree = "<group>"; };
 		814A59C0B1B9FD5BE8C86F7E /* WatchHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHelpView.swift; sourceTree = "<group>"; };
 		81FDD5EB19F5207184DE636B /* FleetPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPreferencesView.swift; sourceTree = "<group>"; };
-		8229F89FDD916B19ED97AFAC /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		8278E7BC3CDEA8FD054643BB /* FleetChartSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChartSelectionTests.swift; sourceTree = "<group>"; };
 		827B1159C2DF129AFFA2F1D9 /* CompactMinerWorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactMinerWorkspaceTests.swift; sourceTree = "<group>"; };
 		8283BEF4828E6B9EFF740472 /* FleetInAppAlertBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetInAppAlertBanner.swift; sourceTree = "<group>"; };
@@ -1713,6 +1713,7 @@
 		D2DD1A6E2F7938A6A3EDCE48 /* DashboardCardInteractionUITests+Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardCardInteractionUITests+Cards.swift"; sourceTree = "<group>"; };
 		D2F7078E0B68D7C7732F07FB /* MinerEndpointView+Sections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MinerEndpointView+Sections.swift"; sourceTree = "<group>"; };
 		D346544F27CF6D9B3453FFBE /* FleetBestShareTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetBestShareTests.swift; sourceTree = "<group>"; };
+		D3840D1B14748DCDBEC7E160 /* hashfleet */ = {isa = PBXFileReference; lastKnownFileType = folder; name = hashfleet; path = .; sourceTree = SOURCE_ROOT; };
 		D38DCDCE092846B432DBC864 /* FleetMacChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMacChrome.swift; sourceTree = "<group>"; };
 		D3BADC9C9250753F0F6EFCD7 /* FleetNotificationDeliveryTests+Reentrancy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FleetNotificationDeliveryTests+Reentrancy.swift"; sourceTree = "<group>"; };
 		D3EC0228B92B15CA19DD939C /* FleetSupplementalRenderingCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetSupplementalRenderingCoverageTests.swift; sourceTree = "<group>"; };
@@ -1793,7 +1794,6 @@
 		F3B15288AFC8E74A8ED7ED46 /* FleetEnergyEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetEnergyEstimate.swift; sourceTree = "<group>"; };
 		F3F6A5A6619DA0A84FFEFFC6 /* HashFleetMenuBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetMenuBar.entitlements; sourceTree = "<group>"; };
 		F4814F1A9CF15A13A4F14AF6 /* FleetSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetSettingsSection.swift; sourceTree = "<group>"; };
-		F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "essentials-on-main-20261123.noindex"; path = .; sourceTree = SOURCE_ROOT; };
 		F53D628CEB0D46C79B42F869 /* FleetReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportShareSheet.swift; sourceTree = "<group>"; };
 		F569E161ABC01C2F79757B0B /* HashFleetNoAppPush.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetNoAppPush.entitlements; sourceTree = "<group>"; };
 		F5EEE3A445C34AEDDEBA72C9 /* AnimatedWebPImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedWebPImage.swift; sourceTree = "<group>"; };
@@ -2066,15 +2066,6 @@
 			path = About;
 			sourceTree = "<group>";
 		};
-		41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */ = {
-			isa = PBXGroup;
-			children = (
-				8229F89FDD916B19ED97AFAC /* Signing.xcconfig */,
-			);
-			name = "essentials-on-main-20261123.noindex";
-			path = .;
-			sourceTree = "<group>";
-		};
 		468A6DC2AE2DAF8D6FDFC9ED /* Fixtures */ = {
 			isa = PBXGroup;
 			children = (
@@ -2341,7 +2332,7 @@
 		796FF5E444F401A2C5282BB7 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */,
+				D3840D1B14748DCDBEC7E160 /* hashfleet */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -2690,7 +2681,7 @@
 			children = (
 				0EE9E627F6F6FE67F21AD779 /* App */,
 				8D9C6F513E0C0CC31F682ACA /* AppTests */,
-				41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */,
+				DBFE839A8C350127DAAD2BB2 /* hashfleet */,
 				93078C488D1FF11636EA21C2 /* MacApp */,
 				83A874044E2D938F098DA97D /* MacAppTests */,
 				28EB50703CC2F4D18C92FB8C /* MacMenuBar */,
@@ -2780,6 +2771,15 @@
 				D0BA12CFB31D8688CEC274E7 /* MinerOverviewCard+Metrics.swift */,
 			);
 			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		DBFE839A8C350127DAAD2BB2 /* hashfleet */ = {
+			isa = PBXGroup;
+			children = (
+				5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */,
+			);
+			name = hashfleet;
+			path = .;
 			sourceTree = "<group>";
 		};
 		E7D4BB9D9265214E09C81F31 /* Network */ = {
@@ -4646,7 +4646,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -4803,7 +4803,7 @@
 		};
 		45FFF5852BCF651758DBC5FB /* ReleaseNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;
@@ -4987,7 +4987,7 @@
 		};
 		53E5D76BFFEEC81F355CB975 /* DebugNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5164,7 +5164,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5382,7 +5382,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5579,7 +5579,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5679,7 +5679,7 @@
 		};
 		DEFD22CE7E98F094B1EFB6E5 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5823,7 +5823,7 @@
 		};
 		EF8B8785070CE5B13C7784D4 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 5B0A32C9CC2B6B8765A984DF /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;

@@ -122,7 +122,7 @@ struct MinerDetailCardHeader: View {
                     if spec.settings == .tuning {
                         // Same direct route as the quick link: avoids nesting the unified
                         // tuning workspace inside the miner settings hub.
-                        MinerTuningSessionView(device: device, store: store, insights: insights)
+                        MinerTuningPreviewRoute(device: device, store: store, insights: insights)
                     } else {
                         MinerSettingsView(device: device, store: store, insights: insights, initialCategory: spec.settings)
                     }

@@ -66,7 +66,7 @@ struct MinerDetailView: View {
     var dashboardMode: FleetPreferences.DashboardMode { guidedDemo && !guidedEssentials ? .full : store.preferences.dashboardMode }
     var usesNumberFirstDetail: Bool {
         #if os(macOS)
-        dashboardMode == .essentials && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && !isXMRig
+        !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && !isXMRig
         #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.minerDetail : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
