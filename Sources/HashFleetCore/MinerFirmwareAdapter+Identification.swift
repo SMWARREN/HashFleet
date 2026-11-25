@@ -37,6 +37,7 @@ extension MinerFirmwareAdapter {
         if isNestedNmaxePayload(raw) { return "nmaxe" }
         if MinerHTTPDrivers.isAxeForgeStatusShape(raw) { return "axeForge" }
         if MinerHTTPDrivers.isHarloOSShape(raw) { return "harloOS" }
+        if MinerHTTPDrivers.isThorOSShape(raw) { return "thorOS" }
         if MinerHTTPDrivers.isWarpAxeShape(raw) { return "warpAxe" }
 
         var deviceModel = (asic["deviceModel"]?.stringValue ?? raw["deviceModel"]?.stringValue ?? "")
@@ -75,13 +76,14 @@ extension MinerFirmwareAdapter {
         let asicDict = asic?.objectValue ?? [:]
 
         if let explicit = raw["firmwareFamily"]?.stringValue,
-           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "warpAxe", "canaan", "canaannano3", "braiins", "luxos"]
+           ["nmaxe", "bitforge", "nerdqaxe", "bitfortun", "axeForge", "harloOS", "thorOS", "warpAxe", "canaan", "canaannano3", "braiins", "luxos"]
             .contains(explicit) {
             return explicit
         }
         if isNestedNmaxePayload(raw) { return "nmaxe" }
         if MinerHTTPDrivers.isHarloOSShape(raw) { return "harloOS" }
         if MinerHTTPDrivers.isAxeForgeStatusShape(raw) { return "axeForge" }
+        if MinerHTTPDrivers.isThorOSShape(raw) { return "thorOS" }
         if MinerHTTPDrivers.isWarpAxeShape(raw) { return "warpAxe" }
 
         let classified = classifyAxeOSPayload(raw: raw, asic: asicDict)
@@ -127,6 +129,9 @@ extension MinerFirmwareAdapter {
         }
         if let harloOS = await identifyHarloOSViaTelemetry(host: host, timeout: timeout, transport: sendHTTP) {
             return harloOS
+        }
+        if let thorOS = await identifyThorOS(host: host, timeout: timeout, transport: sendHTTP) {
+            return thorOS
         }
         if let cgIdentity = await identifyCgminer(host: host, timeout: timeout, transport: cgminerTransport) {
             return cgIdentity

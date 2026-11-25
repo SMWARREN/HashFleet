@@ -213,8 +213,10 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
                let name = WatchDiscoveryIdentification.minerName(from: httpData, path: "/api/system/info") {
                 return try? WatchMiner(name: name, address: "http://\(address)")
             }
-            if httpStatus == 404 {
-                for altPath in ["/api/status", "/api/telemetry"] {
+            // ThorOS answers unknown routes with its HTML console instead of a 404.
+            let servedHTML = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("html") == true
+            if httpStatus == 404 || (300...399).contains(httpStatus) || (httpStatus == 200 && servedHTML) {
+                for altPath in ["/api/status", "/api/telemetry", WatchMinerHTTPClient.thorOSMinerStatusPath] {
                     if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
                         return miner
                     }

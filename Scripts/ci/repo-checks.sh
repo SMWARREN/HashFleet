@@ -43,6 +43,9 @@ python3 -B website/Tools/test_capture_dashboard.py
 echo "== Sonar source/test classification contracts"
 python3 -B -m unittest Tools.test_sonar_scope -v
 
+echo "== Virtual miner lab offline contracts (no firmware download)"
+(cd Tools/virtual-miners && python3 -B -m unittest discover -s tests -v)
+
 echo "== Source contract checks"
 python3 -B Scripts/check-native-navigation.py
 python3 -B Scripts/check-shared-page-shells.py

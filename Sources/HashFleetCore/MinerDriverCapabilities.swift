@@ -140,6 +140,16 @@ public struct MinerDriverCapabilities: Equatable, Hashable, Sendable {
                 canSetPool: true,
                 fanMinPct: 20
             )
+        case "thoros":
+            // Core voltage uses unverified board-specific units on ThorOS, so it stays read-only.
+            return MinerDriverCapabilities(
+                family: "thorOS",
+                canSetFan: true,
+                canSetFrequency: true,
+                canRestart: true,
+                canSetPool: true,
+                fanMinPct: 20
+            )
         case "warpaxe":
             return MinerDriverCapabilities(
                 family: "warpAxe",

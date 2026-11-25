@@ -357,6 +357,8 @@ struct MinerDiscoveryService: Sendable {
             info = MinerHTTPDrivers.parseAxeForge(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
         } else if MinerHTTPDrivers.isHarloOSShape(decoded.raw) {
             info = MinerHTTPDrivers.parseHarloOS(telemetry: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isThorOSShape(decoded.raw) {
+            info = MinerHTTPDrivers.thorOSDiscoveryInfo(decoded.raw, host: host)
         } else {
             info = decoded
         }
@@ -404,8 +406,10 @@ struct MinerDiscoveryService: Sendable {
                 return .found(match)
             }
             // If an HTTP server is alive on port 80 and returned 404/405/501 for /api/system/info,
-            // probe AxeForge (/api/status) and Harlo-OS (/api/telemetry).
-            if [404, 405, 501].contains(http.statusCode),
+            // probe AxeForge (/api/status), Harlo-OS (/api/telemetry) and ThorOS (/v2/device/info).
+            if MinerHTTPDrivers.shouldProbeAlternativeDiscovery(
+                statusCode: http.statusCode, contentType: http.value(forHTTPHeaderField: "Content-Type")
+            ),
                let fallbackMatch = try await probeAlternativeHTTPEndpoints(
                    host: host, transport: transport, timeout: timeout
                ) {
@@ -450,7 +454,7 @@ struct MinerDiscoveryService: Sendable {
         transport: Transport,
         timeout: TimeInterval
     ) async throws -> MinerDiscoveryCandidate? {
-        for path in ["/api/status", "/api/telemetry"] {
+        for path in MinerHTTPDrivers.alternativeDiscoveryPaths {
             try Task.checkCancellation()
             guard let url = URL(string: "http://\(host)\(path)") else { continue }
             var req = URLRequest(

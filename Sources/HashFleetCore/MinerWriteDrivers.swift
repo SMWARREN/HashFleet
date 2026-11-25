@@ -135,6 +135,8 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSFanSpeed(percent)
+        case "thoros":
+            return try await setThorOSFanSpeed(percent)
         case "braiins", "luxos", "canaannano3":
             return false
         default:
@@ -171,6 +173,8 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSAutoFan(enabled)
+        case "thoros":
+            return try await setThorOSAutoFan(enabled)
         case "braiins", "luxos", "canaannano3":
             return false
         default:
@@ -198,6 +202,8 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSTuning(frequencyMHz: mhz, coreMV: nil)
+        case "thoros":
+            return try await setThorOSFrequency(mhz)
         case "nmaxe", "braiins", "luxos", "canaannano3":
             return false
         default:
@@ -223,6 +229,8 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await setHarloOSTuning(frequencyMHz: nil, coreMV: millivolts)
+        case "thoros":
+            return false
         case "nmaxe", "braiins", "luxos", "canaannano3":
             return false
         default:
@@ -279,6 +287,8 @@ extension MinerFirmwareAdapter {
             )
         case "harloos":
             return try await sendCustomHTTP(method: "POST", path: "/api/reboot", json: nil)
+        case "thoros":
+            return try await sendCustomHTTP(method: "POST", path: MinerHTTPDrivers.thorOSRebootPath, json: nil)
         case "braiins", "luxos":
             return false
         default:
@@ -368,6 +378,9 @@ extension MinerFirmwareAdapter {
         if resolvedFamilyName == "harloos" {
             return try await readHarloOSPoolConfig()
         }
+        if resolvedFamilyName == "thoros" {
+            return try await readThorOSPoolConfig()
+        }
         let currentInfo = try await info()
         let raw = currentInfo.raw
         return MinerPoolConfig(
@@ -393,6 +406,9 @@ extension MinerFirmwareAdapter {
         }
         if family == "harloos" {
             return try await writeHarloOSPoolConfig(config)
+        }
+        if family == "thoros" {
+            return try await writeThorOSPoolConfig(config)
         }
         guard ["bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge", "warpaxe"].contains(family) else {
             return false
@@ -458,6 +474,8 @@ extension MinerFirmwareAdapter {
             return try await executeAxeForgeEndpoint(endpoint, body: body, query: query)
         case "harloos":
             return try await executeHarloOSEndpoint(endpoint, body: body, query: query)
+        case "thoros":
+            return try await executeThorOSEndpoint(endpoint, body: body, query: query)
         case "nmaxe":
             return try await executeNmaxeEndpoint(endpoint, body: body, query: query)
         case "bitforge":

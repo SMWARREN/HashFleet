@@ -72,6 +72,8 @@ enum WatchDiscoveryIdentification {
                 }
             }
             return "AxeForge Miner"
+        } else if path == WatchMinerHTTPClient.thorOSMinerStatusPath {
+            return "Hammer ThorOS Miner"
         }
 
         guard let identity = try? JSONDecoder().decode(Identity.self, from: data) else { return nil }

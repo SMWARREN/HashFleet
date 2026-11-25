@@ -334,7 +334,7 @@ public struct MinerWatchSample: Equatable, Sendable {
     private func applyIdentityFields(_ out: inout [String: JSONValue], preservingFlatRaw: Bool) {
         setIfMissingString(&out, key: "hostname", value: hostname)
         setIfMissingString(&out, key: "macAddr", value: mac)
-        if !preservingFlatRaw || ["nmaxe", "axeForge", "harloOS", "canaan", "canaannano3", "braiins", "luxos"].contains(family) {
+        if !preservingFlatRaw || ["nmaxe", "axeForge", "harloOS", "thorOS", "canaan", "canaannano3", "braiins", "luxos"].contains(family) {
             setIfMissingString(&out, key: "deviceModel", value: model)
         }
         if let chipModel, !chipModel.isEmpty {

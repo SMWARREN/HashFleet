@@ -176,6 +176,8 @@ public enum FleetNetworkDiscovery {
             info = MinerHTTPDrivers.parseAxeForge(data: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
         } else if MinerHTTPDrivers.isHarloOSShape(decoded.raw) {
             info = MinerHTTPDrivers.parseHarloOS(telemetry: decoded.raw, host: host).toMinerInfo(preservingFlatRaw: true)
+        } else if MinerHTTPDrivers.isThorOSShape(decoded.raw) {
+            info = MinerHTTPDrivers.thorOSDiscoveryInfo(decoded.raw, host: host)
         } else {
             info = decoded
         }
@@ -242,8 +244,10 @@ public enum FleetNetworkDiscovery {
             ) {
                 return matched
             }
-            if [404, 405, 501].contains(http.statusCode) {
-                for path in ["/api/status", "/api/telemetry"] {
+            if MinerHTTPDrivers.shouldProbeAlternativeDiscovery(
+                statusCode: http.statusCode, contentType: http.value(forHTTPHeaderField: "Content-Type")
+            ) {
+                for path in MinerHTTPDrivers.alternativeDiscoveryPaths {
                     guard !Task.isCancelled, let altURL = URL(string: "http://\(host)\(path)") else { continue }
                     var altReq = URLRequest(
                         url: altURL,

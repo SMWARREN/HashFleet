@@ -304,3 +304,18 @@ struct MinerSavedFirmwareFamilyTests {
         #expect(luxAvail.quickActions.isEmpty)
     }
 }
+
+@Suite("ThorOS firmware family")
+struct MinerThorOSFirmwareFamilyTests {
+    @Test func thorBoardsUseTheirOwnHammerFeed() {
+        let x1 = MinerInfo(raw: ["device_model": .string("THOR X1"), "firmware_version": .string("1.0.6")])
+        let p2 = MinerInfo(raw: ["device_model": .string("THOR P2"), "firmware_version": .string("1.1.0")])
+        let bc08 = MinerInfo(raw: ["device_model": .string("THOR BC08"), "firmware_version": .string("1.1.1")])
+        #expect(MinerFirmwareFamily.identify(from: x1) == .thorX1)
+        #expect(MinerFirmwareFamily.identify(from: p2) == .thorP2)
+        #expect(MinerFirmwareFamily.identify(from: bc08) == nil)
+        #expect(MinerFirmwareFamily.thorX1.releaseFeedURL.absoluteString.contains("HammerMiner/X1"))
+        #expect(MinerFirmwareFamily.thorP2.releaseFeedURL.absoluteString.contains("HammerMiner/P2"))
+        #expect(!MinerFirmwareFamily.thorP2.supportsLiveWebSocket)
+    }
+}

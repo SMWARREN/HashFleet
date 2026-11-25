@@ -1,0 +1,10 @@
+# Real release image. Run `setup` once. All HTTP listeners are IPv4 loopback only.
+[[miner]]
+name = "gamma"
+board = "gamma-601"
+backend = "esp-emu"
+http_port = 18081
+hardware = "board"
+scenario = "normal"
+temperature_c = 48
+power_w = 14

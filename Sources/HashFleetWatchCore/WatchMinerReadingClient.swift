@@ -127,7 +127,8 @@ struct WatchHTTPTransport: Sendable {
 /// cookies, caches or credentials, and bounds time and response size. Raw response data is never persisted.
 public struct WatchMinerHTTPClient: WatchMinerReadingClient {
     public static let defaultPath = "/api/system/info"
-    public static let fallbackPaths = ["/api/telemetry", "/api/status", "/probe"]
+    public static let thorOSMinerStatusPath = "/v2/miner/status"
+    public static let fallbackPaths = ["/api/telemetry", "/api/status", "/probe", thorOSMinerStatusPath]
     public static let path = defaultPath
 
     public static let maximumResponseBytes = 256 * 1024
@@ -481,7 +482,60 @@ enum WatchMinerInfoDecoder {
         }
     }
 
+    /// Hammer ThorOS `/v2/miner/status`: hashrate in H/s, optionally wrapped as `{"ok":..,"data":{..}}`.
+    private struct ThorOSPayload: Decodable {
+        let currentHashrate: Double
+        let power: Double?
+        let temp: Double?
+        let temp2: Double?
+        let vrTemp: Double?
+        let accepted: Int?
+        let rejected: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case data
+            case currentHashrate = "current_hashrate"
+            case power = "power_consumption"
+            case temp = "temp_board"
+            case temp2 = "temp_board_1"
+            case vrTemp = "temp_vcore"
+            case accepted = "shares_accepted"
+            case rejected = "shares_rejected"
+        }
+
+        init(from decoder: any Decoder) throws {
+            let outer = try decoder.container(keyedBy: CodingKeys.self)
+            let c = (try? outer.nestedContainer(keyedBy: CodingKeys.self, forKey: .data)) ?? outer
+            func number(_ key: CodingKeys) -> Double? { (try? c.decodeIfPresent(Double.self, forKey: key)) ?? nil }
+            func integer(_ key: CodingKeys) -> Int? { (try? c.decodeIfPresent(Int.self, forKey: key)) ?? nil }
+            currentHashrate = try c.decode(Double.self, forKey: .currentHashrate)
+            guard c.contains(.power) else {
+                throw DecodingError.keyNotFound(CodingKeys.power, .init(codingPath: [], debugDescription: "not ThorOS"))
+            }
+            power = number(.power)
+            temp = number(.temp)
+            temp2 = number(.temp2)
+            vrTemp = number(.vrTemp)
+            accepted = integer(.accepted)
+            rejected = integer(.rejected)
+        }
+    }
+
     static func reading(from data: Data, minerID: UUID, observedAt: Date) throws -> WatchMinerReading {
+        if let thor = try? JSONDecoder().decode(ThorOSPayload.self, from: data) {
+            return WatchMinerReading(
+                minerID: minerID,
+                observedAt: observedAt,
+                hashrateGHs: thor.currentHashrate / 1e9,
+                powerWatts: thor.power,
+                chipTemperatureC: [thor.temp, thor.temp2].compactMap(validTemperature).max(),
+                vrTemperatureC: validTemperature(thor.vrTemp),
+                uptimeSeconds: nil,
+                acceptedShares: thor.accepted,
+                rejectedShares: thor.rejected,
+                isMiningPaused: nil
+            )
+        }
         if let payload = try? JSONDecoder().decode(Payload.self, from: data) {
             let temperatures = [payload.temp, payload.temp2].compactMap(validTemperature)
             let reading = WatchMinerReading(
