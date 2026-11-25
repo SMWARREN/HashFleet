@@ -488,9 +488,6 @@ extension AddMinerView {
         if result.failures.isEmpty {
             discoveryAddError = nil
             FleetHaptics.success()
-            #if os(iOS)
-            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
-            #endif
             #if os(macOS)
             FleetMacNavigationTrace.record("addAll.workspaceCompletion")
             AddMinerMultiSelection.completeInWorkspace(
@@ -498,6 +495,7 @@ extension AddMinerView {
             )
             FleetMacNavigationTrace.record("addAll.complete")
             #else
+            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
             dismiss()
             FleetSystemNavigation.request()
             #endif
