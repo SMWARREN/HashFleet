@@ -17,20 +17,20 @@ struct WatchDiscoveryPolicy: Sendable, Equatable {
     let maximumResponseBytes: Int
 
     init(
-        requestTimeout: TimeInterval = 1.0,
-        perHostDeadline: TimeInterval = 1.5,
-        overallBudget: TimeInterval = 60,
-        maxConcurrent: Int = 8,
+        requestTimeout: TimeInterval = 0.8,
+        perHostDeadline: TimeInterval = 1.0,
+        overallBudget: TimeInterval = 90,
+        maxConcurrent: Int = 24,
         maximumResponseBytes: Int = WatchMinerHTTPClient.maximumResponseBytes
     ) {
         func safeTime(_ value: TimeInterval, cap: TimeInterval, fallback: TimeInterval) -> TimeInterval {
             guard value.isFinite, value > 0 else { return fallback }
             return min(value, cap)
         }
-        self.requestTimeout = safeTime(requestTimeout, cap: 1.0, fallback: 1.0)
-        self.perHostDeadline = safeTime(perHostDeadline, cap: 1.5, fallback: 1.5)
-        self.overallBudget = safeTime(overallBudget, cap: 60, fallback: 60)
-        self.maxConcurrent = max(1, min(maxConcurrent, 8))
+        self.requestTimeout = safeTime(requestTimeout, cap: 1.0, fallback: 0.8)
+        self.perHostDeadline = safeTime(perHostDeadline, cap: 1.5, fallback: 1.0)
+        self.overallBudget = safeTime(overallBudget, cap: 120, fallback: 90)
+        self.maxConcurrent = max(1, min(maxConcurrent, 24))
         self.maximumResponseBytes = max(1, min(maximumResponseBytes, WatchMinerHTTPClient.maximumResponseBytes))
     }
 
@@ -186,19 +186,45 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         transport: WatchHTTPTransport,
         policy: WatchDiscoveryPolicy
     ) async throws -> WatchMiner? {
-        // 1. Standard AxeOS path (/api/system/info)
-        if let miner = await probeHTTP(address: address, path: "/api/system/info", transport: transport, policy: policy) {
-            return miner
+        guard let url = URL(string: "http://\(address):80/api/system/info") else { return nil }
+        var request = URLRequest(
+            url: url,
+            cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
+            timeoutInterval: policy.requestTimeout
+        )
+        request.httpMethod = "GET"
+        request.httpShouldHandleCookies = false
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        var httpStatus: Int?
+        var httpData: Data?
+        var httpResponse: HTTPURLResponse?
+        do {
+            let (data, response) = try await transport.load(request, deadline: policy.perHostDeadline)
+            httpData = data
+            httpResponse = response
+            httpStatus = response.statusCode
+        } catch {
+            httpStatus = nil
         }
-        // 2. Alternative paths (/api/status, /api/telemetry)
-        for path in ["/api/status", "/api/telemetry"] {
-            if let miner = await probeHTTP(address: address, path: path, transport: transport, policy: policy) {
-                return miner
+
+        if let httpStatus, let httpResponse, let httpData {
+            if httpStatus == 200, contentTypeAcceptable(httpResponse),
+               let name = WatchDiscoveryIdentification.minerName(from: httpData, path: "/api/system/info") {
+                return try? WatchMiner(name: name, address: "http://\(address)")
+            }
+            if httpStatus == 404 {
+                for altPath in ["/api/status", "/api/telemetry"] {
+                    if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
+                        return miner
+                    }
+                }
             }
         }
-        // 3. cgminer port 4028 (Avalon Nano 3/3s, etc.)
+
+        // Port 4028 cgminer probe (Avalon Nano 3/3s, Braiins, LuxOS)
         #if canImport(Darwin)
-        let timeout = min(policy.requestTimeout, 1.0)
+        let timeout: TimeInterval = 0.5
         if let cgData = try? await WatchMinerHTTPClient.queryCgminer(
             host: address, port: 4028, command: "version", timeout: timeout
         ),

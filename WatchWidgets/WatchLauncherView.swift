@@ -5,8 +5,17 @@ struct WatchLauncherView: View {
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
 
-    private var accent: Color {
-        renderingMode == .fullColor ? Color(red: 1, green: 0.79, blue: 0.22) : .primary
+    private var isTemplate: Bool {
+        renderingMode != .fullColor
+    }
+
+    @ViewBuilder
+    private var brandImage: some View {
+        Image(isTemplate ? "HashFleetWidgetTemplate" : "HashFleetWidgetBrand")
+            .renderingMode(isTemplate ? .template : .original)
+            .resizable()
+            .scaledToFit()
+            .widgetAccentable(isTemplate)
     }
 
     var body: some View {
@@ -15,19 +24,18 @@ struct WatchLauncherView: View {
             case .accessoryCircular:
                 ZStack {
                     AccessoryWidgetBackground()
-                    Image(systemName: "cpu")
-                        .font(.title2)
-                        .foregroundStyle(accent)
-                        .widgetAccentable()
+                    brandImage
+                        .padding(4)
                 }
+            case .accessoryCorner:
+                brandImage
+                    .padding(2)
             case .accessoryInline:
-                Label("Hash Fleet", systemImage: "cpu")
+                Label("Hash Fleet", systemImage: "bolt.fill")
             default:
                 HStack(spacing: 8) {
-                    Image(systemName: "cpu")
-                        .font(.title2)
-                        .foregroundStyle(accent)
-                        .widgetAccentable()
+                    brandImage
+                        .frame(width: 24, height: 24)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Hash Fleet")
                             .font(.headline)

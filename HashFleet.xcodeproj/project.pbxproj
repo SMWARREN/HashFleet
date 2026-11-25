@@ -472,6 +472,7 @@
 		750426F7C9FC24B6940B375B /* MinerCustomJSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA04387A262F6EE408BEF0C /* MinerCustomJSONTests.swift */; };
 		7512FB8F422670B57B4815D0 /* FleetTabBarAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FD45D62DB49046A23974E51 /* FleetTabBarAppearance.swift */; };
 		753D5361C534CD153CB883F7 /* FleetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED59896995EB8112EC60440 /* FleetWidget.swift */; };
+		755051B592F612E4BAA1922B /* HashFleetWidgetAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B33006725784A0C0B97049B3 /* HashFleetWidgetAssets.xcassets */; };
 		759315AF7EF56292294E5B96 /* FleetWidgetRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BF9BD9105BA2114286B90C /* FleetWidgetRefresh.swift */; };
 		7611E40FA3F960BCDD019C16 /* HashFleetWatchCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6825ED3640F4766A41A81F42 /* HashFleetWatchCore */; };
 		762F68E52647261CA08BBD1F /* FleetNotificationDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCBCB455D6463893675F72A1 /* FleetNotificationDelivery.swift */; };
@@ -2986,6 +2987,7 @@
 			buildConfigurationList = 1E8E9DF5A7F36B0B20D4FEF6 /* Build configuration list for PBXNativeTarget "HashFleetWatchWidgets" */;
 			buildPhases = (
 				AF0661DEA4CB06751D422DBF /* Sources */,
+				655B1159B42ED2C4D222772F /* Resources */,
 			);
 			buildRules = (
 			);
@@ -3321,6 +3323,14 @@
 				2496548AD4875FD62FDDC476 /* HashFleetWidgetAssets.xcassets in Resources */,
 				11276902FF55165A1864E163 /* LaunchScreen.storyboard in Resources */,
 				ECEDC584563E07EFC34A29B3 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		655B1159B42ED2C4D222772F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				755051B592F612E4BAA1922B /* HashFleetWidgetAssets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
