@@ -69,7 +69,8 @@ struct MinerTuningPreview: View {
     @State private var inlineAdvancedIsBusy = false
 
     private var isEssentials: Bool { mode == .essentials }
-    private var offersInlineAdvanced: Bool { isEssentials && (!draft.fields.isEmpty || showsInlineAdvanced) }
+    /// Both modes share the new dial layout. Mode only changes apply-vs-review semantics.
+    private var offersInlineAdvanced: Bool { !draft.fields.isEmpty || showsInlineAdvanced }
 
     init(mode: FleetPreferences.DashboardMode, device: MinerDevice, store: FleetStore, info: MinerInfo, isDemo: Bool,
          canEdit: Bool, insights: MiningInsightsStore?) {
@@ -98,11 +99,8 @@ struct MinerTuningPreview: View {
             VStack(spacing: 0) {
                 // A sibling of the scroll view stays tappable even when its content
                 // has scrolled all the way to Review changes.
-                if isEssentials && pinsReadings { pinnedHeader }
+                if pinsReadings { pinnedHeader }
                 tuningScroll(proxy: proxy)
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        if !isEssentials && pinsReadings { pinnedHeader }
-                    }
             }
         }
         .background(FleetTheme.canvas)
@@ -165,7 +163,6 @@ struct MinerTuningPreview: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if !pinsReadings { tuningHeader }
-                if !isEssentials { modePicker }
                 if !showsInlineAdvanced {
                     if canEdit, !draft.fields.isEmpty {
                         editor
@@ -176,7 +173,7 @@ struct MinerTuningPreview: View {
                     }
                 }
                 // Keep the Advanced draft mounted, not its dials, when the switch is off.
-                if isEssentials {
+                Group {
                     MinerTuningSessionView(device: device, store: store, insights: insights, inlineAdvanced: .init(
                         isExpanded: $showsInlineAdvanced, isBusy: $inlineAdvancedIsBusy,
                         jumpToReview: {

@@ -1,0 +1,113 @@
+{
+  "identifier" : "HashFleet",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "6832315570",
+      "localizations" : [
+        {
+          "description" : "Optional developer tip supporting ongoing Hash Fleet maintenance.",
+          "displayName" : "Small Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6832314110",
+      "localizations" : [
+        {
+          "description" : "Optional developer tip supporting continuous improvements.",
+          "displayName" : "Medium Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6832315156",
+      "localizations" : [
+        {
+          "description" : "Optional developer tip fueling open-source development.",
+          "displayName" : "Generous Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.large",
+      "referenceName" : "Generous Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : false,
+      "internalID" : "6832315157",
+      "localizations" : [
+        {
+          "description" : "Optional support for development. No feature unlocks.",
+          "displayName" : "Supporter Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.supporter",
+      "referenceName" : "Supporter Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "6832315158",
+      "localizations" : [
+        {
+          "description" : "Optional support for development. No feature unlocks.",
+          "displayName" : "Champion Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.champion",
+      "referenceName" : "Champion Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "6832315159",
+      "localizations" : [
+        {
+          "description" : "Optional support for development. No feature unlocks.",
+          "displayName" : "Patron Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.hashfleet.tip.patron",
+      "referenceName" : "Patron Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

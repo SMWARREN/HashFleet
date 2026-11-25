@@ -105,20 +105,16 @@ extension DashboardView {
                     .fleetTourTarget("guide.history")
                     .fleetStaggeredEntrance(index: 4, reduceMotion: reduceMotion)
                 if dashboardMode == .full && headlineKind == .sha256 { fleetHashrateComparison }
-                if usesNumberFirstOverview {
-                    FleetChainCard(fleet: store, insights: insights, compactPreview: true)
-                }
+                FleetChainCard(fleet: store, insights: insights, compact: compactDashboard)
+                    .fleetTourTarget("guide.chain")
+                    .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
                 if dashboardMode == .essentials {
                     fleetErrorSummary
                 }
                 minersSection(viewport: viewport)
                     .id("fleet-miners")
-                    .fleetStaggeredEntrance(index: 5, reduceMotion: reduceMotion)
+                    .fleetStaggeredEntrance(index: 6, reduceMotion: reduceMotion)
                 if dashboardMode == .full {
-                    if !usesNumberFirstOverview {
-                        FleetChainCard(fleet: store, insights: insights, compact: compactDashboard)
-                            .fleetStaggeredEntrance(index: 6, reduceMotion: reduceMotion)
-                    }
                     AnyView(secondaryOverview(wide: isWideDashboard(viewport)))
                 } else {
                     AnyView(essentialsFleetDetails(compact: compactDashboard, wide: isWideDashboard(viewport)))
@@ -141,9 +137,6 @@ extension DashboardView {
         DisclosureGroup(isExpanded: $showsFleetDetails) {
             VStack(alignment: .leading, spacing: 12) {
                 cpuHashrate
-                if !usesNumberFirstOverview {
-                    FleetChainCard(fleet: store, insights: insights, compact: compact)
-                }
                 secondaryOverview(wide: wide)
             }
             .padding(.top, 8)
