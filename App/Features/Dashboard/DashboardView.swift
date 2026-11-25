@@ -394,7 +394,10 @@ struct DashboardView: View {
         .fleetUnadornedToolbarBackground()
     }
 
-    private var dashboardSettingsMenu: some View {
+}
+
+extension DashboardView {
+    var dashboardSettingsMenu: some View {
         Menu {
             Button {
                 searchIsFocused = false
@@ -472,7 +475,7 @@ struct DashboardView: View {
         .accessibilityIdentifier("dashboard.settingsMenu")
     }
 
-    private var dashboardAddButton: some View {
+    var dashboardAddButton: some View {
         Button {
             searchIsFocused = false
             showingAddMiner = true
