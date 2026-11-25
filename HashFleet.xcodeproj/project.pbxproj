@@ -46,6 +46,7 @@
 		0C17BAA97C57E1568469C513 /* MinerTuningEasyField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6519AB8DD347328F4AD3F47A /* MinerTuningEasyField.swift */; };
 		0C1DF55C6306F6EC02D1E6E0 /* CompactDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F491690145C724BDA77773A /* CompactDashboardUITests.swift */; };
 		0C3110487AFD5E2C48E3C111 /* DemoFleet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CFB7FA22731E8E259DCC58 /* DemoFleet.swift */; };
+		0D1DE9458AEBAC37D9CD3589 /* iPhoneDuoScreenshotCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */; };
 		0D5103716D342427A0490A6C /* MinerTuningPoolDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD25148DD18D2D629643733C /* MinerTuningPoolDraftTests.swift */; };
 		0D6F5CA29994407E70707DC8 /* MonitoringSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044AB88886C95701EE390CC7 /* MonitoringSettingsView.swift */; };
 		0D9E295D53A979DB2126CE8B /* FleetEnergyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F8889494F6853529769BF /* FleetEnergyTests.swift */; };
@@ -1000,6 +1001,7 @@
 		F0F755DC7C71C1CA02CE2F42 /* FleetDemoPreferenceCheckpointTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EAC6F58BBBDDF39AA3B3E46 /* FleetDemoPreferenceCheckpointTests.swift */; };
 		F1159ED7E21F26520A8679CB /* FleetGuidedDemoSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C904B1FFC5BDAC8A3F3E803 /* FleetGuidedDemoSteps.swift */; };
 		F13BDF12F1D54ACE8DD475DC /* FleetGuidedDemoSandboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58AB3176F3632070678D0E2 /* FleetGuidedDemoSandboxTests.swift */; };
+		F17ECC023CBBF79C5D66114E /* iPhoneDuoScreenshotCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */; };
 		F2117C6889BBA6BFB35122C9 /* FleetHeaderArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A38B808A51D2D883DC5514 /* FleetHeaderArtwork.swift */; };
 		F21EA37001F4331A4DF1D936 /* MinerDetailView+Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF17196C73730EE1EEB1A9C /* MinerDetailView+Cards.swift */; };
 		F21F38E4F57219D657BD47DB /* MinerShareSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 787DFA4AF638AA67E6BCC44A /* MinerShareSummaryTests.swift */; };
@@ -1238,6 +1240,7 @@
 		14CFB7FA22731E8E259DCC58 /* DemoFleet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoFleet.swift; sourceTree = "<group>"; };
 		14E6E878B5828B1EDF5F08A9 /* FleetDesktopBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetDesktopBranding.swift; sourceTree = "<group>"; };
 		159C0A535F8B8B0F79BE53DE /* MinerSettingsView+Pools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MinerSettingsView+Pools.swift"; sourceTree = "<group>"; };
+		15C098066121D23076277073 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		1675CE2BACB228B10AA2A19D /* FleetNotificationEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetNotificationEvent.swift; sourceTree = "<group>"; };
 		169048A848FEA96E0BE5AC4B /* FleetReportTemporaryFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportTemporaryFileTests.swift; sourceTree = "<group>"; };
 		16F74A082574B1C1F333D138 /* FleetMinerControlExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetMinerControlExecutor.swift; sourceTree = "<group>"; };
@@ -1496,6 +1499,7 @@
 		7A2A797E07D657EEE6F79B89 /* RealModeControlUITests+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RealModeControlUITests+Helpers.swift"; sourceTree = "<group>"; };
 		7A8929868820771FAF60B2A7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7B5811C8346137D9AD79D68C /* NetworkInsightsView+Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NetworkInsightsView+Cards.swift"; sourceTree = "<group>"; };
+		7B76764798A7AE1BEE485332 /* hashfleet-iphone-duo */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "hashfleet-iphone-duo"; path = .; sourceTree = SOURCE_ROOT; };
 		7BB221CFEACE02F1B3E7F071 /* LoopbackMinerServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackMinerServer.swift; sourceTree = "<group>"; };
 		7BEC5D7B4EAB5221581E82E8 /* MinerSettingsRenderingCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerSettingsRenderingCoverageTests.swift; sourceTree = "<group>"; };
 		7C47C3A42377BD15F67B738B /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
@@ -1520,7 +1524,6 @@
 		8140B8D9DCFC23D05A4D0A4F /* SettingsViewsEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewsEvaluationTests.swift; sourceTree = "<group>"; };
 		814A59C0B1B9FD5BE8C86F7E /* WatchHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHelpView.swift; sourceTree = "<group>"; };
 		81FDD5EB19F5207184DE636B /* FleetPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetPreferencesView.swift; sourceTree = "<group>"; };
-		8229F89FDD916B19ED97AFAC /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		8278E7BC3CDEA8FD054643BB /* FleetChartSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChartSelectionTests.swift; sourceTree = "<group>"; };
 		827B1159C2DF129AFFA2F1D9 /* CompactMinerWorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactMinerWorkspaceTests.swift; sourceTree = "<group>"; };
 		8283BEF4828E6B9EFF740472 /* FleetInAppAlertBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetInAppAlertBanner.swift; sourceTree = "<group>"; };
@@ -1671,6 +1674,7 @@
 		C24097BE9D4A12CEBF2FB1C7 /* HashFleetTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HashFleetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C244DF39A7E169E652E100DF /* FleetSocketPeerCloseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetSocketPeerCloseTests.swift; sourceTree = "<group>"; };
 		C2999B7FBE0021D80FA6A0E8 /* RealModeControlUITests+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RealModeControlUITests+Settings.swift"; sourceTree = "<group>"; };
+		C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iPhoneDuoScreenshotCaptureTests.swift; sourceTree = "<group>"; };
 		C3E5E7CA47479DA91791FAB4 /* PoolLookupSourceRenderingCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolLookupSourceRenderingCoverageTests.swift; sourceTree = "<group>"; };
 		C4E51C814F93C160BCABA6DC /* FleetChartFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetChartFormattingTests.swift; sourceTree = "<group>"; };
 		C50436968359302121F5C29F /* FleetFirmwareTelemetryRenderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetFirmwareTelemetryRenderTests.swift; sourceTree = "<group>"; };
@@ -1793,7 +1797,6 @@
 		F3B15288AFC8E74A8ED7ED46 /* FleetEnergyEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetEnergyEstimate.swift; sourceTree = "<group>"; };
 		F3F6A5A6619DA0A84FFEFFC6 /* HashFleetMenuBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetMenuBar.entitlements; sourceTree = "<group>"; };
 		F4814F1A9CF15A13A4F14AF6 /* FleetSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetSettingsSection.swift; sourceTree = "<group>"; };
-		F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "essentials-on-main-20261123.noindex"; path = .; sourceTree = SOURCE_ROOT; };
 		F53D628CEB0D46C79B42F869 /* FleetReportShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetReportShareSheet.swift; sourceTree = "<group>"; };
 		F569E161ABC01C2F79757B0B /* HashFleetNoAppPush.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HashFleetNoAppPush.entitlements; sourceTree = "<group>"; };
 		F5EEE3A445C34AEDDEBA72C9 /* AnimatedWebPImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedWebPImage.swift; sourceTree = "<group>"; };
@@ -2066,15 +2069,6 @@
 			path = About;
 			sourceTree = "<group>";
 		};
-		41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */ = {
-			isa = PBXGroup;
-			children = (
-				8229F89FDD916B19ED97AFAC /* Signing.xcconfig */,
-			);
-			name = "essentials-on-main-20261123.noindex";
-			path = .;
-			sourceTree = "<group>";
-		};
 		468A6DC2AE2DAF8D6FDFC9ED /* Fixtures */ = {
 			isa = PBXGroup;
 			children = (
@@ -2341,7 +2335,7 @@
 		796FF5E444F401A2C5282BB7 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F4A92D1DA54C545FBBC2FF52 /* essentials-on-main-20261123.noindex */,
+				7B76764798A7AE1BEE485332 /* hashfleet-iphone-duo */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -2540,6 +2534,7 @@
 				D2CAFD403C8B2014B13A1C8B /* FleetWidgetRefreshIntegrationTests+Loading.swift */,
 				F09FFA81970FEEEEFCF9AF16 /* FleetWidgetRefreshLifecycleTests.swift */,
 				870EC1F4BF9268F1CEC99C9A /* FleetWidgetRefreshTests.swift */,
+				C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */,
 				8938244888C6E5A27492162F /* LaunchBrandTests.swift */,
 				103A7C8F240CFC45D8A0CB34 /* MinerASICCountTests.swift */,
 				BEA938D975B0543A56C06A8F /* MinerCapabilityStoreTests.swift */,
@@ -2669,6 +2664,15 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		BB917BCB5743BFF762D0C9FD /* hashfleet-iphone-duo */ = {
+			isa = PBXGroup;
+			children = (
+				15C098066121D23076277073 /* Signing.xcconfig */,
+			);
+			name = "hashfleet-iphone-duo";
+			path = .;
+			sourceTree = "<group>";
+		};
 		BD8AC0279A506981391962A0 /* Reports */ = {
 			isa = PBXGroup;
 			children = (
@@ -2690,7 +2694,7 @@
 			children = (
 				0EE9E627F6F6FE67F21AD779 /* App */,
 				8D9C6F513E0C0CC31F682ACA /* AppTests */,
-				41115F4346DBA9A2615C6BAF /* essentials-on-main-20261123.noindex */,
+				BB917BCB5743BFF762D0C9FD /* hashfleet-iphone-duo */,
 				93078C488D1FF11636EA21C2 /* MacApp */,
 				83A874044E2D938F098DA97D /* MacAppTests */,
 				28EB50703CC2F4D18C92FB8C /* MacMenuBar */,
@@ -4143,6 +4147,7 @@
 				79458E585F4D27583681704F /* SoloPoolPresetTests.swift in Sources */,
 				EAC8829870DAADA01A18EA52 /* StoredHistoryPresentationTests.swift in Sources */,
 				01AAFA5834085420E567C069 /* TelemetryPresentationTests.swift in Sources */,
+				0D1DE9458AEBAC37D9CD3589 /* iPhoneDuoScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4350,6 +4355,7 @@
 				CEF86D31D7B64F44E172943E /* UtilityRenderingCoverageTests.swift in Sources */,
 				3588620300E29CB31E6C3696 /* WidgetActivityComponentCoverageTests.swift in Sources */,
 				854751FAA63B9AB6E95BA4E0 /* WidgetRenderingCoverageTests.swift in Sources */,
+				F17ECC023CBBF79C5D66114E /* iPhoneDuoScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4803,7 +4809,7 @@
 		};
 		45FFF5852BCF651758DBC5FB /* ReleaseNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 15C098066121D23076277073 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;
@@ -4987,7 +4993,7 @@
 		};
 		53E5D76BFFEEC81F355CB975 /* DebugNoAppPush */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 15C098066121D23076277073 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5679,7 +5685,7 @@
 		};
 		DEFD22CE7E98F094B1EFB6E5 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 15C098066121D23076277073 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = development;
@@ -5823,7 +5829,7 @@
 		};
 		EF8B8785070CE5B13C7784D4 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8229F89FDD916B19ED97AFAC /* Signing.xcconfig */;
+			baseConfigurationReference = 15C098066121D23076277073 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APS_ENVIRONMENT = production;
