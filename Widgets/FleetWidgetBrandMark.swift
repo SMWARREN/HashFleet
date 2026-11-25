@@ -48,18 +48,13 @@ struct FleetWidgetBrandMark: View {
 
     var body: some View {
         let isTemplate = monochrome || renderingMode != .fullColor
-        Group {
-            if let image = FleetWidgetBrandAssets.thumbnail(
-                monochrome: isTemplate, colorScheme: colorScheme, pointSize: size, displayScale: displayScale
-            ) {
-                Image(uiImage: image)
-                    .renderingMode(isTemplate ? .template : .original)
-                    .resizable()
-                    .scaledToFit()
-            }
-        }
-        .frame(width: size, height: size)
-        .widgetAccentable(isTemplate)
-        .accessibilityHidden(true)
+        let assetName = FleetWidgetBrandAssets.assetName(monochrome: isTemplate)
+        Image(assetName, bundle: FleetWidgetBrandAssets.bundle)
+            .renderingMode(isTemplate ? .template : .original)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .widgetAccentable(isTemplate)
+            .accessibilityHidden(true)
     }
 }

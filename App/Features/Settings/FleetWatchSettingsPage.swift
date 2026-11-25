@@ -5,10 +5,14 @@ import HashFleetWatchCore
 
 struct FleetWatchSettingsPage: View {
     let store: FleetStore
-    @State private var setup = FleetWatchSetupCoordinator.shared
+    private var setup: FleetWatchSetupCoordinator { FleetWatchSetupCoordinator.shared }
+
+    private var activeDevices: [MinerDevice] {
+        store.isDemo ? store.savedDevices : store.devices
+    }
 
     private var eligibleMiners: [WatchMiner] {
-        FleetWatchSetupSelection(devices: store.savedDevices, isDemo: store.isDemo).miners
+        FleetWatchSetupSelection(devices: activeDevices, isDemo: store.isDemo).miners
     }
 
     var body: some View {
@@ -37,7 +41,7 @@ struct FleetWatchSettingsPage: View {
                         }
                         .privacySensitive()
                     }
-                    if store.savedDevices.count != eligibleMiners.count {
+                    if activeDevices.count != eligibleMiners.count {
                         Text("Only credential-free local miner addresses are supported. XMRig, credential-protected and nonlocal entries are not sent.")
                             .fleetFont(.footnote)
                             .foregroundStyle(FleetTheme.secondary)
@@ -51,7 +55,7 @@ struct FleetWatchSettingsPage: View {
                     } label: {
                         Label("Send \(eligibleMiners.count) miners to Watch", systemImage: "applewatch")
                     }
-                    .disabled(!setup.canSend || eligibleMiners.isEmpty || eligibleMiners.count > 16)
+                    .disabled(eligibleMiners.isEmpty || eligibleMiners.count > 16)
                     .accessibilityIdentifier("monitoring.watch.send")
                 }
                 Text(setup.status)

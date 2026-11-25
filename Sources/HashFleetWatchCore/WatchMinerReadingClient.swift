@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 /// Reads one miner. Implementations must be read-only.
 public protocol WatchMinerReadingClient: Sendable {
@@ -125,7 +126,10 @@ struct WatchHTTPTransport: Sendable {
 /// Direct, read-only HTTP client. It issues only `GET /api/system/info`, never follows redirects, never stores
 /// cookies, caches or credentials, and bounds time and response size. Raw response data is never persisted.
 public struct WatchMinerHTTPClient: WatchMinerReadingClient {
-    public static let path = "/api/system/info"
+    public static let defaultPath = "/api/system/info"
+    public static let fallbackPaths = ["/api/telemetry", "/api/status", "/probe"]
+    public static let path = defaultPath
+
     public static let maximumResponseBytes = 256 * 1024
     public static let requestTimeout: TimeInterval = 5
     public static let overallTimeout: TimeInterval = 10
@@ -149,7 +153,11 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
         WatchSecureHTTP.ephemeralSession(requestTimeout: requestTimeout, resourceTimeout: overallTimeout)
     }
 
-    static func request(for miner: WatchMiner) throws -> URLRequest {
+    public static func request(for miner: WatchMiner) throws -> URLRequest {
+        try request(for: miner, path: defaultPath)
+    }
+
+    public static func request(for miner: WatchMiner, path: String) throws -> URLRequest {
         // Revalidate: the address must still be a safe local endpoint.
         guard let endpoint = try? WatchEndpoint.normalize(miner.address),
               let url = URL(string: endpoint.description + path)
@@ -166,10 +174,233 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
     }
 
     public func fetch(_ miner: WatchMiner) async throws -> WatchMinerReading {
-        let request = try Self.request(for: miner)
-        let (data, _) = try await transport.load(request, deadline: Self.overallTimeout)
-        try Task.checkCancellation()
-        return try WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now())
+        #if canImport(Darwin)
+        if let endpoint = try? WatchEndpoint.normalize(miner.address), endpoint.port == 4028 {
+            if let cgReading = try? await Self.queryCgminerReading(
+                host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: Self.requestTimeout
+            ) {
+                return cgReading
+            }
+        }
+        #endif
+
+        let initialRequest = try Self.request(for: miner, path: Self.defaultPath)
+        do {
+            let (data, _) = try await transport.load(initialRequest, deadline: Self.overallTimeout)
+            try Task.checkCancellation()
+            return try WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now())
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            if (error as? WatchMinerFetchError) == .timedOut { throw error }
+
+            #if canImport(Darwin)
+            if let endpoint = try? WatchEndpoint.normalize(miner.address), endpoint.port == 4028 {
+                if let cgReading = try? await Self.queryCgminerReading(
+                    host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: Self.requestTimeout
+                ) {
+                    return cgReading
+                }
+            }
+            #endif
+
+            for fallbackPath in Self.fallbackPaths {
+                guard let fallbackReq = try? Self.request(for: miner, path: fallbackPath) else { continue }
+                if let (data, _) = try? await transport.load(fallbackReq, deadline: Self.overallTimeout),
+                   let reading = try? WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now()) {
+                    return reading
+                }
+            }
+            throw error
+        }
+    }
+
+    #if canImport(Darwin)
+    static func queryCgminerReading(
+        host: String,
+        port: Int,
+        minerID: UUID,
+        observedAt: Date,
+        timeout: TimeInterval
+    ) async throws -> WatchMinerReading {
+        let summaryData = try await queryCgminer(host: host, port: port, command: "summary", timeout: timeout)
+        let baseReading = try WatchMinerInfoDecoder.reading(from: summaryData, minerID: minerID, observedAt: observedAt)
+        var chipTemp = baseReading.chipTemperatureC
+        var power = baseReading.powerWatts
+
+        let statsTimeout = min(timeout, 3)
+        if let statsData = try? await queryCgminer(host: host, port: port, command: "stats", timeout: statsTimeout),
+           let stats = try? JSONDecoder().decode(WatchCgminerStatsPayload.self, from: statsData),
+           let item = stats.stats?.first {
+            if chipTemp == nil {
+                if let tMax = item.mmid0Summary?.hashInfo?.tMax {
+                    chipTemp = WatchMinerReading.temperature(tMax)
+                } else if let str = item.mmid0,
+                          let range = str.range(of: "TMax\\[(\\d+)\\]", options: .regularExpression) {
+                    let numStr = str[range].dropFirst(5).dropLast()
+                    chipTemp = WatchMinerReading.temperature(Double(numStr))
+                }
+            }
+            if power == nil, let str = item.mmid0,
+               let range = str.range(of: "MPO\\[(\\d+)\\]", options: .regularExpression) {
+                let numStr = str[range].dropFirst(4).dropLast()
+                power = Double(numStr)
+            }
+        }
+
+        return WatchMinerReading(
+            minerID: minerID,
+            observedAt: observedAt,
+            hashrateGHs: baseReading.hashrateGHs,
+            powerWatts: power ?? baseReading.powerWatts,
+            chipTemperatureC: chipTemp ?? baseReading.chipTemperatureC,
+            vrTemperatureC: baseReading.vrTemperatureC,
+            uptimeSeconds: baseReading.uptimeSeconds,
+            acceptedShares: baseReading.acceptedShares,
+            rejectedShares: baseReading.rejectedShares,
+            isMiningPaused: baseReading.isMiningPaused
+        )
+    }
+
+    static func queryCgminer(
+        host: String,
+        port: Int,
+        command: String = "summary",
+        timeout: TimeInterval
+    ) async throws -> Data {
+        let cleanHost = host.hasPrefix("[") && host.hasSuffix("]")
+            ? String(host.dropFirst().dropLast())
+            : host
+        guard !cleanHost.isEmpty,
+              let nwPort = NWEndpoint.Port(rawValue: UInt16(port)) else {
+            throw WatchMinerFetchError.invalidEndpoint
+        }
+        let nwHost = NWEndpoint.Host(cleanHost)
+        let connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
+        let queue = DispatchQueue(label: "app.hashfleet.watch.cgminer")
+
+        return try await withCheckedThrowingContinuation { continuation in
+            final class SafeContinuation: @unchecked Sendable {
+                private let lock = NSLock()
+                private var continuation: CheckedContinuation<Data, any Error>?
+                private weak var connection: NWConnection?
+
+                init(continuation: CheckedContinuation<Data, any Error>, connection: NWConnection) {
+                    self.continuation = continuation
+                    self.connection = connection
+                }
+
+                func resume(with result: Result<Data, any Error>) {
+                    lock.lock()
+                    guard let cont = continuation else {
+                        lock.unlock()
+                        return
+                    }
+                    continuation = nil
+                    let conn = connection
+                    lock.unlock()
+                    conn?.stateUpdateHandler = nil
+                    conn?.cancel()
+                    cont.resume(with: result)
+                }
+            }
+
+            let safe = SafeContinuation(continuation: continuation, connection: connection)
+
+            queue.asyncAfter(deadline: .now() + timeout) {
+                safe.resume(with: .failure(WatchMinerFetchError.timedOut))
+            }
+
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    let cmd = Data("{\"command\":\"\(command)\"}\n".utf8)
+                    connection.send(content: cmd, completion: .contentProcessed { error in
+                        if let error {
+                            safe.resume(with: .failure(error))
+                            return
+                        }
+                        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { data, _, _, error in
+                            if let error {
+                                safe.resume(with: .failure(error))
+                            } else if let data, !data.isEmpty {
+                                let cleanData: Data
+                                if let nullIdx = data.firstIndex(of: 0) {
+                                    cleanData = data.prefix(upTo: nullIdx)
+                                } else {
+                                    cleanData = data
+                                }
+                                safe.resume(with: .success(cleanData))
+                            } else {
+                                safe.resume(with: .failure(WatchMinerFetchError.invalidResponse))
+                            }
+                        }
+                    })
+                case .failed(let error):
+                    safe.resume(with: .failure(error))
+                case .cancelled:
+                    safe.resume(with: .failure(WatchMinerFetchError.unreachable))
+                default:
+                    break
+                }
+            }
+
+            connection.start(queue: queue)
+        }
+    }
+    #endif
+}
+
+private struct WatchCgminerSummaryPayload: Decodable {
+    struct Item: Decodable {
+        let elapsed: Double?
+        let mhsAv: Double?
+        let mhs5m: Double?
+        let mhs1m: Double?
+        let mhs5s: Double?
+        let accepted: Int?
+        let rejected: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case elapsed = "Elapsed"
+            case mhsAv = "MHS av"
+            case mhs5m = "MHS 5m"
+            case mhs1m = "MHS 1m"
+            case mhs5s = "MHS 5s"
+            case accepted = "Accepted"
+            case rejected = "Rejected"
+        }
+    }
+    let summary: [Item]?
+    enum CodingKeys: String, CodingKey {
+        case summary = "SUMMARY"
+    }
+}
+
+private struct WatchCgminerStatsPayload: Decodable {
+    struct HashInfo: Decodable {
+        let tMax: Double?
+        enum CodingKeys: String, CodingKey {
+            case tMax = "TMax"
+        }
+    }
+    struct MMID0Summary: Decodable {
+        let hashInfo: HashInfo?
+        enum CodingKeys: String, CodingKey {
+            case hashInfo = "Hashinfo"
+        }
+    }
+    struct StatItem: Decodable {
+        let mmid0Summary: MMID0Summary?
+        let mmid0: String?
+
+        enum CodingKeys: String, CodingKey {
+            case mmid0Summary = "MMID0Summary"
+            case mmid0 = "MM ID0"
+        }
+    }
+    let stats: [StatItem]?
+    enum CodingKeys: String, CodingKey {
+        case stats = "STATS"
     }
 }
 
@@ -201,7 +432,26 @@ enum WatchMinerInfoDecoder {
         let miningPaused: Bool?
 
         enum CodingKeys: String, CodingKey {
-            case hashRate, power, temp, temp2, vrTemp, uptimeSeconds, sharesAccepted, sharesRejected, miningPaused
+            case hashRate, hashrate
+            case hashrateGhs = "hashrate_ghs"
+            case power
+            case devicePowerW = "device_power_w"
+            case asicRailPowerW = "asic_rail_power_w"
+            case temp, temp2, chiptemp1, chiptemp2
+            case asicTempC = "asic_temp_c"
+            case vrTemp
+            case vrTempC = "vr_temp_c"
+            case uptimeSeconds
+            case uptimeSecondsSnake = "uptime_seconds"
+            case sharesAccepted
+            case sharesAcceptedSnake = "shares_accepted"
+            case sAccepted
+            case sharesRejected
+            case sharesRejectedSnake = "shares_rejected"
+            case sRejected
+            case miningPaused
+            case asicPaused = "asic_paused"
+            case paused, shutdown
         }
 
         init(from decoder: any Decoder) throws {
@@ -209,17 +459,21 @@ enum WatchMinerInfoDecoder {
             // A field with the wrong type (string, boolean, ...) is "not reported", not zero.
             func number(_ key: CodingKeys) -> Double? { (try? c.decodeIfPresent(Double.self, forKey: key)) ?? nil }
             func integer(_ key: CodingKeys) -> Int? { (try? c.decodeIfPresent(Int.self, forKey: key)) ?? nil }
-            hashRate = number(.hashRate)
-            power = number(.power)
-            temp = number(.temp)
-            temp2 = number(.temp2)
-            vrTemp = number(.vrTemp)
-            uptimeSeconds = number(.uptimeSeconds)
-            sharesAccepted = integer(.sharesAccepted)
-            sharesRejected = integer(.sharesRejected)
-            if let flag = (try? c.decodeIfPresent(Bool.self, forKey: .miningPaused)) ?? nil {
+            hashRate = number(.hashRate) ?? number(.hashrate) ?? number(.hashrateGhs)
+            power = number(.power) ?? number(.devicePowerW) ?? number(.asicRailPowerW)
+            temp = number(.temp) ?? number(.chiptemp1) ?? number(.asicTempC)
+            temp2 = number(.temp2) ?? number(.chiptemp2)
+            vrTemp = number(.vrTemp) ?? number(.vrTempC)
+            uptimeSeconds = number(.uptimeSeconds) ?? number(.uptimeSecondsSnake)
+            sharesAccepted = integer(.sharesAccepted) ?? integer(.sharesAcceptedSnake) ?? integer(.sAccepted)
+            sharesRejected = integer(.sharesRejected) ?? integer(.sharesRejectedSnake) ?? integer(.sRejected)
+            if let flag = (try? c.decodeIfPresent(Bool.self, forKey: .miningPaused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .asicPaused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .paused))
+                ?? (try? c.decodeIfPresent(Bool.self, forKey: .shutdown)) {
                 miningPaused = flag
-            } else if let value = integer(.miningPaused), value == 0 || value == 1 {
+            } else if let value = integer(.miningPaused) ?? integer(.asicPaused) ?? integer(.paused) ?? integer(.shutdown),
+                      value == 0 || value == 1 {
                 miningPaused = value == 1
             } else {
                 miningPaused = nil
@@ -228,29 +482,48 @@ enum WatchMinerInfoDecoder {
     }
 
     static func reading(from data: Data, minerID: UUID, observedAt: Date) throws -> WatchMinerReading {
-        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else {
-            throw WatchMinerFetchError.invalidResponse
+        if let payload = try? JSONDecoder().decode(Payload.self, from: data) {
+            let temperatures = [payload.temp, payload.temp2].compactMap(validTemperature)
+            let reading = WatchMinerReading(
+                minerID: minerID,
+                observedAt: observedAt,
+                hashrateGHs: payload.hashRate,
+                powerWatts: payload.power,
+                chipTemperatureC: temperatures.max(),
+                vrTemperatureC: validTemperature(payload.vrTemp),
+                uptimeSeconds: payload.uptimeSeconds,
+                acceptedShares: payload.sharesAccepted,
+                rejectedShares: payload.sharesRejected,
+                isMiningPaused: payload.miningPaused
+            )
+            // A page that parses as JSON but has none of the expected metrics is not a miner reading.
+            let hasMetric = reading.hashrateGHs != nil || reading.powerWatts != nil
+                || reading.chipTemperatureC != nil || reading.vrTemperatureC != nil
+                || reading.uptimeSeconds != nil || reading.acceptedShares != nil
+                || reading.rejectedShares != nil || reading.isMiningPaused != nil
+            if hasMetric { return reading }
         }
-        let temperatures = [payload.temp, payload.temp2].compactMap(validTemperature)
-        let reading = WatchMinerReading(
-            minerID: minerID,
-            observedAt: observedAt,
-            hashrateGHs: payload.hashRate,
-            powerWatts: payload.power,
-            chipTemperatureC: temperatures.max(),
-            vrTemperatureC: validTemperature(payload.vrTemp),
-            uptimeSeconds: payload.uptimeSeconds,
-            acceptedShares: payload.sharesAccepted,
-            rejectedShares: payload.sharesRejected,
-            isMiningPaused: payload.miningPaused
-        )
-        // A page that parses as JSON but has none of the expected metrics is not a miner reading.
-        let hasMetric = reading.hashrateGHs != nil || reading.powerWatts != nil
-            || reading.chipTemperatureC != nil || reading.vrTemperatureC != nil
-            || reading.uptimeSeconds != nil || reading.acceptedShares != nil
-            || reading.rejectedShares != nil || reading.isMiningPaused != nil
-        guard hasMetric else { throw WatchMinerFetchError.invalidResponse }
-        return reading
+
+        if let cgminer = try? JSONDecoder().decode(WatchCgminerSummaryPayload.self, from: data),
+           let item = cgminer.summary?.first {
+            let mhs = item.mhs5m ?? item.mhs1m ?? item.mhsAv ?? item.mhs5s
+            let ghs = mhs.map { $0 / 1000.0 }
+            let reading = WatchMinerReading(
+                minerID: minerID,
+                observedAt: observedAt,
+                hashrateGHs: ghs,
+                powerWatts: nil,
+                chipTemperatureC: nil,
+                vrTemperatureC: nil,
+                uptimeSeconds: item.elapsed,
+                acceptedShares: item.accepted,
+                rejectedShares: item.rejected,
+                isMiningPaused: nil
+            )
+            return reading
+        }
+
+        throw WatchMinerFetchError.invalidResponse
     }
 
     /// Negative values and zero are sentinels for "no sensor", and absurdly large values are bad data.

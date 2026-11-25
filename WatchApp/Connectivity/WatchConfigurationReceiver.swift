@@ -11,7 +11,7 @@ final class WatchConfigurationReceiver: NSObject, WCSessionDelegate {
     private(set) var status: String?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var hasStarted = false
-    private static let payloadKey = "app.hashfleet.watch-setup.v1"
+    nonisolated static let payloadKey = "app.hashfleet.watch-setup.v1"
     private static let handledKey = "app.hashfleet.watch.last-handled-setup"
 
     init(defaults: UserDefaults = .standard) {
@@ -44,8 +44,11 @@ final class WatchConfigurationReceiver: NSObject, WCSessionDelegate {
         status = nil
     }
 
-    nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState,
-                            error: (any Error)?) {
+    nonisolated func session(
+        _ session: WCSession,
+        activationDidCompleteWith state: WCSessionActivationState,
+        error: (any Error)?
+    ) {
         guard error == nil, state == .activated else { return }
         Task { @MainActor [weak self] in
             guard let data = WCSession.default.receivedApplicationContext[Self.payloadKey] as? Data else { return }
@@ -55,7 +58,17 @@ final class WatchConfigurationReceiver: NSObject, WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         // Extract the Sendable value before crossing the delegate's executor boundary.
-        guard let data = applicationContext["app.hashfleet.watch-setup.v1"] as? Data else { return }
+        guard let data = applicationContext[Self.payloadKey] as? Data else { return }
+        Task { @MainActor [weak self] in self?.receive(data) }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let data = message[Self.payloadKey] as? Data else { return }
+        Task { @MainActor [weak self] in self?.receive(data) }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let data = userInfo[Self.payloadKey] as? Data else { return }
         Task { @MainActor [weak self] in self?.receive(data) }
     }
 }

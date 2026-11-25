@@ -70,15 +70,23 @@ public enum WatchDiscoveryError: Error, LocalizedError, Sendable, Equatable {
     case invalidPlan
     /// Discovery could not complete for an unexpected reason.
     case failed
+    /// Low Power Mode is active and restricts local Wi-Fi networking.
+    case lowPowerMode
 
     public var errorDescription: String? {
         switch self {
         case .noLocalWiFi:
-            "Connect the Watch to the same Wi-Fi network as your miners to find them automatically."
+            if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                "Low Power Mode is active on your Watch. Turn off Low Power Mode to scan Wi-Fi, or send miners from your iPhone."
+            } else {
+                "Connect the Watch to the same Wi-Fi network as your miners, or send them from your iPhone."
+            }
         case .invalidPlan:
             "This network can't be scanned automatically. Add a miner by its address instead."
         case .failed:
             "Couldn't search the network. Try again."
+        case .lowPowerMode:
+            "Low Power Mode is active on your Watch. Turn off Low Power Mode to scan Wi-Fi, or send miners from your iPhone."
         }
     }
 }

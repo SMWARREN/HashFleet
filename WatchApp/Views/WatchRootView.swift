@@ -39,10 +39,20 @@ struct WatchRootView: View {
         .onChange(of: store?.miners.map(\.id)) { _, _ in
             activity.inventoryDidChange(store: store)
         }
-        .onChange(of: setup.pending?.id) { _, id in
-            if id != nil, demoStore == nil, scenePhase == .active { showsSetup = true }
+        .task {
+            setup.start()
         }
-        .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }) {
+        .onChange(of: setup.pending?.id) { _, id in
+            guard id != nil, let transfer = setup.pending, let store, demoStore == nil else { return }
+            if store.miners.isEmpty {
+                _ = try? store.importMiners(transfer.miners)
+                setup.finish()
+                Task { await store.refresh() }
+            } else if scenePhase == .active {
+                showsSetup = true
+            }
+        }
+        .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }, content: {
             if let transfer = setup.pending, let store, demoStore == nil {
                 WatchSetupInboxView(transfer: transfer, store: store) {
                     setup.finish()
@@ -50,7 +60,7 @@ struct WatchRootView: View {
                     Task { await store.refresh() }
                 }
             }
-        }
+        })
     }
 
     private func navigation(for active: WatchFleetStore) -> some View {
@@ -80,7 +90,15 @@ struct WatchRootView: View {
         activity.update(phase: phase, store: demoStore ?? store, discovery: discovery)
         if scenePhase == .active, demoStore == nil {
             setup.start()
-            showsSetup = setup.pending != nil
+            if let transfer = setup.pending, let store {
+                if store.miners.isEmpty {
+                    _ = try? store.importMiners(transfer.miners)
+                    setup.finish()
+                    Task { await store.refresh() }
+                } else {
+                    showsSetup = true
+                }
+            }
         }
     }
 

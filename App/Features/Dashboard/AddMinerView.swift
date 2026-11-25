@@ -1,5 +1,9 @@
 import SwiftUI
 import HashFleetCore
+#if os(iOS)
+import WatchConnectivity
+import HashFleetWatchCore
+#endif
 
 struct AddMinerView: View {
     let store: FleetStore
@@ -403,6 +407,9 @@ struct AddMinerView: View {
                     name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                     address: address.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
+                #if os(iOS)
+                FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
+                #endif
                 dismiss()
             } catch {
                 validationError = error.localizedDescription
@@ -488,6 +495,7 @@ extension AddMinerView {
             )
             FleetMacNavigationTrace.record("addAll.complete")
             #else
+            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
             dismiss()
             FleetSystemNavigation.request()
             #endif
@@ -532,6 +540,9 @@ extension AddMinerView {
             addedAddresses.insert(candidate.address)
             validationError = nil
             FleetHaptics.light()
+            #if os(iOS)
+            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
+            #endif
         } catch FleetError.duplicate {
             // Already in the fleet from an earlier session. Reflect that rather than erroring.
             addedAddresses.insert(candidate.address)

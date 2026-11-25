@@ -394,7 +394,10 @@ struct DashboardView: View {
         .fleetUnadornedToolbarBackground()
     }
 
-    private var dashboardSettingsMenu: some View {
+}
+
+extension DashboardView {
+    var dashboardSettingsMenu: some View {
         Menu {
             Button {
                 searchIsFocused = false
@@ -432,13 +435,26 @@ struct DashboardView: View {
                 .accessibilityIdentifier("dashboard.deleteAllMiners")
             }
             Divider()
-            Button {
-                store.preferences.appearance = colorScheme == .dark ? .light : .dark
-                appearanceToggle += 1
+            Menu {
+                Button {
+                    store.preferences.appearance = .system
+                } label: {
+                    Label("System (Auto)", systemImage: store.preferences.appearance == .system ? "checkmark" : "circle")
+                }
+                Button {
+                    store.preferences.appearance = .light
+                } label: {
+                    Label("Light Mode", systemImage: store.preferences.appearance == .light ? "checkmark" : "sun.max")
+                }
+                Button {
+                    store.preferences.appearance = .dark
+                } label: {
+                    Label("Dark Mode", systemImage: store.preferences.appearance == .dark ? "checkmark" : "moon")
+                }
             } label: {
                 Label(
-                    colorScheme == .dark ? "Switch to light mode" : "Switch to dark mode",
-                    systemImage: colorScheme == .dark ? "sun.max" : "moon"
+                    "Appearance: \(store.preferences.appearance.title)",
+                    systemImage: store.preferences.appearance == .system ? "circle.righthalf.filled" : (colorScheme == .dark ? "moon" : "sun.max")
                 )
             }
         } label: {
@@ -459,7 +475,7 @@ struct DashboardView: View {
         .accessibilityIdentifier("dashboard.settingsMenu")
     }
 
-    private var dashboardAddButton: some View {
+    var dashboardAddButton: some View {
         Button {
             searchIsFocused = false
             showingAddMiner = true

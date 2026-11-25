@@ -472,6 +472,7 @@
 		750426F7C9FC24B6940B375B /* MinerCustomJSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA04387A262F6EE408BEF0C /* MinerCustomJSONTests.swift */; };
 		7512FB8F422670B57B4815D0 /* FleetTabBarAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FD45D62DB49046A23974E51 /* FleetTabBarAppearance.swift */; };
 		753D5361C534CD153CB883F7 /* FleetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED59896995EB8112EC60440 /* FleetWidget.swift */; };
+		755051B592F612E4BAA1922B /* HashFleetWidgetAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B33006725784A0C0B97049B3 /* HashFleetWidgetAssets.xcassets */; };
 		759315AF7EF56292294E5B96 /* FleetWidgetRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BF9BD9105BA2114286B90C /* FleetWidgetRefresh.swift */; };
 		7611E40FA3F960BCDD019C16 /* HashFleetWatchCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6825ED3640F4766A41A81F42 /* HashFleetWatchCore */; };
 		762F68E52647261CA08BBD1F /* FleetNotificationDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCBCB455D6463893675F72A1 /* FleetNotificationDelivery.swift */; };
@@ -2986,6 +2987,7 @@
 			buildConfigurationList = 1E8E9DF5A7F36B0B20D4FEF6 /* Build configuration list for PBXNativeTarget "HashFleetWatchWidgets" */;
 			buildPhases = (
 				AF0661DEA4CB06751D422DBF /* Sources */,
+				655B1159B42ED2C4D222772F /* Resources */,
 			);
 			buildRules = (
 			);
@@ -3321,6 +3323,14 @@
 				2496548AD4875FD62FDDC476 /* HashFleetWidgetAssets.xcassets in Resources */,
 				11276902FF55165A1864E163 /* LaunchScreen.storyboard in Resources */,
 				ECEDC584563E07EFC34A29B3 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		655B1159B42ED2C4D222772F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				755051B592F612E4BAA1922B /* HashFleetWidgetAssets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4537,14 +4547,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/HashFleet.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -4557,7 +4567,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4565,7 +4575,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp.widgets;
 				PRODUCT_NAME = HashFleetWatchWidgets;
 				SDKROOT = watchos;
@@ -4579,7 +4589,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = NotificationService/Resources/NotificationService.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotificationService/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4587,7 +4597,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.hashfleet.notification-service";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -4627,7 +4637,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = FleetMacAccent;
 				CODE_SIGN_ENTITLEMENTS = MacApp/Resources/HashFleet.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MacApp/Resources/Info.plist;
@@ -4635,7 +4645,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
@@ -4653,7 +4663,7 @@
 				CODE_SIGN_ENTITLEMENTS = MacMenuBar/Resources/HashFleetMenuBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMenuBar/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hash Fleet Menu Bar";
@@ -4662,7 +4672,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.menubar;
 				PRODUCT_NAME = "Hash Fleet Menu Bar";
 				SDKROOT = macosx;
@@ -4692,7 +4702,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Widgets/Resources/HashFleetWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Widgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4700,7 +4710,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -4712,7 +4722,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4720,7 +4730,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp.widgets;
 				PRODUCT_NAME = HashFleetWatchWidgets;
 				SDKROOT = watchos;
@@ -4734,7 +4744,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Widgets/Resources/HashFleetWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Widgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4742,7 +4752,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -4757,7 +4767,7 @@
 				CODE_SIGN_ENTITLEMENTS = MacMenuBar/Resources/HashFleetMenuBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMenuBar/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hash Fleet Menu Bar";
@@ -4766,7 +4776,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.menubar;
 				PRODUCT_NAME = "Hash Fleet Menu Bar";
 				SDKROOT = macosx;
@@ -4857,14 +4867,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/HashFleetNoAppPush.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -4902,10 +4912,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchApp/Resources/Info.plist;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp;
 				PRODUCT_MODULE_NAME = HashFleetWatch;
 				PRODUCT_NAME = "Hash Fleet Watch";
@@ -5046,7 +5056,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5054,7 +5064,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp.widgets;
 				PRODUCT_NAME = HashFleetWatchWidgets;
 				SDKROOT = watchos;
@@ -5125,10 +5135,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchApp/Resources/Info.plist;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp;
 				PRODUCT_MODULE_NAME = HashFleetWatch;
 				PRODUCT_NAME = "Hash Fleet Watch";
@@ -5145,7 +5155,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = FleetMacAccent;
 				CODE_SIGN_ENTITLEMENTS = MacApp/Resources/HashFleet.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MacApp/Resources/Info.plist;
@@ -5153,7 +5163,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
@@ -5169,7 +5179,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = NotificationService/Resources/NotificationService.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotificationService/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5177,7 +5187,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.hashfleet.notification-service";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -5189,10 +5199,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchApp/Resources/Info.plist;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp;
 				PRODUCT_MODULE_NAME = HashFleetWatch;
 				PRODUCT_NAME = "Hash Fleet Watch";
@@ -5265,10 +5275,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchApp/Resources/Info.plist;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp;
 				PRODUCT_MODULE_NAME = HashFleetWatch;
 				PRODUCT_NAME = "Hash Fleet Watch";
@@ -5301,7 +5311,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Widgets/Resources/HashFleetWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Widgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5309,7 +5319,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -5321,7 +5331,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchWidgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5329,7 +5339,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.watchkitapp.widgets;
 				PRODUCT_NAME = HashFleetWatchWidgets;
 				SDKROOT = watchos;
@@ -5363,7 +5373,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = FleetMacAccent;
 				CODE_SIGN_ENTITLEMENTS = MacApp/Resources/HashFleet.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MacApp/Resources/Info.plist;
@@ -5371,7 +5381,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
@@ -5448,14 +5458,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/HashFleet.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -5503,7 +5513,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = NotificationService/Resources/NotificationService.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotificationService/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5511,7 +5521,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.hashfleet.notification-service";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -5560,7 +5570,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = FleetMacAccent;
 				CODE_SIGN_ENTITLEMENTS = MacApp/Resources/HashFleet.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MacApp/Resources/Info.plist;
@@ -5568,7 +5578,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
@@ -5586,7 +5596,7 @@
 				CODE_SIGN_ENTITLEMENTS = MacMenuBar/Resources/HashFleetMenuBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMenuBar/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hash Fleet Menu Bar";
@@ -5595,7 +5605,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.menubar;
 				PRODUCT_NAME = "Hash Fleet Menu Bar";
 				SDKROOT = macosx;
@@ -5609,7 +5619,7 @@
 				CODE_SIGN_ENTITLEMENTS = MacMenuBar/Resources/HashFleetMenuBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMenuBar/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hash Fleet Menu Bar";
@@ -5618,7 +5628,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.menubar;
 				PRODUCT_NAME = "Hash Fleet Menu Bar";
 				SDKROOT = macosx;
@@ -5740,14 +5750,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/HashFleetNoAppPush.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -5761,7 +5771,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = NotificationService/Resources/NotificationService.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotificationService/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5769,7 +5779,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "app.hashfleet.notification-service";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -5893,7 +5903,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Widgets/Resources/HashFleetWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 30;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Widgets/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -5901,7 +5911,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;

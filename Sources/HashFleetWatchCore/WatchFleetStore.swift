@@ -162,6 +162,17 @@ public final class WatchFleetStore {
         storageError = nil
     }
 
+    /// Removes all miners and cached readings from this Watch only.
+    public func removeAllMiners() throws {
+        guard !isDemo else { throw WatchFleetStoreError.demoIsReadOnly }
+        try persist(miners: [], readings: [:])
+        miners = []
+        readings = [:]
+        failures = [:]
+        storageError = nil
+        UserDefaults.standard.removeObject(forKey: "app.hashfleet.watch.last-handled-setup")
+    }
+
     /// Appends miners whose endpoint is not already present and returns how many were added.
     ///
     /// Existing entries and cached readings are untouched. An incoming identifier that collides with a different

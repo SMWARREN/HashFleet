@@ -29,15 +29,30 @@ struct WatchDiscoverySection: View {
                 Button("Stop search", systemImage: "stop.circle") { discovery.cancel() }
                     .accessibilityIdentifier("watch.discovery.stop")
             } else {
+                if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                    Label("Low Power Mode limits Wi-Fi. Turn it off in Control Center to scan.", systemImage: "battery.25")
+                        .font(.footnote)
+                        .foregroundStyle(Color.hashCaution)
+                }
+
                 Button("Scan for miners", systemImage: "wifi") { discovery.start(store: store) }
                     .accessibilityIdentifier("watch.discovery.scan")
                     .accessibilityHint("Finds and saves compatible miners on the Watch’s local Wi-Fi. Miner settings are never changed.")
 
                 if let message = discovery.message {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(discovery.addedCount == nil ? .secondary : Color.hashGold)
-                        .accessibilityIdentifier("watch.discovery.result")
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: discovery.addedCount == nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(discovery.addedCount == nil ? Color.hashCaution : Color.hashGold)
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(Color.primary)
+                    }
+                    .padding(8)
+                    .background(
+                        (discovery.addedCount == nil ? Color.hashCaution : Color.hashGold).opacity(0.15),
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
+                    .accessibilityIdentifier("watch.discovery.result")
                 }
             }
 
