@@ -107,7 +107,7 @@ struct MinerSettingsView: View {
 
     var usesCompactSettingsHubPreview: Bool {
         #if os(macOS)
-        store.preferences.dashboardMode == .essentials && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
+        !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig
         #else
         (store.isDemo ? NumberFirstPreview.settingsHub : NumberFirstPreview.usesLivePhoneLayouts)
             && horizontalSizeClass == .compact && !store.isPoolIconDemo && !guidedDemo && device.kind != .xmrig

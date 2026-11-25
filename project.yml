@@ -45,8 +45,10 @@ schemes:
         HashFleetMac: all
     run:
       config: Debug
+      storeKitConfiguration: HashFleet.storekit
     test:
       config: Debug
+      storeKitConfiguration: HashFleet.storekit
       targets:
         - HashFleetMacTests
         - HashFleetAppMacTests
@@ -112,7 +114,7 @@ targets:
       - package: LucideSwift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet.mac
+        PRODUCT_BUNDLE_IDENTIFIER: app.hashfleet
         PRODUCT_NAME: Hash Fleet
         PRODUCT_MODULE_NAME: HashFleetMac
         # Mac App Store target. Direct-distribution flag removed.
