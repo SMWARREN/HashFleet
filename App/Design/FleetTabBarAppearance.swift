@@ -21,8 +21,18 @@ enum FleetTabBarAppearance {
         appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
         // The canvas already provides the page colour. A faint wash keeps the capsule legible over
         // scrolled content without turning into an opaque slab.
-        appearance.backgroundColor = UIColor(FleetTheme.canvas).withAlphaComponent(0.55)
-        appearance.shadowColor = UIColor(FleetTheme.separator).withAlphaComponent(0.35)
+        let canvasColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 2 / 255, green: 9 / 255, blue: 12 / 255, alpha: 1)
+                : UIColor(red: 1, green: 1, blue: 1, alpha: 1)
+        }
+        let separatorColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 39 / 255, green: 52 / 255, blue: 58 / 255, alpha: 1)
+                : UIColor(red: 204 / 255, green: 204 / 255, blue: 204 / 255, alpha: 1)
+        }
+        appearance.backgroundColor = canvasColor.withAlphaComponent(0.55)
+        appearance.shadowColor = separatorColor.withAlphaComponent(0.35)
 
         for item in [appearance.stackedLayoutAppearance,
                      appearance.inlineLayoutAppearance,
@@ -35,8 +45,16 @@ enum FleetTabBarAppearance {
     }
 
     private static func style(_ item: UITabBarItemAppearance) {
-        let accent = UIColor(FleetTheme.accent)
-        let idle = UIColor(FleetTheme.secondary)
+        let accent = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 245 / 255, green: 172 / 255, blue: 38 / 255, alpha: 1)
+                : UIColor(red: 138 / 255, green: 80 / 255, blue: 0, alpha: 1)
+        }
+        let idle = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 191 / 255, green: 198 / 255, blue: 204 / 255, alpha: 1)
+                : UIColor(red: 89 / 255, green: 89 / 255, blue: 89 / 255, alpha: 1)
+        }
 
         item.normal.iconColor = idle
         item.normal.titleTextAttributes = [

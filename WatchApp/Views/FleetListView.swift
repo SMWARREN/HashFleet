@@ -6,6 +6,7 @@ struct FleetListView: View {
     let discovery: WatchMinerDiscoveryController
     var onEnterDemo: () -> Void
     var onExitDemo: () -> Void
+    @State private var showsDeleteAllConfirmation = false
 
     var body: some View {
         List {
@@ -63,6 +64,21 @@ struct FleetListView: View {
         .accessibilityIdentifier("watch.fleet")
         .navigationTitle("Hash Fleet")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Delete all miners from this Watch?",
+            isPresented: $showsDeleteAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete all (\(store.miners.count))", role: .destructive) {
+                #if canImport(WatchKit)
+                WKInterfaceDevice.current().play(.directionDown)
+                #endif
+                try? store.removeAllMiners()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes them from this Watch only. Hardware and iPhone fleet are unchanged.")
+        }
     }
 
     private var hasFailures: Bool {
@@ -116,6 +132,14 @@ struct FleetListView: View {
                     .accessibilityHint("Reads each miner over Wi-Fi. Nothing on a miner is changed.")
 
                     addMinerLink
+
+                    Button(role: .destructive) {
+                        showsDeleteAllConfirmation = true
+                    } label: {
+                        Label("Delete all miners", systemImage: "trash")
+                            .foregroundStyle(.red)
+                    }
+                    .accessibilityIdentifier("watch.deleteAllMiners")
                 }
 
                 Button("Try demo", systemImage: "play.circle", action: onEnterDemo)
