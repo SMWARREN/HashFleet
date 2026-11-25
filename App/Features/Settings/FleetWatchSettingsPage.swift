@@ -5,7 +5,7 @@ import HashFleetWatchCore
 
 struct FleetWatchSettingsPage: View {
     let store: FleetStore
-    @State private var setup = FleetWatchSetupCoordinator.shared
+    private var setup: FleetWatchSetupCoordinator { FleetWatchSetupCoordinator.shared }
 
     private var activeDevices: [MinerDevice] {
         store.isDemo ? store.savedDevices : store.devices
@@ -55,7 +55,7 @@ struct FleetWatchSettingsPage: View {
                     } label: {
                         Label("Send \(eligibleMiners.count) miners to Watch", systemImage: "applewatch")
                     }
-                    .disabled(!setup.canSend || eligibleMiners.isEmpty || eligibleMiners.count > 16)
+                    .disabled(eligibleMiners.isEmpty || eligibleMiners.count > 16)
                     .accessibilityIdentifier("monitoring.watch.send")
                 }
                 Text(setup.status)

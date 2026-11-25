@@ -186,7 +186,39 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         transport: WatchHTTPTransport,
         policy: WatchDiscoveryPolicy
     ) async throws -> WatchMiner? {
-        guard let url = URL(string: "http://\(address):80/api/system/info") else { return nil }
+        // 1. Standard AxeOS path (/api/system/info)
+        if let miner = await probeHTTP(address: address, path: "/api/system/info", transport: transport, policy: policy) {
+            return miner
+        }
+        // 2. Alternative paths (/api/status, /api/telemetry)
+        for path in ["/api/status", "/api/telemetry"] {
+            if let miner = await probeHTTP(address: address, path: path, transport: transport, policy: policy) {
+                return miner
+            }
+        }
+        // 3. cgminer port 4028 (Avalon Nano 3/3s, etc.)
+        #if canImport(Darwin)
+        let timeout = min(policy.requestTimeout, 1.0)
+        if let cgData = try? await WatchMinerHTTPClient.queryCgminer(
+            host: address, port: 4028, command: "version", timeout: timeout
+        ),
+           let version = try? JSONDecoder().decode(WatchCgminerVersionPayload.self, from: cgData),
+           let vItem = version.version?.first {
+            let name = vItem.prod ?? vItem.model ?? "Avalon Miner"
+            return try? WatchMiner(name: name, address: "http://\(address):4028")
+        }
+        #endif
+
+        return nil
+    }
+
+    private static func probeHTTP(
+        address: String,
+        path: String,
+        transport: WatchHTTPTransport,
+        policy: WatchDiscoveryPolicy
+    ) async -> WatchMiner? {
+        guard let url = URL(string: "http://\(address):80\(path)") else { return nil }
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
@@ -197,15 +229,10 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
             let (data, http) = try await transport.load(request, deadline: policy.perHostDeadline)
-            // Discovery auto-adds, so be strict: exactly 200 and a JSON content type (or none).
             guard http.statusCode == 200, contentTypeAcceptable(http) else { return nil }
-            guard let name = WatchDiscoveryIdentification.minerName(from: data) else { return nil }
-            // The discovered endpoint is re-validated as a private local endpoint before it can ever be added.
+            guard let name = WatchDiscoveryIdentification.minerName(from: data, path: path) else { return nil }
             return try? WatchMiner(name: name, address: "http://\(address)")
-        } catch is CancellationError {
-            throw CancellationError()
         } catch {
-            if Task.isCancelled { throw CancellationError() }
             return nil
         }
     }
@@ -223,5 +250,20 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         // Require a non-empty subtype between "application/" and "+json".
         let subtype = mime.dropFirst("application/".count).dropLast("+json".count)
         return !subtype.isEmpty
+    }
+}
+
+private struct WatchCgminerVersionPayload: Decodable {
+    struct Item: Decodable {
+        let prod: String?
+        let model: String?
+        enum CodingKeys: String, CodingKey {
+            case prod = "PROD"
+            case model = "MODEL"
+        }
+    }
+    let version: [Item]?
+    enum CodingKeys: String, CodingKey {
+        case version = "VERSION"
     }
 }

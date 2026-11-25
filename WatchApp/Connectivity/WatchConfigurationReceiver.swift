@@ -44,8 +44,11 @@ final class WatchConfigurationReceiver: NSObject, WCSessionDelegate {
         status = nil
     }
 
-    nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState,
-                            error: (any Error)?) {
+    nonisolated func session(
+        _ session: WCSession,
+        activationDidCompleteWith state: WCSessionActivationState,
+        error: (any Error)?
+    ) {
         guard error == nil, state == .activated else { return }
         Task { @MainActor [weak self] in
             guard let data = WCSession.default.receivedApplicationContext[Self.payloadKey] as? Data else { return }

@@ -29,7 +29,8 @@ enum WatchDiscoveryIdentification {
             // AxeOS reports `ASICModel`; accept lowercase and alternative board/model keys defensively.
             case asicModelUpper = "ASICModel"
             case asicModelLower = "asicModel"
-            case deviceModel, board, boardVersion, model, miner_name, name
+            case deviceModel, board, boardVersion, model, name
+            case minerName = "miner_name"
             case hostname, fullHostname, mdnsHostname, deviceName
         }
 
@@ -38,7 +39,7 @@ enum WatchDiscoveryIdentification {
             func string(_ key: CodingKeys) -> String? { (try? c.decodeIfPresent(String.self, forKey: key)) ?? nil }
             asicModel = string(.asicModelUpper) ?? string(.asicModelLower)
                 ?? string(.deviceModel) ?? string(.board) ?? string(.boardVersion) ?? string(.model)
-            hostname = string(.hostname) ?? string(.miner_name) ?? string(.name)
+            hostname = string(.hostname) ?? string(.minerName) ?? string(.name)
             fullHostname = string(.fullHostname)
             mdnsHostname = string(.mdnsHostname)
             deviceName = string(.deviceName)
@@ -49,14 +50,26 @@ enum WatchDiscoveryIdentification {
     ///
     /// The caller is responsible for status/content-type/transport checks; this inspects the decoded body only.
     static func minerName(from data: Data) -> String? {
-        guard let identity = try? JSONDecoder().decode(Identity.self, from: data) else { return nil }
-        guard isValidASICModel(identity.asicModel) else { return nil }
+        minerName(from: data, path: "/api/system/info")
+    }
+
+    static func minerName(from data: Data, path: String) -> String? {
         // Reuse the exact telemetry gate: at least one valid metric must be present.
         guard (try? WatchMinerInfoDecoder.reading(from: data, minerID: UUID(), observedAt: Date())) != nil else {
             return nil
         }
-        for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
-            if let safe = sanitizedName(candidate) { return safe }
+        if let identity = try? JSONDecoder().decode(Identity.self, from: data) {
+            for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
+                if let safe = sanitizedName(candidate) { return safe }
+            }
+            if let model = sanitizedName(identity.asicModel) {
+                return model
+            }
+        }
+        if path == "/api/telemetry" {
+            return "Harlo-OS Miner"
+        } else if path == "/api/status" {
+            return "AxeForge Miner"
         }
         return fallbackName
     }

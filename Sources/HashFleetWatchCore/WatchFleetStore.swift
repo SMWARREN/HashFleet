@@ -170,6 +170,7 @@ public final class WatchFleetStore {
         readings = [:]
         failures = [:]
         storageError = nil
+        UserDefaults.standard.removeObject(forKey: "app.hashfleet.watch.last-handled-setup")
     }
 
     /// Appends miners whose endpoint is not already present and returns how many were added.

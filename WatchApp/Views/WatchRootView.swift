@@ -52,7 +52,7 @@ struct WatchRootView: View {
                 showsSetup = true
             }
         }
-        .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }) {
+        .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }, content: {
             if let transfer = setup.pending, let store, demoStore == nil {
                 WatchSetupInboxView(transfer: transfer, store: store) {
                     setup.finish()
@@ -60,7 +60,7 @@ struct WatchRootView: View {
                     Task { await store.refresh() }
                 }
             }
-        }
+        })
     }
 
     private func navigation(for active: WatchFleetStore) -> some View {
