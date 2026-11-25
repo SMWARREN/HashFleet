@@ -125,7 +125,10 @@ struct WatchHTTPTransport: Sendable {
 /// Direct, read-only HTTP client. It issues only `GET /api/system/info`, never follows redirects, never stores
 /// cookies, caches or credentials, and bounds time and response size. Raw response data is never persisted.
 public struct WatchMinerHTTPClient: WatchMinerReadingClient {
-    public static let path = "/api/system/info"
+    public static let defaultPath = "/api/system/info"
+    public static let fallbackPaths = ["/api/telemetry", "/api/status", "/probe"]
+    public static let path = defaultPath
+
     public static let maximumResponseBytes = 256 * 1024
     public static let requestTimeout: TimeInterval = 5
     public static let overallTimeout: TimeInterval = 10
@@ -149,7 +152,11 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
         WatchSecureHTTP.ephemeralSession(requestTimeout: requestTimeout, resourceTimeout: overallTimeout)
     }
 
-    static func request(for miner: WatchMiner) throws -> URLRequest {
+    public static func request(for miner: WatchMiner) throws -> URLRequest {
+        try request(for: miner, path: defaultPath)
+    }
+
+    public static func request(for miner: WatchMiner, path: String) throws -> URLRequest {
         // Revalidate: the address must still be a safe local endpoint.
         guard let endpoint = try? WatchEndpoint.normalize(miner.address),
               let url = URL(string: endpoint.description + path)
@@ -166,11 +173,114 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
     }
 
     public func fetch(_ miner: WatchMiner) async throws -> WatchMinerReading {
-        let request = try Self.request(for: miner)
-        let (data, _) = try await transport.load(request, deadline: Self.overallTimeout)
-        try Task.checkCancellation()
-        return try WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now())
+        let initialRequest = try Self.request(for: miner, path: Self.defaultPath)
+        do {
+            let (data, _) = try await transport.load(initialRequest, deadline: Self.overallTimeout)
+            try Task.checkCancellation()
+            return try WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now())
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+
+            #if canImport(Darwin)
+            if let endpoint = try? WatchEndpoint.normalize(miner.address), endpoint.port == 4028 {
+                if let cgData = try? await Self.queryCgminer(host: endpoint.host, port: 4028, timeout: Self.requestTimeout),
+                   let cgReading = try? WatchMinerInfoDecoder.reading(from: cgData, minerID: miner.id, observedAt: now()) {
+                    return cgReading
+                }
+            }
+            #endif
+
+            for fallbackPath in Self.fallbackPaths {
+                guard let fallbackReq = try? Self.request(for: miner, path: fallbackPath) else { continue }
+                if let (data, _) = try? await transport.load(fallbackReq, deadline: Self.overallTimeout),
+                   let reading = try? WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now()) {
+                    return reading
+                }
+            }
+            throw error
+        }
     }
+
+    #if canImport(Darwin)
+    static func queryCgminer(host: String, port: Int, timeout: TimeInterval) async throws -> Data {
+        let cleanHost = host.hasPrefix("[") && host.hasSuffix("]")
+            ? String(host.dropFirst().dropLast())
+            : host
+        guard !cleanHost.isEmpty, (1...65_535).contains(port) else {
+            throw WatchMinerFetchError.invalidEndpoint
+        }
+        var hints = addrinfo()
+        hints.ai_family = AF_UNSPEC
+        hints.ai_socktype = SOCK_STREAM
+        hints.ai_protocol = IPPROTO_TCP
+        var res: UnsafeMutablePointer<addrinfo>?
+        let status = getaddrinfo(cleanHost, String(port), &hints, &res)
+        guard status == 0, let first = res else {
+            throw WatchMinerFetchError.unreachable
+        }
+        defer { freeaddrinfo(first) }
+
+        var cursor: UnsafeMutablePointer<addrinfo>? = first
+        while let info = cursor {
+            defer { cursor = info.pointee.ai_next }
+            let fd = Darwin.socket(info.pointee.ai_family, info.pointee.ai_socktype, info.pointee.ai_protocol)
+            guard fd >= 0 else { continue }
+
+            var noSigPipe: Int32 = 1
+            _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+
+            let flags = fcntl(fd, F_GETFL, 0)
+            _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
+
+            let connectRes = Darwin.connect(fd, info.pointee.ai_addr, info.pointee.ai_addrlen)
+            var connected = connectRes == 0
+            if !connected && errno == EINPROGRESS {
+                var pfd = pollfd(fd: fd, events: Int16(POLLOUT), revents: 0)
+                let pollTimeoutMs = Int32(max(1, Int(timeout * 1000)))
+                let pollRes = poll(&pfd, 1, pollTimeoutMs)
+                if pollRes > 0 && (pfd.revents & Int16(POLLOUT)) != 0 {
+                    var sockErr: Int32 = 0
+                    var errLen = socklen_t(MemoryLayout<Int32>.size)
+                    getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockErr, &errLen)
+                    if sockErr == 0 { connected = true }
+                }
+            }
+            guard connected else {
+                Darwin.close(fd)
+                continue
+            }
+
+            defer { Darwin.close(fd) }
+            _ = fcntl(fd, F_SETFL, flags)
+
+            let cmd = Data("{\"command\":\"summary\"}\n".utf8)
+            let written = cmd.withUnsafeBytes { Darwin.write(fd, $0.baseAddress, cmd.count) }
+            guard written == cmd.count else { throw WatchMinerFetchError.unreachable }
+
+            var responseData = Data()
+            var buffer = [UInt8](repeating: 0, count: 4096)
+            let readDeadline = Date().addingTimeInterval(timeout)
+            while Date() < readDeadline {
+                var pfd = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+                let remainingMs = Int32(max(1, Int(readDeadline.timeIntervalSinceNow * 1000)))
+                let pollRes = poll(&pfd, 1, remainingMs)
+                guard pollRes > 0, (pfd.revents & Int16(POLLIN)) != 0 else { break }
+                let bytesRead = Darwin.read(fd, &buffer, buffer.count)
+                guard bytesRead > 0 else { break }
+                let slice = buffer.prefix(bytesRead)
+                if let nullIdx = slice.firstIndex(of: 0) {
+                    responseData.append(Data(slice[..<nullIdx]))
+                    break
+                } else {
+                    responseData.append(Data(slice))
+                }
+            }
+            guard !responseData.isEmpty else { throw WatchMinerFetchError.invalidResponse }
+            return responseData
+        }
+        throw WatchMinerFetchError.unreachable
+    }
+    #endif
 }
 
 /// Refuses every redirect so a miner (or anything impersonating it) can't steer the Watch elsewhere.

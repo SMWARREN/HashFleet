@@ -1,5 +1,9 @@
 import SwiftUI
 import HashFleetCore
+#if os(iOS)
+import WatchConnectivity
+import HashFleetWatchCore
+#endif
 
 struct AddMinerView: View {
     let store: FleetStore
@@ -481,6 +485,15 @@ extension AddMinerView {
         if result.failures.isEmpty {
             discoveryAddError = nil
             FleetHaptics.success()
+            #if os(iOS)
+            if WCSession.isSupported() && WCSession.default.isPaired {
+                FleetWatchSetupCoordinator.shared.start()
+                let eligible = FleetWatchSetupSelection(devices: store.devices, isDemo: store.isDemo).miners
+                if !eligible.isEmpty {
+                    FleetWatchSetupCoordinator.shared.send(eligible)
+                }
+            }
+            #endif
             #if os(macOS)
             FleetMacNavigationTrace.record("addAll.workspaceCompletion")
             AddMinerMultiSelection.completeInWorkspace(
