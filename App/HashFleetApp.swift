@@ -76,13 +76,8 @@ struct HashFleetApp: App {
         } else {
             defaults = .standard
         }
-        let initialStore = FleetStore(defaults: defaults,
-            hardwareControlGate: isTesting ? nil : .shared)
-        if !isTesting {
-            // When first opened, always go by the system color
-            initialStore.preferences.appearance = .system
-        }
-        _store = State(initialValue: initialStore)
+        _store = State(initialValue: FleetStore(defaults: defaults,
+            hardwareControlGate: isTesting ? nil : .shared))
         // Applied before the debug acceptance shortcut below so every launch path is styled.
         MainActor.assumeIsolated {
             FleetTabBarAppearance.apply()
