@@ -39,8 +39,18 @@ struct WatchRootView: View {
         .onChange(of: store?.miners.map(\.id)) { _, _ in
             activity.inventoryDidChange(store: store)
         }
+        .task {
+            setup.start()
+        }
         .onChange(of: setup.pending?.id) { _, id in
-            if id != nil, demoStore == nil, scenePhase == .active { showsSetup = true }
+            guard id != nil, let transfer = setup.pending, let store, demoStore == nil else { return }
+            if store.miners.isEmpty {
+                _ = try? store.importMiners(transfer.miners)
+                setup.finish()
+                Task { await store.refresh() }
+            } else if scenePhase == .active {
+                showsSetup = true
+            }
         }
         .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }) {
             if let transfer = setup.pending, let store, demoStore == nil {
@@ -80,7 +90,15 @@ struct WatchRootView: View {
         activity.update(phase: phase, store: demoStore ?? store, discovery: discovery)
         if scenePhase == .active, demoStore == nil {
             setup.start()
-            showsSetup = setup.pending != nil
+            if let transfer = setup.pending, let store {
+                if store.miners.isEmpty {
+                    _ = try? store.importMiners(transfer.miners)
+                    setup.finish()
+                    Task { await store.refresh() }
+                } else {
+                    showsSetup = true
+                }
+            }
         }
     }
 

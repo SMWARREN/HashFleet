@@ -407,6 +407,9 @@ struct AddMinerView: View {
                     name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                     address: address.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
+                #if os(iOS)
+                FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
+                #endif
                 dismiss()
             } catch {
                 validationError = error.localizedDescription
@@ -486,13 +489,7 @@ extension AddMinerView {
             discoveryAddError = nil
             FleetHaptics.success()
             #if os(iOS)
-            if WCSession.isSupported() && WCSession.default.isPaired {
-                FleetWatchSetupCoordinator.shared.start()
-                let eligible = FleetWatchSetupSelection(devices: store.devices, isDemo: store.isDemo).miners
-                if !eligible.isEmpty {
-                    FleetWatchSetupCoordinator.shared.send(eligible)
-                }
-            }
+            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
             #endif
             #if os(macOS)
             FleetMacNavigationTrace.record("addAll.workspaceCompletion")
@@ -545,6 +542,9 @@ extension AddMinerView {
             addedAddresses.insert(candidate.address)
             validationError = nil
             FleetHaptics.light()
+            #if os(iOS)
+            FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
+            #endif
         } catch FleetError.duplicate {
             // Already in the fleet from an earlier session. Reflect that rather than erroring.
             addedAddresses.insert(candidate.address)

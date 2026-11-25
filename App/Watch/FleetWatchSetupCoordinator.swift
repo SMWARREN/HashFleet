@@ -12,9 +12,17 @@ final class FleetWatchSetupCoordinator: NSObject, WCSessionDelegate {
     static let shared = FleetWatchSetupCoordinator()
     static let payloadKey = "app.hashfleet.watch-setup.v1"
 
+    static func syncIfPossible(devices: [MinerDevice], isDemo: Bool) {
+        guard WCSession.isSupported() else { return }
+        let eligible = FleetWatchSetupSelection(devices: devices, isDemo: isDemo).miners
+        guard !eligible.isEmpty else { return }
+        shared.send(eligible)
+    }
+
     private(set) var canSend = false
     private(set) var status = "Checking Apple Watch…"
     @ObservationIgnored private var hasStarted = false
+    @ObservationIgnored private var pendingMiners: [WatchMiner]?
 
     func start() {
         guard !hasStarted else { return }
@@ -33,14 +41,29 @@ final class FleetWatchSetupCoordinator: NSObject, WCSessionDelegate {
     }
 
     func send(_ miners: [WatchMiner]) {
-        guard canSend else { return }
+        start()
+        guard WCSession.isSupported() else { return }
+        guard canSend else {
+            pendingMiners = miners
+            return
+        }
+        dispatchTransfer(miners)
+    }
+
+    private func dispatchTransfer(_ miners: [WatchMiner]) {
+        guard !miners.isEmpty else { return }
+        let session = WCSession.default
         do {
             let transfer = try WatchFleetSetupTransfer(miners: miners)
             let data = try JSONEncoder().encode(transfer)
-            try WCSession.default.updateApplicationContext([Self.payloadKey: data])
-            status = "Setup queued for your Watch. Open Hash Fleet there and confirm Import. Your existing Watch miners are kept."
+            try? session.updateApplicationContext([Self.payloadKey: data])
+            if session.isReachable {
+                session.sendMessage([Self.payloadKey: data], replyHandler: nil, errorHandler: nil)
+            }
+            session.transferUserInfo([Self.payloadKey: data])
+            status = "Setup sent to your Watch."
         } catch {
-            status = "Setup could not be queued. Check the Watch connection and try again."
+            status = "Setup could not be queued."
         }
     }
 
@@ -53,6 +76,10 @@ final class FleetWatchSetupCoordinator: NSObject, WCSessionDelegate {
             status = "Install Hash Fleet from the Watch app on your iPhone, then return here."
         } else if canSend {
             status = "Ready. Only miner names and local addresses are sent, never credentials or readings."
+            if let pending = pendingMiners {
+                pendingMiners = nil
+                dispatchTransfer(pending)
+            }
         } else {
             status = "Waiting for the Watch connection. You can also add miners directly on the Watch."
         }

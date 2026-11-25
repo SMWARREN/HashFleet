@@ -95,6 +95,9 @@ struct HashFleetApp: App {
             refreshStorage: isTesting ? .init(directory: nil) : .shared,
             isTesting: isTesting))
         if !isTesting {
+            #if os(iOS)
+            FleetWatchSetupCoordinator.shared.start()
+            #endif
             FleetLocalNotifications.setup()
             FleetBackgroundRefresh.register()
             FleetBackgroundRefresh.schedule()

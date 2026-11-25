@@ -69,6 +69,9 @@ extension AddMinerView {
         return Button {
             if remaining == 0 && !addedAddresses.isEmpty {
                 FleetHaptics.success()
+                #if os(iOS)
+                FleetWatchSetupCoordinator.syncIfPossible(devices: store.devices, isDemo: store.isDemo)
+                #endif
                 dismiss()
             } else if remaining > 0 {
                 FleetHaptics.medium()
