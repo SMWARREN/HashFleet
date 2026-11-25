@@ -43,6 +43,7 @@ struct FleetSplitView: View {
 
     @State private var showingAddMiner = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @SceneStorage("foldMenuVisible") private var foldMenuVisible = true
     @State private var detailPresentationResetID = UUID()
 
     var body: some View {
@@ -60,20 +61,54 @@ struct FleetSplitView: View {
     }
 
     /// Unfolded iPhone Duo: UIKit's split controller would overlay and dim the page at this
-    /// width, so the menu gets the whole left panel and the page the right, meeting at the fold.
+    /// width, so an open menu is docked on the whole left panel and the page fills the right,
+    /// meeting at the fold. Closing the menu gives the page the full screen.
     private func foldedOpenLayout(sidebarWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
-            NavigationStack { sidebarColumn }
+            if foldMenuVisible {
+                NavigationStack {
+                    sidebarColumn
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                foldMenuToggle
+                            }
+                        }
+                }
                 .frame(width: sidebarWidth)
-            Divider()
+                .transition(.move(edge: .leading))
+                Divider()
+            }
             detailColumn
                 .frame(maxWidth: .infinity)
+                .overlay(alignment: .topLeading) {
+                    if !foldMenuVisible {
+                        foldMenuToggle
+                            .padding(.leading, 12)
+                            .padding(.top, 6)
+                    }
+                }
         }
+        .animation(.snappy, value: foldMenuVisible)
         .id(detailPresentationResetID)
         .fleetDismissPresentationsOnNavigation { showingAddMiner = false }
         .onChange(of: externalPresentationResetID) { _, requestID in
             detailPresentationResetID = requestID
         }
+    }
+
+    private var foldMenuToggle: some View {
+        Button {
+            foldMenuVisible.toggle()
+        } label: {
+            Image(systemName: "sidebar.left")
+                .font(.title3)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(FleetTheme.accent)
+        .accessibilityLabel(foldMenuVisible ? "Hide menu" : "Show menu")
+        .accessibilityIdentifier("fold.menuToggle")
     }
 
     private var sidebarColumn: some View {
