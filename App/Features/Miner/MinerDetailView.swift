@@ -247,7 +247,7 @@ struct MinerDetailView: View {
             // every point of width forced the whole detail tree (charts included) to rebuild
             // repeatedly inside one AppKit layout pass, which hung the native window.
             let settled = MinerDetailWidthPolicy.settledWidth(
-                previous: contentWidth, measured: measured, isMac: FleetLayout.isMac
+                previous: contentWidth, measured: measured, isMac: FleetLayout.isMac, regularSizeClass: !usesCompactHorizontalLayout
             )
             #if os(macOS)
             FleetMacNavigationTrace.record(
@@ -412,7 +412,7 @@ struct MinerDetailView: View {
             let availableWidth = max(0, contentWidth - (FleetLayout.pagePadding * 2))
             return FleetLayout.macDetailColumns(for: availableWidth, preferred: macDetailColumns)
         }
-        return FleetLayout.usesTwoColumns(width: contentWidth) ? 2 : 1
+        return FleetLayout.usesTwoColumns(width: contentWidth, regularSizeClass: !usesCompactHorizontalLayout) ? 2 : 1
     }
 
     var usesWideDetail: Bool {
@@ -509,17 +509,21 @@ struct MinerDetailView: View {
 enum MinerDetailWidthPolicy {
     static let hysteresis: CGFloat = 16
 
-    static func thresholds(isMac: Bool) -> [CGFloat] {
+    static func thresholds(isMac: Bool, regularSizeClass: Bool = false) -> [CGFloat] {
         let padding = FleetLayout.pagePadding * 2
-        return isMac
-            ? [FleetLayout.macDetailTwoColumnThreshold + padding, FleetLayout.macDetailThreeColumnThreshold + padding]
-            : [FleetLayout.twoColumnThreshold]
+        if isMac {
+            return [FleetLayout.macDetailTwoColumnThreshold + padding, FleetLayout.macDetailThreeColumnThreshold + padding]
+        }
+        if regularSizeClass {
+            return [FleetLayout.tier1Threshold + padding, FleetLayout.twoColumnThreshold]
+        }
+        return [FleetLayout.twoColumnThreshold]
     }
 
-    static func settledWidth(previous: CGFloat, measured: CGFloat, isMac: Bool) -> CGFloat {
+    static func settledWidth(previous: CGFloat, measured: CGFloat, isMac: Bool, regularSizeClass: Bool = false) -> CGFloat {
         guard measured.isFinite, measured >= 0 else { return previous }
         guard previous > 0 else { return measured }
-        let limits = thresholds(isMac: isMac)
+        let limits = thresholds(isMac: isMac, regularSizeClass: regularSizeClass)
         func level(_ width: CGFloat) -> Int { limits.filter { width >= $0 }.count }
         let current = level(previous)
         let target = level(measured)

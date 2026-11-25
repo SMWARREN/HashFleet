@@ -365,7 +365,7 @@ extension DashboardView {
         let availableWidth = max(0, viewport.size.width - (FleetLayout.pagePadding * 2))
         let preferredColumns = FleetLayout.isMac
             ? FleetLayout.macDashboardCardColumns(for: availableWidth, preferred: macMinerColumns)
-            : FleetLayout.dashboardCardColumns(for: viewport.size.width)
+            : FleetLayout.dashboardCardColumns(for: viewport.size.width, regularSizeClass: !usesCompactHorizontalLayout)
         let columns = dynamicTypeSize.isAccessibilitySize ? 1 : preferredColumns
         let gridItems = Array(repeating: GridItem(.flexible(), spacing: FleetLayout.cardGridSpacing), count: columns)
         VStack(alignment: .leading, spacing: usesNumberFirstOverview ? 4 : 10) {
