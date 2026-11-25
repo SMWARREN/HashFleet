@@ -73,5 +73,34 @@ struct IPhoneDuoScreenshotCaptureTests {
         let detailURL = Self.outputDir.appendingPathComponent("iphone-duo-inner-detail.png")
         try detailRendered.pngData.write(to: detailURL)
         Attachment.record(detailRendered.pngData, named: "iphone-duo-inner-detail.png")
+
+        // 4. Unfolded Inner Display - full app with the menu filling the left panel
+        let splitView = FleetSplitView(
+            store: fixture.store,
+            insights: fixture.insights,
+            coordinator: nil,
+            startupReady: true,
+            fleetPath: .constant(NavigationPath()),
+            sidebarSelection: .constant(.overview)
+        )
+        .environment(\.horizontalSizeClass, .regular)
+
+        let splitRendered = try await FleetViewRenderHarness.render(
+            splitView,
+            width: 669,
+            height: 951
+        )
+        #expect(!splitRendered.visibleText.isEmpty)
+        let splitURL = Self.outputDir.appendingPathComponent("iphone-duo-inner-menu-split.png")
+        try splitRendered.pngData.write(to: splitURL)
+        Attachment.record(splitRendered.pngData, named: "iphone-duo-inner-menu-split.png")
+    }
+
+    @Test
+    func foldSidebarTakesLeftPanelOnlyOnUnfoldedPhones() {
+        #expect(FleetLayout.foldSidebarWidth(forWindowWidth: 669, isPhone: true) == 334)
+        #expect(FleetLayout.foldSidebarWidth(forWindowWidth: 466, isPhone: true) == nil)
+        #expect(FleetLayout.foldSidebarWidth(forWindowWidth: 1024, isPhone: true) == nil)
+        #expect(FleetLayout.foldSidebarWidth(forWindowWidth: 669, isPhone: false) == nil)
     }
 }

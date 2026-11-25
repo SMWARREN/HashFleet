@@ -46,15 +46,52 @@ struct FleetSplitView: View {
     @State private var detailPresentationResetID = UUID()
 
     var body: some View {
+        #if os(iOS)
+        GeometryReader { proxy in
+            if let foldWidth = FleetLayout.foldSidebarWidth(forWindowWidth: proxy.size.width) {
+                foldedOpenLayout(sidebarWidth: foldWidth)
+            } else {
+                standardSplitView
+            }
+        }
+        #else
+        standardSplitView
+        #endif
+    }
+
+    /// Unfolded iPhone Duo: UIKit's split controller would overlay and dim the page at this
+    /// width, so the menu gets the whole left panel and the page the right, meeting at the fold.
+    private func foldedOpenLayout(sidebarWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            NavigationStack { sidebarColumn }
+                .frame(width: sidebarWidth)
+            Divider()
+            detailColumn
+                .frame(maxWidth: .infinity)
+        }
+        .id(detailPresentationResetID)
+        .fleetDismissPresentationsOnNavigation { showingAddMiner = false }
+        .onChange(of: externalPresentationResetID) { _, requestID in
+            detailPresentationResetID = requestID
+        }
+    }
+
+    private var sidebarColumn: some View {
+        FleetSidebarView(
+            selection: $sidebarSelection,
+            store: store,
+            insights: insights,
+            showingAddMiner: $showingAddMiner,
+            onRefresh: { Task { await refreshFleet() } },
+            onSelect: activateSidebarDestination
+        )
+        .navigationTitle("Hash Fleet")
+        .fleetWindowToolbarChrome()
+    }
+
+    private var standardSplitView: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            FleetSidebarView(
-                selection: $sidebarSelection,
-                store: store,
-                insights: insights,
-                showingAddMiner: $showingAddMiner,
-                onRefresh: { Task { await refreshFleet() } },
-                onSelect: activateSidebarDestination
-            )
+            sidebarColumn
             // Both platforms: without a width the Mac restores a collapsed column that truncates
             // every sidebar label ("Mine…", "Network in…").
             .navigationSplitViewColumnWidth(
@@ -62,9 +99,35 @@ struct FleetSplitView: View {
                 ideal: FleetLayout.sidebarIdealWidth,
                 max: FleetLayout.sidebarMaximumWidth
             )
-            .navigationTitle("Hash Fleet")
-            .fleetWindowToolbarChrome()
         } detail: {
+            detailColumn
+        }
+        // The split container owns navigation state beyond fleetPath, including
+        // direct destination links. Reset that owner on activation, not merely its
+        // detail stack, which can retain the previous screen on same-root clicks.
+        .id(detailPresentationResetID)
+        .navigationSplitViewStyle(.balanced)
+        #if os(macOS)
+        .toolbar {
+            if #available(macOS 26.0, *) {
+                // Restyle the system-owned item rather than adding a second toggle.
+                DefaultToolbarItem(kind: .sidebarToggle)
+                    .sharedBackgroundVisibility(.hidden)
+            }
+        }
+        #endif
+        .fleetWindowToolbarChrome()
+        .fleetMacScreenSizing()
+        .fleetDismissPresentationsOnNavigation { showingAddMiner = false }
+        .onChange(of: externalPresentationResetID) { _, requestID in
+            #if os(macOS)
+            FleetMacNavigationTrace.record("owner.externalReset")
+            #endif
+            detailPresentationResetID = requestID
+        }
+    }
+
+    private var detailColumn: some View {
             NavigationStack(path: $fleetPath) {
                 detailContent
                     .navigationDestination(for: FleetMinerRoute.self) { route in
@@ -117,30 +180,6 @@ struct FleetSplitView: View {
                 #endif
                 fleetPath = NavigationPath()
             }
-        }
-        // The split container owns navigation state beyond fleetPath, including
-        // direct destination links. Reset that owner on activation, not merely its
-        // detail stack, which can retain the previous screen on same-root clicks.
-        .id(detailPresentationResetID)
-        .navigationSplitViewStyle(.balanced)
-        #if os(macOS)
-        .toolbar {
-            if #available(macOS 26.0, *) {
-                // Restyle the system-owned item rather than adding a second toggle.
-                DefaultToolbarItem(kind: .sidebarToggle)
-                    .sharedBackgroundVisibility(.hidden)
-            }
-        }
-        #endif
-        .fleetWindowToolbarChrome()
-        .fleetMacScreenSizing()
-        .fleetDismissPresentationsOnNavigation { showingAddMiner = false }
-        .onChange(of: externalPresentationResetID) { _, requestID in
-            #if os(macOS)
-            FleetMacNavigationTrace.record("owner.externalReset")
-            #endif
-            detailPresentationResetID = requestID
-        }
     }
 
     /// Selecting a destination also returns to its root, including reselecting

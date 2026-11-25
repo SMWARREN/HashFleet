@@ -22,6 +22,24 @@ enum FleetLayout {
     static var sidebarMaximumWidth: CGFloat {
         400
     }
+
+    /// Unfolded foldable iPhones (iPhone Duo inner display, about 669 pt wide) are regular
+    /// width but far narrower than an iPad. There the menu takes the left panel exactly, so
+    /// the split seam sits on the fold. iPad and Mac keep the normal sidebar width (nil).
+    static let foldableInnerWidthRange: ClosedRange<CGFloat> = 560...820
+
+    static func foldSidebarWidth(forWindowWidth width: CGFloat, isPhone: Bool = isPhoneIdiom) -> CGFloat? {
+        guard isPhone, foldableInnerWidthRange.contains(width) else { return nil }
+        return (width / 2).rounded(.down)
+    }
+
+    static var isPhoneIdiom: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
     /// Native workspaces are fluid, including pages that specify an iPad reading limit.
     static var readableWidth: CGFloat { readingMaximumWidth(forMac: isMac) }
     static var listContentWidth: CGFloat { readingMaximumWidth(forMac: isMac) }
