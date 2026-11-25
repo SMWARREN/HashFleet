@@ -11,6 +11,10 @@ Screenshots of Hash Fleet on the foldable iPhone Duo, captured by `AppTests/iPho
 | `iphone-duo-inner-menu-split.png` | Unfolded inner display, menu open on left | 669 × 951 | 2007 × 2853 | Regular |
 | `iphone-duo-inner-detail.png` | Unfolded inner display, miner detail | 669 × 951 | 2007 × 2853 | Regular |
 
+## Every page (`all/`)
+
+`AppTests/iPhoneDuoFullGalleryCaptureTests.swift` renders 11 pages on both screens offscreen (22 images, demo fleet): overview, miner detail, network, energy, achievements, reports, backup, preferences, about, support and add miner. Files are named `NN-inner-<page>.png` (2007 × 2853, menu docked left) and `NN-outer-<page>.png` (1398 × 2034).
+
 ## Layout behavior
 
 - **Folded (outer):** single-column phone layout.

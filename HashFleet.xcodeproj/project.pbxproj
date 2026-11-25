@@ -157,6 +157,7 @@
 		24DF97E715561A2AAF370619 /* MinerSettingsView+PoolsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74C513D3839C02B4F44EBAE /* MinerSettingsView+PoolsSection.swift */; };
 		2544AF80E2A02A68B4784EC2 /* HashFleetCore in Frameworks */ = {isa = PBXBuildFile; productRef = B293935944EBAB5216DCF50E /* HashFleetCore */; };
 		254B6EB1988DDA08FDE44496 /* FleetAutomaticWidgetTimelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E6BAA9FAA5DB7F7575C797 /* FleetAutomaticWidgetTimelineTests.swift */; };
+		254D725B0D16B28475421532 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 387FD8C42CC34C7D60EF3A86 /* iPhoneDuoFullGalleryCaptureTests.swift */; };
 		257FCA569E0B61FFF7049FC6 /* WatchSetupInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C57495FDE83F0D9A221C6ACE /* WatchSetupInboxView.swift */; };
 		25A86B563BB3FC7CEF756634 /* HashFleetStatusIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = C08DBC75B195146D8A7272F6 /* HashFleetStatusIcon.png */; };
 		25ED3C82590E75B0A153FF4A /* FleetGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DDE068F02B1F400E74F2D8 /* FleetGlance.swift */; };
@@ -235,6 +236,7 @@
 		37DB79E53EFA5AEF64F05394 /* FleetChainCard+NetworkData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D25A6C6A7E28879547E9169 /* FleetChainCard+NetworkData.swift */; };
 		37EB925AAE47A6D9495E17A3 /* HashFleetWatchCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB3B15DFB0B785AC27F2353 /* HashFleetWatchCore */; };
 		38222B999762B9AC5FDAD21B /* FleetChangeEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B609B07AFB60BF0AE5A5E80 /* FleetChangeEffects.swift */; };
+		384DB3AC4E46E9181CF02186 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 387FD8C42CC34C7D60EF3A86 /* iPhoneDuoFullGalleryCaptureTests.swift */; };
 		386BFFFCB386EEE6B502DA85 /* FirmwareTelemetryHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34BDDE5E894D61CA530EFBA4 /* FirmwareTelemetryHistory.swift */; };
 		386D6EF7711BE634E13B73C6 /* MinerShareSummaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7173F8AE18648B3861B6529 /* MinerShareSummaryUITests.swift */; };
 		3877303AB495B9003964B28F /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8692FB0AB90880EE322E9B6B /* DashboardView.swift */; };
@@ -1333,6 +1335,7 @@
 		377D3817FEB67E5FBCE8D30A /* NativeOverviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeOverviewUITests.swift; sourceTree = "<group>"; };
 		3793767BD2578C6E877ED549 /* DeveloperSupportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperSupportView.swift; sourceTree = "<group>"; };
 		37AB0DADEDEAE7F9E11E1B85 /* MinerTuningAndHubEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerTuningAndHubEvaluationTests.swift; sourceTree = "<group>"; };
+		387FD8C42CC34C7D60EF3A86 /* iPhoneDuoFullGalleryCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iPhoneDuoFullGalleryCaptureTests.swift; sourceTree = "<group>"; };
 		38CEC8F155DE0F40F967CDA4 /* FleetActivityPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetActivityPresentationTests.swift; sourceTree = "<group>"; };
 		38E65B1FD0306B2E5C565D5F /* FleetWatchSetupSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetWatchSetupSelection.swift; sourceTree = "<group>"; };
 		39219F319BA185BC2D2D5611 /* HashFleet.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HashFleet.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2534,6 +2537,7 @@
 				D2CAFD403C8B2014B13A1C8B /* FleetWidgetRefreshIntegrationTests+Loading.swift */,
 				F09FFA81970FEEEEFCF9AF16 /* FleetWidgetRefreshLifecycleTests.swift */,
 				870EC1F4BF9268F1CEC99C9A /* FleetWidgetRefreshTests.swift */,
+				387FD8C42CC34C7D60EF3A86 /* iPhoneDuoFullGalleryCaptureTests.swift */,
 				C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */,
 				8938244888C6E5A27492162F /* LaunchBrandTests.swift */,
 				103A7C8F240CFC45D8A0CB34 /* MinerASICCountTests.swift */,
@@ -4147,6 +4151,7 @@
 				79458E585F4D27583681704F /* SoloPoolPresetTests.swift in Sources */,
 				EAC8829870DAADA01A18EA52 /* StoredHistoryPresentationTests.swift in Sources */,
 				01AAFA5834085420E567C069 /* TelemetryPresentationTests.swift in Sources */,
+				254D725B0D16B28475421532 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */,
 				0D1DE9458AEBAC37D9CD3589 /* iPhoneDuoScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4355,6 +4360,7 @@
 				CEF86D31D7B64F44E172943E /* UtilityRenderingCoverageTests.swift in Sources */,
 				3588620300E29CB31E6C3696 /* WidgetActivityComponentCoverageTests.swift in Sources */,
 				854751FAA63B9AB6E95BA4E0 /* WidgetRenderingCoverageTests.swift in Sources */,
+				384DB3AC4E46E9181CF02186 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */,
 				F17ECC023CBBF79C5D66114E /* iPhoneDuoScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
