@@ -4654,7 +4654,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5172,7 +5172,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5390,7 +5390,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;
@@ -5587,7 +5587,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = app.hashfleet;
 				PRODUCT_MODULE_NAME = HashFleetMac;
 				PRODUCT_NAME = "Hash Fleet";
 				SDKROOT = macosx;

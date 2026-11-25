@@ -62,7 +62,7 @@ struct DashboardView: View {
     /// The new layout is scoped to the phone review build or the offline simulator fixture.
     var usesNumberFirstOverview: Bool {
         #if os(macOS)
-        dashboardMode == .essentials && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
+        !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
         #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.overview : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && usesCompactHorizontalLayout
@@ -299,7 +299,7 @@ struct DashboardView: View {
                     )
                 }
                 .navigationDestination(item: $minerTuningSessionDevice) { device in
-                    MinerTuningSessionView(device: device, store: store, insights: insights)
+                    MinerTuningPreviewRoute(device: device, store: store, insights: insights)
                 }
                 .navigationDestination(item: $minerXMRigControlDevice) { device in
                     XMRigControlView(device: device, store: store)
@@ -435,6 +435,22 @@ extension DashboardView {
                 .accessibilityIdentifier("dashboard.deleteAllMiners")
             }
             Divider()
+            Menu {
+                ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            store.preferences.dashboardMode = mode
+                        }
+                    } label: {
+                        Label(mode.title, systemImage: store.preferences.dashboardMode == mode ? "checkmark" : "circle")
+                    }
+                }
+            } label: {
+                Label(
+                    "Dashboard View: \(store.preferences.dashboardMode.title)",
+                    systemImage: "rectangle.3.group"
+                )
+            }
             Menu {
                 Button {
                     store.preferences.appearance = .system

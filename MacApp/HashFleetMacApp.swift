@@ -138,6 +138,16 @@ struct HashFleetApp: App {
                 Button("About Hash Fleet") { select(.about) }
                 Button("Support Hash Fleet…") { select(.support) }
             }
+            CommandMenu("View") {
+                ForEach(FleetPreferences.DashboardMode.allCases) { mode in
+                    Button(mode.title) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            store.preferences.dashboardMode = mode
+                        }
+                    }
+                    .keyboardShortcut(mode == .essentials ? "e" : "f", modifiers: [.command, .option])
+                }
+            }
             CommandMenu("Fleet") {
                 Button("Refresh Fleet Data") { Task { await store.refresh() } }
                     .keyboardShortcut("r", modifiers: .command)

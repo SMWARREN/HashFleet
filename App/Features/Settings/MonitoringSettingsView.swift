@@ -272,57 +272,43 @@ struct MonitoringSettingsView: View {
     }
 
     @ViewBuilder private var dashboardViewSelector: some View {
-        #if os(iOS)
-        if NumberFirstPreview.usesLivePhoneLayouts && horizontalSizeClass == .compact && (!store.isDemo || guidedEssentials) {
-            let layout = dynamicTypeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
-            layout {
-                ForEach(FleetPreferences.DashboardMode.allCases) { mode in
-                    let selected = mode == store.preferences.dashboardMode
-                    Button {
-                        if !selected { store.preferences.dashboardMode = mode }
-                    } label: {
-                        Text(mode.title)
-                            .fleetFont(.subheadline, weight: .semibold)
-                            .foregroundStyle(selected ? FleetTheme.ink : FleetTheme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background {
-                                if selected { RoundedRectangle(cornerRadius: 9).fill(FleetTheme.ink.opacity(0.14)).padding(3) }
-                            }
-                            .contentShape(Rectangle())
-                    }
-                    // In a List each segment must own its touch target, not the whole row.
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                    .accessibilityIdentifier("settings.dashboardView.\(mode.rawValue)")
-                }
-            }
-            .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 12))
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Dashboard view")
-            .accessibilityIdentifier("settings.dashboardView")
-        } else {
-            nativeDashboardViewPicker
-        }
-        #else
-        nativeDashboardViewPicker
-        #endif
-    }
-
-    private var nativeDashboardViewPicker: some View {
-        Picker("Dashboard view", selection: Binding(
-            get: { store.preferences.dashboardMode },
-            set: { store.preferences.dashboardMode = $0 }
-        )) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+        layout {
             ForEach(FleetPreferences.DashboardMode.allCases) { mode in
-                Text(mode.title).tag(mode)
+                let selected = mode == store.preferences.dashboardMode
+                Button {
+                    if !selected {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            store.preferences.dashboardMode = mode
+                        }
+                    }
+                } label: {
+                    Text(mode.title)
+                        .fleetFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(selected ? FleetTheme.ink : FleetTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background {
+                            if selected {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(FleetTheme.ink.opacity(0.14))
+                                    .padding(3)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                // In a List each segment must own its touch/click target, not the whole row.
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier("settings.dashboardView.\(mode.rawValue)")
             }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
+        .background(FleetTheme.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Dashboard view")
         .accessibilityIdentifier("settings.dashboardView")
     }
 
