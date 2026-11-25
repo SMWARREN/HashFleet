@@ -60,6 +60,7 @@ struct FleetSplitView: View {
         #endif
     }
 
+    #if os(iOS)
     /// Unfolded iPhone Duo: UIKit's split controller would overlay and dim the page at this
     /// width, so an open menu is docked on the whole left panel and the page fills the right,
     /// meeting at the fold. Closing the menu gives the page the full screen.
@@ -110,6 +111,7 @@ struct FleetSplitView: View {
         .accessibilityLabel(foldMenuVisible ? "Hide menu" : "Show menu")
         .accessibilityIdentifier("fold.menuToggle")
     }
+    #endif
 
     private var sidebarColumn: some View {
         FleetSidebarView(

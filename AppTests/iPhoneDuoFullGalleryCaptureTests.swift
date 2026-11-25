@@ -24,7 +24,7 @@ struct IPhoneDuoFullGalleryCaptureTests {
         ("backup", .backup),
         ("preferences", .preferences),
         ("about", .about),
-        ("support", .support),
+        ("support", .support)
     ]
 
     @Test

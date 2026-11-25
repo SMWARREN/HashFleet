@@ -46,7 +46,6 @@
 		0C17BAA97C57E1568469C513 /* MinerTuningEasyField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6519AB8DD347328F4AD3F47A /* MinerTuningEasyField.swift */; };
 		0C1DF55C6306F6EC02D1E6E0 /* CompactDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F491690145C724BDA77773A /* CompactDashboardUITests.swift */; };
 		0C3110487AFD5E2C48E3C111 /* DemoFleet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CFB7FA22731E8E259DCC58 /* DemoFleet.swift */; };
-		0D1DE9458AEBAC37D9CD3589 /* iPhoneDuoScreenshotCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3711EA8267D36265F687EA5 /* iPhoneDuoScreenshotCaptureTests.swift */; };
 		0D5103716D342427A0490A6C /* MinerTuningPoolDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD25148DD18D2D629643733C /* MinerTuningPoolDraftTests.swift */; };
 		0D6F5CA29994407E70707DC8 /* MonitoringSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044AB88886C95701EE390CC7 /* MonitoringSettingsView.swift */; };
 		0D9E295D53A979DB2126CE8B /* FleetEnergyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F8889494F6853529769BF /* FleetEnergyTests.swift */; };
@@ -157,7 +156,6 @@
 		24DF97E715561A2AAF370619 /* MinerSettingsView+PoolsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74C513D3839C02B4F44EBAE /* MinerSettingsView+PoolsSection.swift */; };
 		2544AF80E2A02A68B4784EC2 /* HashFleetCore in Frameworks */ = {isa = PBXBuildFile; productRef = B293935944EBAB5216DCF50E /* HashFleetCore */; };
 		254B6EB1988DDA08FDE44496 /* FleetAutomaticWidgetTimelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E6BAA9FAA5DB7F7575C797 /* FleetAutomaticWidgetTimelineTests.swift */; };
-		254D725B0D16B28475421532 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 387FD8C42CC34C7D60EF3A86 /* iPhoneDuoFullGalleryCaptureTests.swift */; };
 		257FCA569E0B61FFF7049FC6 /* WatchSetupInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C57495FDE83F0D9A221C6ACE /* WatchSetupInboxView.swift */; };
 		25A86B563BB3FC7CEF756634 /* HashFleetStatusIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = C08DBC75B195146D8A7272F6 /* HashFleetStatusIcon.png */; };
 		25ED3C82590E75B0A153FF4A /* FleetGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DDE068F02B1F400E74F2D8 /* FleetGlance.swift */; };
@@ -4151,8 +4149,6 @@
 				79458E585F4D27583681704F /* SoloPoolPresetTests.swift in Sources */,
 				EAC8829870DAADA01A18EA52 /* StoredHistoryPresentationTests.swift in Sources */,
 				01AAFA5834085420E567C069 /* TelemetryPresentationTests.swift in Sources */,
-				254D725B0D16B28475421532 /* iPhoneDuoFullGalleryCaptureTests.swift in Sources */,
-				0D1DE9458AEBAC37D9CD3589 /* iPhoneDuoScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
