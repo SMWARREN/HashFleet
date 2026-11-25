@@ -58,18 +58,27 @@ enum WatchDiscoveryIdentification {
         guard (try? WatchMinerInfoDecoder.reading(from: data, minerID: UUID(), observedAt: Date())) != nil else {
             return nil
         }
-        if let identity = try? JSONDecoder().decode(Identity.self, from: data) {
-            for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
-                if let safe = sanitizedName(candidate) { return safe }
-            }
-            if let model = sanitizedName(identity.asicModel) {
-                return model
-            }
-        }
         if path == "/api/telemetry" {
+            if let identity = try? JSONDecoder().decode(Identity.self, from: data) {
+                for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
+                    if let safe = sanitizedName(candidate) { return safe }
+                }
+            }
             return "Harlo-OS Miner"
         } else if path == "/api/status" {
+            if let identity = try? JSONDecoder().decode(Identity.self, from: data) {
+                for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
+                    if let safe = sanitizedName(candidate) { return safe }
+                }
+            }
             return "AxeForge Miner"
+        }
+
+        guard let identity = try? JSONDecoder().decode(Identity.self, from: data) else { return nil }
+        guard isValidASICModel(identity.asicModel) else { return nil }
+
+        for candidate in [identity.hostname, identity.fullHostname, identity.mdnsHostname, identity.deviceName] {
+            if let safe = sanitizedName(candidate) { return safe }
         }
         return fallbackName
     }
