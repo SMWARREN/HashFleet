@@ -36,26 +36,23 @@ struct FleetStoreTests {
         #expect(FleetStore(defaults: defaults).devices.isEmpty)
     }
 
-    @Test func sameMinerAddedByIPAndHostnameCollapsesToOneAfterRefresh() async throws {
+    @Test func distinctAddressesWithSameMACStaySeparateAfterRefresh() async throws {
         let fleetEnv = try fixture()
         let store = fleetEnv.store
         let defaults = fleetEnv.defaults
         let suite = fleetEnv.suite
         defer { store.cancelRefresh(); defaults.removePersistentDomain(forName: suite) }
 
-        // The same physical miner added two ways (its IP and its mDNS-style hostname). The
-        // add-time guard only blocks byte-identical URLs, so both are accepted here.
+        // Distinct host:port pairs stay separate even if they report the same hardware MAC
+        // (e.g. virtual miners or port-forwarded endpoints).
         try store.add(name: "By IP", address: "gamma.test")
         try store.add(name: "By hostname", address: "gamma-alias.test")
         #expect(store.devices.count == 2)
 
-        // Once snapshots arrive, both report the same MAC (in different formats) and collapse.
         await store.refresh()
-        #expect(store.devices.count == 1)
-        // The first-added device is the survivor, keeping its name and history.
-        #expect(store.devices.first?.name == "By IP")
-        // The duplicate is gone from persistence too.
-        #expect(FleetStore(defaults: defaults).devices.count == 1)
+        #expect(store.devices.count == 2)
+        #expect(store.devices.map(\.name) == ["By IP", "By hostname"])
+        #expect(FleetStore(defaults: defaults).devices.count == 2)
     }
 
     @Test func explicitGenericNameIsPreservedAndLegacyDefaultUpgrades() async throws {
@@ -480,8 +477,8 @@ class FleetFixtureProtocol: URLProtocol, @unchecked Sendable {
             headerFields: ["Content-Type": "application/json"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        // gamma.test and gamma-alias.test model the same physical miner reached two ways: they
-        // report the same hardware MAC so the fleet can collapse the duplicate.
+        // gamma.test and gamma-alias.test report the same hardware MAC in different formats to
+        // verify distinct endpoints stay separate on refresh and explicit MAC dedup still matches.
         let json: String
         switch url.host {
         case "gamma.test":
