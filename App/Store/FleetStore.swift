@@ -271,7 +271,12 @@ final class FleetStore {
         guard device.name != name || device.usesAutomaticName != true else { return false }
         devices[index].name = name
         devices[index].usesAutomaticName = true
-        if persistImmediately { persist() }
+        if persistImmediately {
+            persist()
+            #if os(iOS)
+            FleetWatchSetupCoordinator.syncIfPossible(devices: devices, isDemo: isDemo)
+            #endif
+        }
         return true
     }
 
@@ -368,8 +373,8 @@ final class FleetStore {
         if token == generation {
             refreshTask = nil
             isRefreshing = false
-            // Snapshots now carry each miner's MAC, so collapse any duplicate that was added
-            // under a second address (IP vs mDNS hostname) for the same physical miner.
+            // Snapshots now carry each miner's MAC, so collapse duplicates reached through a
+            // hostname alias while keeping distinct literal IP:port endpoints separate.
             await deduplicateDevicesByMAC()
         }
     }

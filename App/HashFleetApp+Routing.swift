@@ -10,9 +10,11 @@ extension HashFleetApp {
                     celebration: current,
                     onViewMiner: { openMiner(current.deviceID, dismissCelebration: true, expectedCelebrationID: current.id) },
                     onDismiss: { dismissCelebration(expectedID: current.id) },
+                    onDismissAll: { dismissAllCelebrations(expectedID: current.id) },
                     onDisableSessionBestAlerts: sessionBestOptOutAction,
                     onSupport: celebrationSupportAction,
                     pendingCount: previewCelebration == nil ? celebrations.pendingCount : 0,
+                    queuedCelebrations: previewCelebration == nil ? ([current] + celebrations.snapshot.pending) : [current],
                     onReviewLater: previewCelebration == nil ? { pauseCelebrations(expectedID: current.id) } : nil
                 )
                 .id(current.id)
@@ -210,6 +212,18 @@ extension HashFleetApp {
                 guard !result.staleAction else { return }
                 hiddenCelebrationID = result.accepted ? nil : id
                 completion?()
+            }
+        }
+    }
+
+    func dismissAllCelebrations(expectedID: UUID? = nil) {
+        if let expectedID, celebration?.id != expectedID { return }
+        if previewCelebration != nil {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { previewCelebration = nil }
+        } else if let id = celebrations.current?.id {
+            celebrations.submit(.dismissAll(id)) { result in
+                guard !result.staleAction else { return }
+                hiddenCelebrationID = result.accepted ? nil : id
             }
         }
     }

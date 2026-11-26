@@ -483,11 +483,9 @@ extension DashboardView {
                     }
                 }
             } label: {
-                Label(
-                    "Dashboard View: \(store.preferences.dashboardMode.title)",
-                    systemImage: "rectangle.3.group"
-                )
+                Label("View", systemImage: "rectangle.3.group")
             }
+            .accessibilityValue(store.preferences.dashboardMode.title)
             Menu {
                 Button {
                     store.preferences.appearance = .system
@@ -506,10 +504,11 @@ extension DashboardView {
                 }
             } label: {
                 Label(
-                    "Appearance: \(store.preferences.appearance.title)",
+                    "Appearance",
                     systemImage: store.preferences.appearance == .system ? "circle.righthalf.filled" : (colorScheme == .dark ? "moon" : "sun.max")
                 )
             }
+            .accessibilityValue(store.preferences.appearance.title)
         } label: {
             settingsToolbarIcon
                 .foregroundStyle(FleetTheme.ink)

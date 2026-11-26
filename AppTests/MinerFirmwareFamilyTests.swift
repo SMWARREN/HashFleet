@@ -304,3 +304,30 @@ struct MinerSavedFirmwareFamilyTests {
         #expect(luxAvail.quickActions.isEmpty)
     }
 }
+
+@Suite("ThorOS firmware family")
+struct MinerThorOSFirmwareFamilyTests {
+    @Test func thorBoardsUseTheirOwnHammerFeed() {
+        let x1 = MinerInfo(raw: ["device_model": .string("THOR X1"), "firmware_version": .string("1.0.6")])
+        let p2 = MinerInfo(raw: ["device_model": .string("THOR P2"), "firmware_version": .string("1.1.0")])
+        let bc08 = MinerInfo(raw: ["device_model": .string("THOR BC08"), "firmware_version": .string("1.1.1")])
+        #expect(MinerFirmwareFamily.identify(from: x1) == .thorX1)
+        #expect(MinerFirmwareFamily.identify(from: p2) == .thorP2)
+        #expect(MinerFirmwareFamily.identify(from: bc08) == nil)
+        #expect(MinerFirmwareFamily.thorX1.releaseFeedURL.absoluteString.contains("HammerMiner/X1"))
+        #expect(MinerFirmwareFamily.thorP2.releaseFeedURL.absoluteString.contains("HammerMiner/P2"))
+        #expect(!MinerFirmwareFamily.thorP2.supportsLiveWebSocket)
+    }
+
+    @Test func thorFamiliesReadVendorManifestNotReleaseList() throws {
+        #expect(MinerFirmwareFamily.thorP2.updateManifestURL?.absoluteString.hasSuffix("HammerMiner/P2/HEAD/version.json") == true)
+        #expect(MinerFirmwareFamily.thorX1.updateManifestURL?.absoluteString.hasSuffix("HammerMiner/X1/HEAD/version.json") == true)
+        #expect(MinerFirmwareFamily.bitaxe.updateManifestURL == nil)
+        let json = Data(#"{"version":"1.0.4","app_url":"https://github.com/HammerMiner/P2/releases/download/v1.0.4-20261113/thorp2-1.0.4-20261113-update.bin","claw_url":""}"#.utf8)
+        let release = try #require(FirmwareUpdateManifest.release(from: json))
+        #expect(release.version == "1.0.4")
+        #expect(release.url?.lastPathComponent == "thorp2-1.0.4-20261113-update.bin")
+        #expect(FirmwareUpdateManifest.release(from: Data(#"{"version":" "}"#.utf8)) == nil)
+        #expect(FirmwareUpdateManifest.release(from: Data("<html>".utf8)) == nil)
+    }
+}

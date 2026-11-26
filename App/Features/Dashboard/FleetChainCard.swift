@@ -29,8 +29,10 @@ struct FleetChainCard: View {
                 if compactPreview {
                     previewHeader
                 } else {
-                    standardHeader(now: timeline.date)
-                    oddsWindowHeader
+                    VStack(alignment: .leading, spacing: 2) {
+                        standardHeader(now: timeline.date)
+                        oddsWindowHeader
+                    }
                 }
                 coinRows(now: timeline.date)
                 if compactPreview && showingAssumptions {
@@ -203,7 +205,7 @@ struct FleetChainCard: View {
                 Text("Network")
                     .lineLimit(1)
             }
-            .fleetFont(.caption, weight: .semibold).frame(minHeight: 44)
+            .fleetFont(.caption, weight: .semibold).frame(minHeight: 28)
         }
         .accessibilityIdentifier("dashboard.networkDetails")
     }
@@ -222,7 +224,7 @@ struct FleetChainCard: View {
                 .fleetFont(.caption2, weight: .semibold)
                 .foregroundStyle(FleetTheme.panelSecondary)
                 .lineLimit(1)
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(minWidth: 44, minHeight: 28)
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Coins to show")
@@ -282,18 +284,21 @@ struct FleetChainCard: View {
                             .background {
                                 if selected { Capsule().fill(cardInk.opacity(0.13)).padding(2) }
                             }
-                            .frame(minHeight: 44)
+                            .frame(minHeight: 28)
                             .contentShape(Rectangle())
                     } else {
                         Text(window.shortLabel)
                             .fleetFont(.caption2, weight: .semibold).monospacedDigit()
                             .foregroundStyle(selected ? FleetTheme.panelAccent : FleetTheme.panelSecondary)
-                            .fleetPillPadding()
-                            .frame(minWidth: 44, minHeight: 44)
-                            .background(
-                                selected ? FleetTheme.panelAccent.opacity(0.16) : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 6)
-                            )
+                            .frame(minWidth: 44, minHeight: 24)
+                            .background {
+                                if selected {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(FleetTheme.panelAccent.opacity(0.16))
+                                        .padding(2)
+                                }
+                            }
+                            .frame(minHeight: 28)
                             .contentShape(Rectangle())
                     }
                 }
@@ -303,12 +308,11 @@ struct FleetChainCard: View {
                 .accessibilityIdentifier("dashboard.soloOddsWindow.\(window.rawValue)")
             }
         }
-        .padding(compactPreview ? 0 : 4)
         .background {
             if compactPreview {
                 Capsule().fill(FleetTheme.raised).frame(height: 24)
             } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(FleetTheme.charcoal)
+                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(FleetTheme.charcoal).frame(height: 24)
             }
         }
         .accessibilityElement(children: .contain)

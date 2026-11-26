@@ -175,6 +175,9 @@ final class FirmwareUpdateStore {
         session: URLSession,
         family: MinerFirmwareFamily
     ) async throws -> [FirmwareRelease] {
+        if let manifestURL = family.updateManifestURL {
+            return try await fetchManifestRelease(session: session, url: manifestURL)
+        }
         var request = URLRequest(
             url: family.releaseFeedURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10
         )
@@ -200,6 +203,20 @@ final class FirmwareUpdateStore {
             }
             return left > right
         }
+    }
+
+    /// Reads a vendor OTA manifest (`{"version", "app_url"}`) and returns its single pinned release.
+    private static func fetchManifestRelease(session: URLSession, url: URL) async throws -> [FirmwareRelease] {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        request.setValue("HashFleet firmware update checker", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw FirmwareUpdateError.invalidResponse
+        }
+        guard let release = FirmwareUpdateManifest.release(from: data) else {
+            throw FirmwareUpdateError.invalidResponse
+        }
+        return [release]
     }
 
     static func currentVersion(from info: MinerInfo?) -> String? {
@@ -241,3 +258,24 @@ private struct FirmwareVersion: Comparable {
 }
 
 /// Drops drafts and prereleases; duplicates of one tag collapse to first sighting.
+
+/// Hammer's per-board OTA manifest, e.g. `HammerMiner/P2/version.json`. This is the exact file the
+/// ThorOS device checks, so it is the authoritative "latest" for that board, not the release list.
+enum FirmwareUpdateManifest {
+    private struct Payload: Decodable {
+        let version: String
+        let appURL: URL?
+
+        enum CodingKeys: String, CodingKey {
+            case version
+            case appURL = "app_url"
+        }
+    }
+
+    static func release(from data: Data) -> FirmwareRelease? {
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else { return nil }
+        let version = payload.version.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !version.isEmpty else { return nil }
+        return FirmwareRelease(version: version, url: payload.appURL)
+    }
+}

@@ -146,6 +146,10 @@ struct HashFleetApp: App {
                     glanceCoordinator.updateWidgetRefreshFleet(
                         devices: store.visibleDevices, snapshots: store.snapshots, isDemo: store.isDemo,
                         isForeground: scenePhase == .active)
+                    #if os(iOS)
+                    FleetWatchSetupCoordinator.syncReadingsIfPossible(
+                        devices: store.visibleDevices, snapshots: store.snapshots, isDemo: store.isDemo)
+                    #endif
                 }
                 .task(id: scenePhase) { await refreshRemotePushWhileActive() }
                 .onChange(of: store.preferences.externalDataEnabled) { _, enabled in

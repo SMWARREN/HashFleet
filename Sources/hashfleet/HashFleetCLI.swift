@@ -63,12 +63,7 @@ struct HashFleetCLI {
         let fleet: FleetStatusSnapshot
         let usedDiscovery = devices.isEmpty && configuredState == .unconfigured
         if usedDiscovery {
-            let candidates = await FleetNetworkDiscovery.scanCurrent()
-            fleet = FleetStatusSnapshot(
-                miners: candidates.map {
-                    MinerStatusSnapshot(device: $0.device, info: $0.info)
-                }
-            )
+            fleet = await discoverFleet()
         } else {
             let selectedDevices = devices.isEmpty ? configuredDevices : devices
             fleet = await FleetStatusService.read(
@@ -96,6 +91,28 @@ struct HashFleetCLI {
         }
 
         if fleet.offlineCount > 0 { exit(EXIT_FAILURE) }
+    }
+
+    /// Runs local discovery and enriches any multi-endpoint candidates (such as ThorOS, whose
+    /// discovery probe reads `/v2/device/info`) with full telemetry via `MinerFirmwareAdapter`.
+    static func discoverFleet() async -> FleetStatusSnapshot {
+        let candidates = await FleetNetworkDiscovery.scanCurrent()
+        let snapshots = await withTaskGroup(of: (Int, MinerStatusSnapshot).self) { group in
+            for (index, candidate) in candidates.enumerated() {
+                group.addTask {
+                    let device = candidate.device
+                    let hasHashrate = candidate.info.raw["hashRate"] != nil || candidate.info.raw["hashrate"] != nil
+                    if !hasHashrate, let fullInfo = try? await MinerFirmwareAdapter(device: device).info() {
+                        return (index, MinerStatusSnapshot(device: device, info: fullInfo))
+                    }
+                    return (index, MinerStatusSnapshot(device: device, info: candidate.info))
+                }
+            }
+            var ordered: [(Int, MinerStatusSnapshot)] = []
+            for await item in group { ordered.append(item) }
+            return ordered.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+        return FleetStatusSnapshot(miners: snapshots)
     }
 
     private static func printSupport(_ arguments: [String]) {

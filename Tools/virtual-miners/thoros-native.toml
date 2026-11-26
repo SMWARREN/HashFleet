@@ -1,0 +1,15 @@
+# Original Hammer ThorOS firmware under esp-emu (loopback only). Run `setup` once.
+# The unmodified vendor OTA app boots on a composed private flash; see virtual_miners/thoros_flash.py.
+[[miner]]
+name = "thor-x1"
+board = "thor-x1"
+backend = "esp-emu"
+http_port = 18293
+hardware = "board"
+
+[[miner]]
+name = "thor-p2"
+board = "thor-p2"
+backend = "esp-emu"
+http_port = 18294
+hardware = "board"

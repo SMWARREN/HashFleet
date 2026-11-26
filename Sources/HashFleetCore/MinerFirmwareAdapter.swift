@@ -36,7 +36,8 @@ public struct MinerDetectedIdentity: Equatable, Hashable, Sendable {
 /// 2. BitForge via `deviceModel` containing `"bitforge"` or `chiptemp1` in `/api/system/info`.
 /// 3. NerdQAxe / NerdOctaxe via `deviceModel` (`nerd`/`qaxe`/`octaxe`), `fanCount > 1`, or `currentA`.
 /// 4. Bitaxe otherwise (including Bitfortun BS-1 if `deviceModel` identifies Bitfortun).
-/// 5. AxeForge via `GET /api/status` (or `board` in payload).
+/// 5. AxeForge via `GET /api/status` (or `board` in payload), Harlo-OS via `/api/telemetry`,
+///    then Hammer ThorOS via `GET /v2/miner/status` + `/v2/device/info`.
 /// 6. Port 4028 cgminer, identified by `version` response keys: LuxOS (`lux`), then Braiins (`bos`/`braiins`), otherwise Canaan (`canaan`).
 public struct MinerFirmwareAdapter: Sendable {
     public static let portHTTP = 80
@@ -80,6 +81,10 @@ public struct MinerFirmwareAdapter: Sendable {
             return try await pollHTTPSystemInfo(baseURL: baseURL, host: host, knownFamily: family)
         }
 
+        if family == "thoros" {
+            return try await pollThorOS(baseURL: baseURL, host: host)
+        }
+
         if family == "harloos" {
             if let harloInfo = try? await pollHarloOS(baseURL: baseURL, host: host) {
                 return harloInfo
@@ -98,12 +103,20 @@ public struct MinerFirmwareAdapter: Sendable {
                 if let harloInfo = try? await pollHarloOS(baseURL: baseURL, host: host) {
                     return harloInfo
                 }
+                if let thorInfo = try? await pollThorOS(baseURL: baseURL, host: host) {
+                    return thorInfo
+                }
             }
             if let cgminerInfo = await cgminerFallbackInfo(host: host, family: family, httpError: error) {
                 return cgminerInfo
             }
             throw error
         } catch {
+            // ThorOS serves its HTML console for /api/system/info, which fails JSON decoding.
+            if family.isEmpty, Self.httpFailureAllowsCgminerFallback(error),
+               let thorInfo = try? await pollThorOS(baseURL: baseURL, host: host) {
+                return thorInfo
+            }
             if let cgminerInfo = await cgminerFallbackInfo(host: host, family: family, httpError: error) {
                 return cgminerInfo
             }
@@ -113,7 +126,7 @@ public struct MinerFirmwareAdapter: Sendable {
 
     /// Families known to serve only the HTTP API. They never fall back to cgminer port 4028.
     static let httpOnlyFamilies: Set<String> = [
-        "bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge", "nmaxe", "warpaxe"
+        "bitaxe", "bitfortun", "nerdqaxe", "nerdoctaxe", "bitforge", "nmaxe", "warpaxe", "thoros"
     ]
 
     /// A saved miner with no known family and no HTTP miner API may be a cgminer device (Avalon

@@ -29,7 +29,14 @@ struct MinerSetting {
         if let location = MinerPoolSettings.location(key) {
             return (try? MinerPoolSettings.slots(info))?[location.id]?[location.field]
         }
-        return info.raw[key]
+        switch key {
+        case "temptarget":
+            return info.raw["temptarget"] ?? info.raw["pidTargetTemp"]
+        case "manualFanSpeed":
+            return info.raw["manualFanSpeed"] ?? info.raw["fanspeed"] ?? info.raw["fanSpeed"]
+        default:
+            return info.raw[key]
+        }
     }
 
     // Matches the app's MinerTuningDraft and the audited firmware encoding constraints.
@@ -37,6 +44,7 @@ struct MinerSetting {
     static let all: [MinerSetting] = [
         .init(key: "hostname", title: "Hostname", category: .general, input: .hostname, hint: "1–32 letters, digits or hyphens; stored in lowercase."),
         .init(key: "statsFrequency", title: "History interval (s)", category: .general, input: .integer(0, 65535), hint: "0 disables the miner's on-device history."),
+        .init(key: "workmode", title: "Work mode (0–2)", category: .general, input: .integer(0, 2), hint: "Avalon power mode: 0 = Low, 1 = Medium, 2 = High."),
         .init(key: "autofanspeed", title: "Automatic fan", category: .cooling, input: .toggle, hint: "Enter on or off. Manual mode requires a reported or staged fan speed."),
         .init(key: "manualFanSpeed", title: "Manual fan (%)", category: .cooling, input: .integer(0, 100), hint: "Used with automatic fan off. Lower airflow can raise temperatures."),
         .init(key: "minFanSpeed", title: "Minimum fan (%)", category: .cooling, input: .integer(0, 99), hint: "Used with automatic fan on."),
@@ -153,7 +161,10 @@ struct MinerSetting {
     func display(_ value: JSONValue?) -> String {
         if isSecret { return value == nil ? "Keep current" : value == .string("") ? "Clear password" : "•••••• (replace)" }
         guard let value else { return "Not reported" }
-        if case .toggle = input, let boolean = value.boolValue { return boolean ? "on" : "off" }
+        if case .toggle = input {
+            let flag = key == "autofanspeed" ? MinerDriverProfile.automaticFanFlag(value) : value.boolValue
+            if let flag { return flag ? "on" : "off" }
+        }
         if case .bool = value { return "Not reported" }
         return value.stringValue.map(TerminalText.safe) ?? "Not reported"
     }
@@ -161,7 +172,11 @@ struct MinerSetting {
     func matches(_ expected: JSONValue?, _ observed: JSONValue?) -> Bool {
         if isSecret { return false }
         guard let expected, let observed else { return expected == nil && observed == nil }
-        if case .toggle = input { return expected.boolValue != nil && expected.boolValue == observed.boolValue }
+        if case .toggle = input {
+            let expectedFlag = key == "autofanspeed" ? MinerDriverProfile.automaticFanFlag(expected) : expected.boolValue
+            let observedFlag = key == "autofanspeed" ? MinerDriverProfile.automaticFanFlag(observed) : observed.boolValue
+            return expectedFlag != nil && expectedFlag == observedFlag
+        }
         switch input {
         case .integer, .decimal, .rotation:
             guard let a = expected.doubleValue, let b = observed.doubleValue else { return false }
@@ -175,10 +190,15 @@ struct MinerSetting {
     }
 
     static func validate(_ changes: [String: JSONValue], device: MinerDevice, info: MinerInfo) throws {
+        let family = MinerDriverProfile.resolvedFamily(device: device, info: info)
+        let usesSlots = MinerDriverProfile.isAxeOS(family) && usesPoolSlots(info)
         for (key, value) in changes {
-            guard let field = field(key: key) else { throw SettingsError.message("Unknown setting.") }
+            guard MinerDriverProfile.supportsKey(key, device: device, info: info),
+                  let field = MinerDriverProfile.field(key: key, device: device, info: info) else {
+                throw SettingsError.message("Setting '\(key)' is not supported by this miner's firmware (\(family)).")
+            }
             _ = try field.parse(field.isSecret ? value.stringValue ?? "*****" : field.display(value))
-            if field.category == .pools, usesPoolSlots(info), MinerPoolSettings.location(key) == nil,
+            if field.category == .pools, usesSlots, MinerPoolSettings.location(key) == nil,
                 !MinerPoolSettings.roles.contains(where: { $0.key == key }) {
                 throw SettingsError.message("This firmware manages pool slots. Reopen Pools to edit the reported slot configuration.")
             }
@@ -192,7 +212,17 @@ struct MinerSetting {
            let voltage = changes["coreVoltage"]?.doubleValue, voltage > 1150 {
             throw SettingsError.message("Gamma 601a has a 1150 mV core-voltage ceiling. Lower the staged voltage.")
         }
-        let mode = (changes["autofanspeed"] ?? info.raw["autofanspeed"])?.boolValue
+        try validateCooling(changes, family: family, device: device, info: info)
+    }
+
+    private static func validateCooling(
+        _ changes: [String: JSONValue],
+        family: String,
+        device: MinerDevice,
+        info: MinerInfo
+    ) throws {
+        guard MinerDriverProfile.reportsFanMode(family) else { return }
+        let mode = MinerDriverProfile.automaticFanFlag(changes["autofanspeed"] ?? info.raw["autofanspeed"])
         if changes["manualFanSpeed"] != nil, mode != false {
             throw SettingsError.message("Set Automatic fan to off before changing manual fan speed.")
         }
@@ -200,9 +230,11 @@ struct MinerSetting {
             guard mode == true else { throw SettingsError.message("Turn Automatic fan on before changing its minimum speed or target.") }
         }
         if changes["autofanspeed"] != nil {
+            if mode == true && !MinerDriverProfile.supportsAutoFanTarget(family) { return }
             let required = mode == true ? "temptarget" : "manualFanSpeed"
-            let field = all.first { $0.key == required }!
-            guard let value = changes[required] ?? info.raw[required], (try? field.parse(field.display(value))) != nil else {
+            guard let field = MinerDriverProfile.field(key: required, device: device, info: info) else { return }
+            guard let value = changes[required] ?? field.observed(in: info),
+                  (try? field.parse(field.display(value))) != nil else {
                 throw SettingsError.message("Set \(field.title) before switching fan mode; the miner has not reported a usable value.")
             }
         }
@@ -223,42 +255,113 @@ enum MinerSettingsWriter {
 
     static func apply(device: MinerDevice, original: MinerInfo, changes: [String: JSONValue]) async throws -> Result {
         guard device.kind == .espMiner, !changes.isEmpty else { throw SettingsError.message("No writable settings selected.") }
-        try MinerSetting.validate(changes, device: device, info: original)
+        let resolvedDevice = MinerDriverProfile.resolvedDevice(device, info: original)
+        let family = MinerDriverProfile.resolvedFamily(device: resolvedDevice, info: original).lowercased()
+        try MinerSetting.validate(changes, device: resolvedDevice, info: original)
         let payload = try MinerPoolSettings.payload(changes: changes, info: original)
         let body = try JSONEncoder().encode(JSONValue.object(payload))
         guard body.count < 10_240 else {
             throw SettingsError.message("This request exceeds the miner's 10 KiB limit. Apply fewer slots at once; certificates cannot be shortened or omitted.")
         }
-        let client = MinerFirmwareAdapter(device: device)
+        let client = MinerFirmwareAdapter(device: resolvedDevice)
         let fresh: MinerInfo
         do { fresh = try await client.info() } catch { throw SettingsError.message("Could not read fresh settings. Nothing was sent; reconnect and reopen settings.") }
         try Task.checkCancellation()
-        try MinerSetting.validate(changes, device: device, info: fresh)
+        try MinerSetting.validate(changes, device: resolvedDevice, info: fresh)
         try MinerPoolSettings.checkBaseline(changes: changes, original: original, fresh: fresh)
+        try checkBaseline(changes: changes, device: resolvedDevice, original: original, fresh: fresh, family: family)
+        try Task.checkCancellation()
+        do {
+            try await sendWrite(client: client, family: family, payload: payload, body: body, fresh: fresh)
+        } catch {
+            // A timeout can happen after the firmware saved a request. Never retry it automatically
+            // or echo a remote response body that could contain credentials.
+            return Result(info: nil, verified: false,
+                message: "The write could not be confirmed. It may have reached the miner. Check fresh settings before trying again; no retry was sent.")
+        }
+        return await verifyReadback(client: client, device: resolvedDevice, changes: changes, payload: payload, original: original)
+    }
+
+    private static func checkBaseline(
+        changes: [String: JSONValue],
+        device: MinerDevice,
+        original: MinerInfo,
+        fresh: MinerInfo,
+        family: String
+    ) throws {
         for key in ["ASICModel", "boardVersion", "macAddr"] {
             if let before = original.raw[key], let now = fresh.raw[key], before != now {
                 throw SettingsError.message("The miner identity changed during editing. Nothing was sent; reopen settings.")
             }
         }
         var compared = Set(changes.keys)
-        if !compared.isDisjoint(with: ["autofanspeed", "manualFanSpeed", "minFanSpeed", "temptarget"]) {
-            compared.formUnion(["autofanspeed", "manualFanSpeed", "temptarget"])
+        if MinerDriverProfile.reportsFanMode(family),
+           !compared.isDisjoint(with: ["autofanspeed", "manualFanSpeed", "minFanSpeed", "temptarget"]) {
+            compared.formUnion(["autofanspeed", "manualFanSpeed"])
+            if MinerDriverProfile.supportsAutoFanTarget(family) { compared.insert("temptarget") }
         }
-        for field in compared.compactMap({ MinerSetting.field(key: $0) }) where !field.isSecret {
+        for field in compared.compactMap({ MinerDriverProfile.field(key: $0, device: device, info: original) }) where !field.isSecret {
             guard field.matches(field.observed(in: original), field.observed(in: fresh)) else {
                 throw SettingsError.message("\(field.title) changed since you opened settings. Nothing was sent; reopen settings to review fresh values.")
             }
         }
-        try Task.checkCancellation()
-        do { _ = try await client.execute(.settings, body: body) } catch {
-            // A timeout can happen after the firmware saved a request. Never retry it automatically
-            // or echo a remote response body that could contain credentials.
-            return Result(info: nil, verified: false,
-                message: "The write could not be confirmed. It may have reached the miner. Check fresh settings before trying again; no retry was sent.")
+    }
+
+    private static func sendWrite(
+        client: MinerFirmwareAdapter,
+        family: String,
+        payload: [String: JSONValue],
+        body: Data,
+        fresh: MinerInfo
+    ) async throws {
+        let poolKeys: Set<String> = [
+            "stratumURL", "stratumPort", "stratumUser", "stratumPassword",
+            "fallbackStratumURL", "fallbackStratumPort", "fallbackStratumUser", "fallbackStratumPassword"
+        ]
+        if family == "axeforge", !poolKeys.isDisjoint(with: payload.keys) {
+            let currentPool = (try? await client.readPoolConfig()) ?? MinerPoolConfig(
+                url: fresh.raw["stratumURL"]?.stringValue ?? "",
+                port: fresh.raw["stratumPort"]?.intValue ?? 3333,
+                user: fresh.raw["stratumUser"]?.stringValue ?? "",
+                fbURL: fresh.raw["fallbackStratumURL"]?.stringValue ?? "",
+                fbPort: fresh.raw["fallbackStratumPort"]?.intValue ?? 3333,
+                fbUser: fresh.raw["fallbackStratumUser"]?.stringValue ?? ""
+            )
+            let updatedPool = MinerPoolConfig(
+                url: payload["stratumURL"]?.stringValue ?? currentPool.url,
+                port: payload["stratumPort"]?.intValue ?? currentPool.port,
+                user: payload["stratumUser"]?.stringValue ?? currentPool.user,
+                password: payload["stratumPassword"]?.stringValue ?? currentPool.password,
+                tls: currentPool.tls, cert: currentPool.cert,
+                fbURL: payload["fallbackStratumURL"]?.stringValue ?? currentPool.fbURL,
+                fbPort: payload["fallbackStratumPort"]?.intValue ?? currentPool.fbPort,
+                fbUser: payload["fallbackStratumUser"]?.stringValue ?? currentPool.fbUser,
+                fbPassword: payload["fallbackStratumPassword"]?.stringValue ?? currentPool.fbPassword,
+                fbTLS: currentPool.fbTLS, fbCert: currentPool.fbCert
+            )
+            guard try await client.setPool(updatedPool, restartAfter: false) else {
+                throw SettingsError.message("Pool update failed.")
+            }
+            let remaining = payload.filter { !poolKeys.contains($0.key) }
+            if !remaining.isEmpty {
+                let remainingBody = try JSONEncoder().encode(JSONValue.object(remaining))
+                _ = try await client.execute(.settings, body: remainingBody)
+            }
+            return
         }
+        _ = try await client.execute(.settings, body: body)
+    }
+
+    private static func verifyReadback(
+        client: MinerFirmwareAdapter,
+        device: MinerDevice,
+        changes: [String: JSONValue],
+        payload: [String: JSONValue],
+        original: MinerInfo
+    ) async -> Result {
         do {
             let readback = try await client.info()
-            let fields = changes.keys.compactMap { MinerSetting.field(key: $0) }
+            let fields = changes.keys.compactMap { MinerDriverProfile.field(key: $0, device: device, info: readback) }
             let passwordChanged = fields.contains(where: \.isSecret)
             let matched = fields.filter { !$0.isSecret }
                 .allSatisfy { $0.matches(changes[$0.key], $0.observed(in: readback)) }

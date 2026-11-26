@@ -199,11 +199,14 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         var httpStatus: Int?
         var httpData: Data?
         var httpResponse: HTTPURLResponse?
+        var shouldTryAltPaths = false
         do {
             let (data, response) = try await transport.load(request, deadline: policy.perHostDeadline)
             httpData = data
             httpResponse = response
             httpStatus = response.statusCode
+        } catch WatchMinerFetchError.badStatus, WatchMinerFetchError.redirected {
+            shouldTryAltPaths = true
         } catch {
             httpStatus = nil
         }
@@ -213,18 +216,25 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
                let name = WatchDiscoveryIdentification.minerName(from: httpData, path: "/api/system/info") {
                 return try? WatchMiner(name: name, address: "http://\(address)")
             }
-            if httpStatus == 404 {
-                for altPath in ["/api/status", "/api/telemetry"] {
-                    if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
-                        return miner
-                    }
+            // ThorOS answers unknown routes with its HTML console instead of a 404.
+            let servedHTML = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("html") == true
+            if httpStatus == 404 || (300...399).contains(httpStatus) || (httpStatus == 200 && servedHTML) {
+                shouldTryAltPaths = true
+            }
+        }
+
+        if shouldTryAltPaths {
+            for altPath in ["/api/status", "/api/telemetry", WatchMinerHTTPClient.thorOSMinerStatusPath] {
+                if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
+                    return miner
                 }
             }
         }
 
         // Port 4028 cgminer probe (Avalon Nano 3/3s, Braiins, LuxOS)
         #if canImport(Darwin)
-        let timeout: TimeInterval = 0.5
+        guard !Task.isCancelled else { return nil }
+        let timeout: TimeInterval = min(policy.perHostDeadline, 1.5)
         if let cgData = try? await WatchMinerHTTPClient.queryCgminer(
             host: address, port: 4028, command: "version", timeout: timeout
         ),

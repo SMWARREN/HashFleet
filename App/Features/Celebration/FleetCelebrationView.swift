@@ -130,9 +130,11 @@ struct FleetCelebrationView: View {
     let celebration: FleetCelebration
     let onViewMiner: () -> Void
     let onDismiss: () -> Void
+    var onDismissAll: (() -> Void)?
     var onDisableSessionBestAlerts: (() -> Void)?
     var onSupport: (() -> Void)?
     var pendingCount: Int = 0
+    var queuedCelebrations: [FleetCelebration] = []
     var onReviewLater: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -141,13 +143,19 @@ struct FleetCelebrationView: View {
     @State private var revealedValue = false
     @State private var confettiStart: Date?
     @State private var hapticTrigger = 0
+    @State private var showingQueueSheet = false
 
     private let amber = Color(red: 245 / 255, green: 172 / 255, blue: 38 / 255)
 
     var body: some View {
         ZStack {
             backdrop
-            if !reduceMotion { RaysView(color: amber, isBlock: celebration.isBlock).opacity(appeared ? 1 : 0) }
+                .ignoresSafeArea()
+            if !reduceMotion {
+                RaysView(color: amber, isBlock: celebration.isBlock)
+                    .opacity(appeared ? 1 : 0)
+                    .ignoresSafeArea()
+            }
             if dynamicTypeSize.isAccessibilitySize {
                 ScrollView {
                     content.padding(.vertical, 24)
@@ -161,7 +169,28 @@ struct FleetCelebrationView: View {
                 }
             }
         }
-        .ignoresSafeArea()
+        .overlay(alignment: .topTrailing) {
+            if let onDismissAll {
+                FleetCelebrationTopMenu(
+                    totalCount: max(queuedCelebrations.count, pendingCount + 1),
+                    pendingCount: pendingCount,
+                    appeared: appeared,
+                    animation: entrance(delay: 0.2),
+                    onViewAll: { showingQueueSheet = true },
+                    onDismissAll: onDismissAll
+                )
+            }
+        }
+        .sheet(isPresented: $showingQueueSheet) {
+            if let onDismissAll {
+                let items = queuedCelebrations.isEmpty ? [celebration] : queuedCelebrations
+                FleetCelebrationQueueSheet(
+                    celebrations: items,
+                    totalCount: max(items.count, pendingCount + 1),
+                    onClearAll: onDismissAll
+                )
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("celebration.screen")
         .accessibilityValue(ProcessInfo.processInfo.arguments.contains("--ui-testing") ? celebration.id.uuidString : "")

@@ -78,6 +78,15 @@ public struct MinerDevice: Identifiable, Codable, Hashable, Sendable {
         return url
     }
 
+    /// Returns true when `host` is a literal IPv4 or IPv6 address (with or without IPv6 brackets).
+    public static func isIPAddress(_ host: String) -> Bool {
+        let bare = host.hasPrefix("[") && host.hasSuffix("]")
+            ? String(host.dropFirst().dropLast())
+            : host
+        let normalized = bare.hasSuffix(".") ? String(bare.dropLast()) : bare
+        return isIPv4(normalized) || isIPv6(normalized)
+    }
+
     private static func isValidHost(_ host: String) -> Bool {
         if host.hasPrefix("[") && host.hasSuffix("]") {
             return isIPv6(String(host.dropFirst().dropLast()))

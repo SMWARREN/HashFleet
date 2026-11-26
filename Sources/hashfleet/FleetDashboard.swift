@@ -97,10 +97,7 @@ final class FleetDashboard {
             if options.demo {
                 snapshot = demoSnapshot()
             } else if discovery {
-                let candidates = await FleetNetworkDiscovery.scanCurrent()
-                snapshot = FleetStatusSnapshot(miners: candidates.map {
-                    MinerStatusSnapshot(device: $0.device, info: $0.info)
-                })
+                snapshot = await HashFleetCLI.discoverFleet()
             } else {
                 snapshot = await FleetStatusService.read(
                     devices: devices,

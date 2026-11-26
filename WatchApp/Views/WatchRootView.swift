@@ -42,15 +42,13 @@ struct WatchRootView: View {
         .task {
             setup.start()
         }
+        .onChange(of: setup.latestCachedReadings) { _, transfer in
+            guard let transfer, let store, demoStore == nil else { return }
+            store.applyRelayedReadings(transfer.readings)
+        }
         .onChange(of: setup.pending?.id) { _, id in
-            guard id != nil, let transfer = setup.pending, let store, demoStore == nil else { return }
-            if store.miners.isEmpty {
-                _ = try? store.importMiners(transfer.miners)
-                setup.finish()
-                Task { await store.refresh() }
-            } else if scenePhase == .active {
-                showsSetup = true
-            }
+            guard id != nil else { return }
+            handlePendingSetupIfNeeded()
         }
         .sheet(isPresented: $showsSetup, onDismiss: { setup.finish() }, content: {
             if let transfer = setup.pending, let store, demoStore == nil {
@@ -90,15 +88,20 @@ struct WatchRootView: View {
         activity.update(phase: phase, store: demoStore ?? store, discovery: discovery)
         if scenePhase == .active, demoStore == nil {
             setup.start()
-            if let transfer = setup.pending, let store {
-                if store.miners.isEmpty {
-                    _ = try? store.importMiners(transfer.miners)
-                    setup.finish()
-                    Task { await store.refresh() }
-                } else {
-                    showsSetup = true
-                }
-            }
+            handlePendingSetupIfNeeded()
+        }
+    }
+
+    private func handlePendingSetupIfNeeded() {
+        guard let transfer = setup.pending, let store, demoStore == nil else { return }
+        let existingAddresses = Set(store.miners.map(\.address))
+        let hasNewMiners = transfer.miners.contains { !existingAddresses.contains($0.address) }
+        if store.miners.isEmpty || !hasNewMiners {
+            _ = try? store.importMiners(transfer.miners, updateExisting: true)
+            setup.finish()
+            Task { await store.refresh() }
+        } else if scenePhase == .active {
+            showsSetup = true
         }
     }
 

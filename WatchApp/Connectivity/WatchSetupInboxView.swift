@@ -115,7 +115,7 @@ struct WatchSetupInboxView: View {
                                 #if canImport(WatchKit)
                                 WKInterfaceDevice.current().play(.success)
                                 #endif
-                                _ = try store.importMiners(transfer.miners)
+                                _ = try store.importMiners(transfer.miners, updateExisting: true)
                                 onFinished()
                             } catch {
                                 isImporting = false

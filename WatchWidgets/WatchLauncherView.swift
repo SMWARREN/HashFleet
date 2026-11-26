@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 struct WatchLauncherView: View {
@@ -9,13 +10,44 @@ struct WatchLauncherView: View {
         renderingMode != .fullColor
     }
 
+    /// WatchKit's WidgetKit archiver rejects images larger than the watch screen area.
+    /// The shared brand assets are 1254x1254 px, so downsample to a crisp complication size.
+    private func downsampledBrandImage(named name: String, pixelSize: Int = 96) -> UIImage? {
+        guard let source = UIImage(named: name)?.cgImage,
+              let context = CGContext(
+                  data: nil,
+                  width: pixelSize,
+                  height: pixelSize,
+                  bitsPerComponent: 8,
+                  bytesPerRow: 0,
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              ) else {
+            return nil
+        }
+        context.interpolationQuality = .high
+        context.draw(source, in: CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize))
+        guard let scaled = context.makeImage() else { return nil }
+        return UIImage(cgImage: scaled)
+    }
+
     @ViewBuilder
     private var brandImage: some View {
-        Image(isTemplate ? "HashFleetWidgetTemplate" : "HashFleetWidgetBrand")
-            .renderingMode(isTemplate ? .template : .original)
-            .resizable()
-            .scaledToFit()
-            .widgetAccentable(isTemplate)
+        let assetName = isTemplate ? "HashFleetWidgetTemplate" : "HashFleetWidgetBrand"
+        Group {
+            if let thumbnail = downsampledBrandImage(named: assetName) {
+                Image(uiImage: thumbnail)
+                    .renderingMode(isTemplate ? .template : .original)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(assetName)
+                    .renderingMode(isTemplate ? .template : .original)
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+        .widgetAccentable(isTemplate)
     }
 
     var body: some View {

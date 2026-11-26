@@ -169,6 +169,25 @@ final class FleetCelebrationQueueStorage {
         try acknowledge(sequence: pageSequences.first, pause: true)
     }
 
+    /// Tombstones every pending record on every page so back-to-back celebrations can be
+    /// dismissed in one action. Payload bytes are kept for the same fail-closed safety reason
+    /// as `removeSessionBests()`.
+    @discardableResult
+    func acknowledgeAll() throws -> Int {
+        var removed = 0
+        try transaction {
+            try run("UPDATE records SET state = 1 WHERE state = 0")
+            removed = Int(sqlite3_changes(db))
+            if isPaused { try writePaused(false) }
+        }
+        isPaused = false
+        guard removed > 0 else { lastError = nil; return 0 }
+        pendingTotal = max(0, pendingTotal - removed)
+        refreshAfterCommit()
+        if !needsRefresh { lastError = nil }
+        return removed
+    }
+
     /// Tombstones every pending session-best record on every page, keeping the order of the rest.
     @discardableResult
     func removeSessionBests() throws -> Int {

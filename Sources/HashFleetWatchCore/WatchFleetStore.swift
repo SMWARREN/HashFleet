@@ -175,17 +175,38 @@ public final class WatchFleetStore {
 
     /// Appends miners whose endpoint is not already present and returns how many were added.
     ///
-    /// Existing entries and cached readings are untouched. An incoming identifier that collides with a different
-    /// existing endpoint is given a fresh one. Nothing is added unless the whole merge fits within the limit and
-    /// is saved successfully.
+    /// When `updateExisting` is `true` (used for iPhone setup transfers), existing entries with a matching
+    /// endpoint have their display name updated to match the incoming miner while preserving their ID and
+    /// cached reading. When `false`, existing entries are untouched. An incoming identifier that collides
+    /// with a different existing endpoint is given a fresh one. Nothing is saved unless the whole merge fits
+    /// within the limit and is persisted successfully.
     @discardableResult
-    public func importMiners(_ incoming: [WatchMiner]) throws -> Int {
+    public func importMiners(_ incoming: [WatchMiner], updateExisting: Bool = false) throws -> Int {
         guard !isDemo else { throw WatchFleetStoreError.demoIsReadOnly }
-        var knownAddresses = Set(miners.map(\.address))
-        var usedIDs = Set(miners.map(\.id))
+        var updatedMiners = miners
+        var addressToIndex: [String: Int] = [:]
+        for (index, miner) in updatedMiners.enumerated() {
+            addressToIndex[miner.address] = index
+        }
+        var usedIDs = Set(updatedMiners.map(\.id))
         var additions: [WatchMiner] = []
+        var didUpdateExisting = false
         for candidate in incoming {
-            guard knownAddresses.insert(candidate.address).inserted else { continue }
+            if let existingIndex = addressToIndex[candidate.address] {
+                if updateExisting {
+                    let existing = updatedMiners[existingIndex]
+                    if existing.name != candidate.name {
+                        updatedMiners[existingIndex] = try WatchMiner(
+                            id: existing.id,
+                            name: candidate.name,
+                            address: existing.address
+                        )
+                        didUpdateExisting = true
+                    }
+                }
+                continue
+            }
+            addressToIndex[candidate.address] = updatedMiners.count + additions.count
             if usedIDs.insert(candidate.id).inserted {
                 additions.append(candidate)
             } else {
@@ -194,15 +215,35 @@ public final class WatchFleetStore {
                 additions.append(try WatchMiner(id: fresh, name: candidate.name, address: candidate.address))
             }
         }
-        guard !additions.isEmpty else { return 0 }
-        guard miners.count + additions.count <= WatchFleetLimits.maximumMiners else {
+        guard !additions.isEmpty || didUpdateExisting else { return 0 }
+        guard updatedMiners.count + additions.count <= WatchFleetLimits.maximumMiners else {
             throw WatchFleetStoreError.limitReached
         }
-        let updated = miners + additions
-        try persist(miners: updated, readings: readings)
-        miners = updated
+        let finalMiners = updatedMiners + additions
+        try persist(miners: finalMiners, readings: readings)
+        miners = finalMiners
         storageError = nil
         return additions.count
+    }
+
+    /// Applies cached readings relayed from the paired iPhone for miners already in this store.
+    /// Newer local readings are preserved.
+    public func applyRelayedReadings(_ incoming: [WatchMinerReading]) {
+        guard !isDemo, !incoming.isEmpty else { return }
+        let knownIDs = Set(miners.map(\.id))
+        var applied = false
+        for reading in incoming {
+            guard knownIDs.contains(reading.minerID) else { continue }
+            if let existing = readings[reading.minerID], existing.observedAt >= reading.observedAt {
+                continue
+            }
+            readings[reading.minerID] = reading
+            failures[reading.minerID] = nil
+            applied = true
+        }
+        if applied, !writesBlocked {
+            try? persist(miners: miners, readings: readings)
+        }
     }
 
     // MARK: - Refresh

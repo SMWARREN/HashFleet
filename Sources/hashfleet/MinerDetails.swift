@@ -224,21 +224,29 @@ enum MinerDetails {
                 cooling.append(("Second fan", measure(FleetFormat.sensor(info, keys: "fan2rpm", "fan2Rpm"), "RPM"), palette.value))
             }
             metrics(cooling)
+            let family = MinerDriverProfile.resolvedFamily(device: miner.device, info: info).lowercased()
             heading("Clock & core voltage")
-            metrics([
+            var tuning: [Metric] = [
                 ("Clock setting", measure(FleetFormat.sensor(info, keys: "frequency"), "MHz"), palette.value),
-                ("Measured clock", measure(FleetFormat.sensor(info, keys: "actualFrequency"), "MHz"), palette.chart),
-                ("Voltage setting", measure(FleetFormat.sensor(info, keys: "coreVoltage"), "mV"), palette.value),
-                ("Measured voltage", measure(FleetFormat.sensor(info, keys: "coreVoltageActual"), "mV"), palette.chart)
-            ])
+                ("Measured clock", measure(FleetFormat.sensor(info, keys: "actualFrequency"), "MHz"), palette.chart)
+            ]
+            if family != "thoros" {
+                tuning.append(("Voltage setting", measure(FleetFormat.sensor(info, keys: "coreVoltage"), "mV"), palette.value))
+            }
+            tuning.append(("Measured voltage", measure(FleetFormat.sensor(info, keys: "coreVoltageActual"), "mV"), palette.chart))
+            metrics(tuning)
         }
         heading("Device")
-        metrics([
+        var deviceMetrics: [Metric] = [
             ("ASIC", miner.asicModel ?? "Not reported", palette.value),
             ("Board", info.boardVersion.isEmpty ? "Not reported" : info.boardVersion, palette.value),
             ("Firmware", miner.firmware ?? "Not reported", palette.value),
             ("Wi-Fi signal", measure(FleetFormat.sensor(info, keys: "wifiRSSI", "wifiRssi", allowNegative: true), "dBm"), palette.value)
-        ])
+        ]
+        if let driver = info.raw["firmwareFamily"]?.stringValue ?? miner.device.firmwareFamily, !driver.isEmpty {
+            deviceMetrics.append(("Driver", driver, palette.secondary))
+        }
+        metrics(deviceMetrics)
         }
 
         mutating func pool(_ info: MinerInfo) {

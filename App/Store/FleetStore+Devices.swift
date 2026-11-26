@@ -21,10 +21,9 @@ extension FleetStore {
         guard !existing.contains(where: { (try? $0.validatedURL()) == url }) else {
             throw FleetError.duplicate
         }
-        // A miner added under a second address (its IP and its mDNS hostname both resolve to the
-        // same hardware) cannot be caught here because we do not know the new address's MAC until
-        // it is probed. The post-refresh `deduplicateDevicesByMAC()` collapses that case once a
-        // snapshot arrives.
+        // Distinct literal IP:port pairs stay separate even if they report the same hardware MAC
+        // (e.g. virtual miners or port-forwarded endpoints). A miner added by both IP and hostname
+        // on the same port collapses in `deduplicateDevicesByMAC()` once snapshots arrive.
         if isDemo { clearDemo() }
         devices.append(
             MinerDevice(
@@ -83,6 +82,9 @@ extension FleetStore {
             ? MinerDisplayName.automatic(info: snapshots[device.id]?.info, address: devices[index].address)
             : name
         persist()
+        #if os(iOS)
+        FleetWatchSetupCoordinator.syncIfPossible(devices: devices, isDemo: isDemo)
+        #endif
     }
 
     func validatedLocalName(_ name: String) throws -> String {
@@ -95,12 +97,11 @@ extension FleetStore {
         return trimmed
     }
 
-    /// Collapses devices that are the same physical miner reached through different addresses
-    /// (for example its IP `192.0.2.226` and its mDNS name `bitaxe-naja-duo.local`). The
-    /// add-time guard only rejects byte-identical URLs, so a miner added both ways appears twice.
-    /// Once each device has a snapshot we can compare the hardware MAC address, which is stable
-    /// across IP and hostname. Keeps the first device per MAC (preserving a user-set name and its
-    /// tracking history) and removes the later duplicates. No-op in demo mode.
+    /// Collapses devices that are the same physical miner reached through a hostname alias
+    /// (for example its IP `192.0.2.226` and its mDNS name `bitaxe-naja-duo.local` on the same
+    /// port). Distinct literal `IP:port` endpoints (different IPs or different ports) are always
+    /// kept separate even if they report the same MAC (e.g. virtual miners or port-forwarded
+    /// endpoints). Keeps the first device per group and removes later duplicates. No-op in demo.
     ///
     /// The history transfer must commit before removal. Failure retains both devices for retry.
     func deduplicateDevicesByMAC() async {
@@ -108,17 +109,7 @@ extension FleetStore {
         isDeduplicatingDevices = true
         defer { isDeduplicatingDevices = false }
         let token = generation
-        var seenMAC: [String: MinerDevice] = [:]
-        var duplicates: [(duplicate: MinerDevice, survivor: MinerDevice, mac: String)] = []
-        for device in devices {
-            let mac = snapshots[device.id]?.info?.macAddress ?? ""
-            guard !mac.isEmpty else { continue }
-            if let survivor = seenMAC[mac] {
-                duplicates.append((duplicate: device, survivor: survivor, mac: mac))
-            } else {
-                seenMAC[mac] = device
-            }
-        }
+        let duplicates = duplicateDevicePairs()
         guard !duplicates.isEmpty else { return }
 
         for (duplicate, survivor, mac) in duplicates {
@@ -141,6 +132,42 @@ extension FleetStore {
                 persistenceError = "A duplicate miner was kept because its achievement history could not be merged. It will retry on refresh."
             }
         }
+    }
+
+    private struct DeduplicationEndpoint {
+        let host: String
+        let port: Int
+        let isLiteralIP: Bool
+
+        init?(device: MinerDevice) {
+            guard let url = try? device.validatedURL(), let host = url.host else { return nil }
+            self.host = host.lowercased()
+            self.port = url.port ?? (url.scheme?.lowercased() == "https" ? 443 : 80)
+            self.isLiteralIP = MinerDevice.isIPAddress(host)
+        }
+    }
+
+    private struct MACPortKey: Hashable {
+        let mac: String
+        let port: Int
+    }
+
+    private func duplicateDevicePairs() -> [(duplicate: MinerDevice, survivor: MinerDevice, mac: String)] {
+        var seenByMACAndPort: [MACPortKey: [(device: MinerDevice, endpoint: DeduplicationEndpoint)]] = [:]
+        var duplicates: [(duplicate: MinerDevice, survivor: MinerDevice, mac: String)] = []
+        for device in devices {
+            let mac = snapshots[device.id]?.info?.macAddress ?? ""
+            guard !mac.isEmpty, let endpoint = DeduplicationEndpoint(device: device) else { continue }
+            let key = MACPortKey(mac: mac, port: endpoint.port)
+            if let existing = seenByMACAndPort[key]?.first(where: { candidate in
+                !(candidate.endpoint.isLiteralIP && endpoint.isLiteralIP && candidate.endpoint.host != endpoint.host)
+            }) {
+                duplicates.append((duplicate: device, survivor: existing.device, mac: mac))
+            } else {
+                seenByMACAndPort[key, default: []].append((device: device, endpoint: endpoint))
+            }
+        }
+        return duplicates
     }
 
     private func matchesDuplicate(_ duplicate: MinerDevice, survivor: MinerDevice, mac: String, token: UUID) -> Bool {

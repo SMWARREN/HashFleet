@@ -279,7 +279,10 @@ final class FirmwareUpdateBoundaryTests {
         #expect(store.shouldShow(notice, for: miner1.id))
     }
 
-    @Test("Each firmware family requests only its own project feed", arguments: MinerFirmwareFamily.allCases)
+    @Test(
+        "Each firmware family requests only its own project feed",
+        arguments: MinerFirmwareFamily.allCases.filter { $0.updateManifestURL == nil }
+    )
     func familyFeedIsUsed(family: MinerFirmwareFamily) async throws {
         let store = makeStore()
         let target = device()
@@ -290,6 +293,7 @@ final class FirmwareUpdateBoundaryTests {
         case .nerdqaxe: board = "NerdQAxe++"
         case .bitfortun: board = "BitfortunOCTAXE+"
         case .axeForge: board = "AxeForge rev5.1/6"
+        case .thorX1, .thorP2: Issue.record("Thor families use the vendor manifest"); return
         }
         script(.http(status: 200, body: simpleFeed(["v3.0.0"])))
 
@@ -299,6 +303,29 @@ final class FirmwareUpdateBoundaryTests {
         #expect(store.notice(for: target.id)?.latestVersion == "v3.0.0")
         let others = MinerFirmwareFamily.allCases.filter { $0 != family }
         #expect(others.allSatisfy { $0.releaseFeedURL != family.releaseFeedURL })
+    }
+
+    @Test("ThorOS reads the board's vendor OTA manifest, never the GitHub release list")
+    func thorOSUsesVendorManifest() async throws {
+        let store = makeStore()
+        let target = device("Thor P2")
+        let manifest = Data(
+            #"{"version":"1.0.4","app_url":"https://github.com/HammerMiner/P2/releases/download/v1.0.4-20261113/thorp2-1.0.4-20261113-update.bin","claw_url":""}"#.utf8
+        )
+        script(.http(status: 200, body: manifest))
+        let info = MinerInfo(raw: [
+            "firmwareFamily": .string("thorOS"),
+            "device_model": .string("THOR P2"),
+            "version": .string("1.0.3")
+        ])
+
+        await store.checkIfNeeded(device: target, info: info)
+
+        #expect(requests.map(\.url) == [MinerFirmwareFamily.thorP2.updateManifestURL])
+        let notice = try #require(store.notice(for: target.id))
+        #expect(notice.latestVersion == "1.0.4")
+        #expect(notice.isUpdateAvailable)
+        #expect(!notice.checkFailed)
     }
 
     // MARK: eligibility

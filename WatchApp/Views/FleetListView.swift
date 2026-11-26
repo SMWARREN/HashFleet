@@ -7,11 +7,14 @@ struct FleetListView: View {
     var onEnterDemo: () -> Void
     var onExitDemo: () -> Void
     @State private var showsDeleteAllConfirmation = false
+    @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     var body: some View {
         List {
             if store.isDemo {
                 DemoBanner()
+            } else if isLowPowerModeEnabled {
+                LowPowerModeBanner()
             }
 
             if let storageError = store.storageError {
@@ -64,6 +67,9 @@ struct FleetListView: View {
         .accessibilityIdentifier("watch.fleet")
         .navigationTitle("Hash Fleet")
         .navigationBarTitleDisplayMode(.inline)
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
         .confirmationDialog(
             "Delete all miners from this Watch?",
             isPresented: $showsDeleteAllConfirmation,
@@ -156,6 +162,17 @@ private struct DemoBanner: View {
                 .font(.footnote)
                 .foregroundStyle(Color.hashGold)
                 .accessibilityIdentifier("watch.demoBanner")
+        }
+    }
+}
+
+private struct LowPowerModeBanner: View {
+    var body: some View {
+        Section {
+            Label("Low Power Mode limits Wi-Fi. Turn it off in Control Center to scan.", systemImage: "battery.25")
+                .font(.footnote)
+                .foregroundStyle(Color.hashCaution)
+                .accessibilityIdentifier("watch.lowPowerModeBanner")
         }
     }
 }

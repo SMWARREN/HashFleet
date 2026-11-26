@@ -13,6 +13,8 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
     case nerdqaxe
     case bitfortun
     case axeForge
+    case thorX1
+    case thorP2
 
     /// Human-readable project name for UI copy.
     var displayName: String {
@@ -21,6 +23,8 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
         case .nerdqaxe: "NerdQAxe ESP-Miner"
         case .bitfortun: "Bitfortun BS-1 firmware"
         case .axeForge: "AxeForge"
+        case .thorX1: "Hammer ThorOS (Thor X1)"
+        case .thorP2: "Hammer ThorOS (Thor P2)"
         }
     }
 
@@ -34,6 +38,22 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
             URL(string: "https://api.github.com/repos/liaojinguu/bitfortun-BS-1/releases?per_page=20")!
         case .axeForge:
             URL(string: "https://api.github.com/repos/IsSasoriDev/AxeForge/releases?per_page=20")!
+        // Hammer publishes one closed-source update feed per board. Never mix them.
+        case .thorX1:
+            URL(string: "https://api.github.com/repos/HammerMiner/X1/releases?per_page=20")!
+        case .thorP2:
+            URL(string: "https://api.github.com/repos/HammerMiner/P2/releases?per_page=20")!
+        }
+    }
+
+    /// Hammer miners check `version.json` in each board repo, not the newest GitHub release. The
+    /// manifest can pin an older build while a newer beta is published (P2 pinned 1.0.4 while
+    /// 1.1.0 was a "beta test" release), so Thor families read the manifest only.
+    var updateManifestURL: URL? {
+        switch self {
+        case .thorX1: URL(string: "https://raw.githubusercontent.com/HammerMiner/X1/HEAD/version.json")
+        case .thorP2: URL(string: "https://raw.githubusercontent.com/HammerMiner/P2/HEAD/version.json")
+        default: nil
         }
     }
 
@@ -54,6 +74,10 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
         if MinerHTTPDrivers.isWarpAxeShape(info.raw)
             || info.raw["firmwareFamily"]?.stringValue?.lowercased() == "warpaxe" {
             return nil
+        }
+        if MinerHTTPDrivers.isThorOSShape(info.raw)
+            || info.raw["firmwareFamily"]?.stringValue == "thorOS" {
+            return identifyThorBoard(info)
         }
         // Board and device model are the strongest signals, then hostname, then the version
         // strings, which some builds tag with the project name.
@@ -96,5 +120,16 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
             return .axeForge
         }
         return nil
+    }
+
+    /// Only boards with a verified per-model feed get one. Other ThorOS boards stay silent.
+    private static func identifyThorBoard(_ info: MinerInfo) -> MinerFirmwareFamily? {
+        let model = (info.raw["device_model"]?.stringValue ?? info.raw["deviceModel"]?.stringValue ?? "")
+            .uppercased().replacingOccurrences(of: " ", with: "")
+        switch model {
+        case "THORX1", "X1": return .thorX1
+        case "THORP2", "P2": return .thorP2
+        default: return nil
+        }
     }
 }
