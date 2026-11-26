@@ -202,6 +202,19 @@ struct MinerCoolingPreview: View {
         _draft = State(initialValue: initial)
     }
 
+    #if DEBUG
+    init(mode: FleetPreferences.DashboardMode, info: MinerInfo?, canEdit: Bool, live: LiveDestination? = nil, failure: String? = nil) {
+        self.mode = mode
+        self.info = info
+        self.canEdit = canEdit
+        self.live = live
+        let initial = MinerCoolingPreviewDraft(info: info)
+        _applied = State(initialValue: initial)
+        _draft = State(initialValue: initial)
+        _failure = State(initialValue: failure)
+    }
+    #endif
+
     struct Review: Identifiable {
         let id = UUID()
         let changes: [String: JSONValue]

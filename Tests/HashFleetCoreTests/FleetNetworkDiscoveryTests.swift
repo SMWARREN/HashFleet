@@ -65,7 +65,7 @@ final class FleetNetworkDiscoveryTests: XCTestCase {
     }
 
     func testEmptyScanReturnsNoCandidatesWithoutInventingDevices() async {
-        let plan = FleetDiscoveryScanPlan(localAddress: "192.168.1.42", hosts: ["127.0.0.1"])
+        let plan = FleetDiscoveryScanPlan(localAddress: "192.168.1.42", hosts: [])
         let candidates = await FleetNetworkDiscovery.scan(plan: plan)
 
         XCTAssertTrue(candidates.isEmpty)

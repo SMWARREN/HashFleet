@@ -83,7 +83,8 @@ final class TelemetryEnergyAndStatusServiceTests: XCTestCase {
         let dev1 = MinerDevice(
             name: "Beta Miner",
             address: "127.0.0.1:65530",
-            kind: .espMiner
+            kind: .espMiner,
+            firmwareFamily: "bitaxe"
         )
         let dev2 = MinerDevice(
             name: "Alpha Miner",

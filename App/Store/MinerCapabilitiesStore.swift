@@ -182,6 +182,13 @@ final class MinerCapabilitiesStore {
         failedIdentities.removeAll()
     }
 
+    #if DEBUG
+    /// Test seam: seeds a fixed read-only report for one device without any probe or network request.
+    func seedReportForTesting(_ report: MinerCapabilityReport, id: UUID) {
+        reports[id] = report
+    }
+    #endif
+
     private nonisolated static func probeSingleASIC(client: MinerAPIClient) async -> (JSONValue?, MinerProbeStatus) {
         if Task.isCancelled { return (nil, .failed(message: "Cancelled")) }
         do {

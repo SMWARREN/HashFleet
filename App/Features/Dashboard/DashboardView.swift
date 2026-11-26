@@ -90,6 +90,43 @@ struct DashboardView: View {
         self.onSelectSidebarDestination = onSelectSidebarDestination
     }
 
+    #if DEBUG
+    /// Seeds presentation state for offline evaluation. Production code never calls this.
+    init(
+        store: FleetStore,
+        insights: MiningInsightsStore,
+        startupReady: Bool,
+        onToggleSidebar: (() -> Void)? = nil,
+        onSelectSidebarDestination: ((FleetSidebarDestination) -> Void)? = nil,
+        seededRemoval: MinerDevice? = nil,
+        seededTuningDevice: MinerDevice? = nil,
+        seededXMRigDevice: MinerDevice? = nil,
+        seededSettings: DashboardMinerSettingsRoute? = nil,
+        showingAddMiner: Bool = false,
+        showingSettings: Bool = false,
+        showingSupport: Bool = false,
+        showingAbout: Bool = false,
+        showsSearch: Bool = false,
+        searchText: String = ""
+    ) {
+        self.store = store
+        self.insights = insights
+        self.startupReady = startupReady
+        self.onToggleSidebar = onToggleSidebar
+        self.onSelectSidebarDestination = onSelectSidebarDestination
+        _minerToRemove = State(initialValue: seededRemoval)
+        _minerTuningSessionDevice = State(initialValue: seededTuningDevice)
+        _minerXMRigControlDevice = State(initialValue: seededXMRigDevice)
+        _minerSettingsRoute = State(initialValue: seededSettings)
+        _showingAddMiner = State(initialValue: showingAddMiner)
+        _showingSettings = State(initialValue: showingSettings)
+        _showingSupport = State(initialValue: showingSupport)
+        _showingAbout = State(initialValue: showingAbout)
+        _showsSearch = State(initialValue: showsSearch)
+        _searchText = State(initialValue: searchText)
+    }
+    #endif
+
     var body: some View {
         GeometryReader { viewport in
             ScrollView {

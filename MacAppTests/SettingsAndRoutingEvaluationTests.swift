@@ -504,6 +504,22 @@ struct SettingsAndRoutingEvaluationTests {
         _ = await availability.revalidatedCryptoDestination(.bitcoin)
     }
 
+    #if DEBUG
+    /// Drives the direct-distribution branch without a storefront lookup or network request.
+    @Test func evaluateDirectDistributionDeveloperSupportBranch() async {
+        let availability = DeveloperSupportAvailability(currentCountryCode: { nil })
+        availability.directDistributionForTesting = true
+        #expect(availability.directDistribution)
+        #expect(!availability.usesNativeTipJar)
+        #expect(availability.checkoutURL != nil)
+        #expect(availability.cryptoDestinations == DeveloperSupportCrypto.allCases)
+        await availability.observe(while: .active)
+        #expect(availability.isResolved)
+        #expect(await availability.revalidatedURL() != nil)
+        #expect(await availability.revalidatedCryptoDestination(.solana) == .solana)
+    }
+    #endif
+
     @Test func evaluateFleetActivityPresentationMethods() {
         let (store, defaults, suite) = makeStore(demo: true)
         defer { defaults.removePersistentDomain(forName: suite) }

@@ -22,11 +22,18 @@ final class DeveloperSupportAvailability {
         self.currentCountryCode = currentCountryCode
     }
 
+    #if DEBUG
+    var directDistributionForTesting: Bool = false
+    #endif
+
     var directDistribution: Bool {
+        #if DEBUG
+        if directDistributionForTesting { return true }
+        #endif
         #if os(macOS) && HASHFLEET_DIRECT_DISTRIBUTION
-        true
+        return true
         #else
-        false
+        return false
         #endif
     }
 

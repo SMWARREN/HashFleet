@@ -42,6 +42,37 @@ struct MinerHarloToolsPage: View {
     @State private var failure: String?
     @State private var confirm: ConfirmAction?
 
+    #if DEBUG
+    init(device: MinerDevice, store: FleetStore) {
+        self.device = device
+        self.store = store
+    }
+
+    /// Seeds loaded Harlo data so tests render the populated cards without contacting a miner.
+    init(device: MinerDevice, store: FleetStore, preview: HarloPreview) {
+        self.device = device
+        self.store = store
+        _updates = State(initialValue: preview.updates)
+        _time = State(initialValue: preview.time)
+        _schedules = State(initialValue: preview.schedules)
+        _lighting = State(initialValue: preview.lighting)
+        _discord = State(initialValue: preview.discord)
+        _matter = State(initialValue: preview.matter)
+        _network = State(initialValue: preview.network)
+        _fleet = State(initialValue: preview.fleet)
+        _wifiNetworks = State(initialValue: preview.wifiNetworks)
+        _message = State(initialValue: preview.message)
+        _failure = State(initialValue: preview.failure)
+        _minerName = State(initialValue: preview.minerName)
+        _ntpServer = State(initialValue: preview.ntpServer)
+        _timezone = State(initialValue: preview.timezone)
+        _webhook = State(initialValue: preview.webhook)
+        _plugCode = State(initialValue: preview.plugCode)
+        _plugAddress = State(initialValue: preview.plugAddress)
+        _wifiSSID = State(initialValue: preview.wifiSSID)
+    }
+    #endif
+
     struct ConfirmAction: Identifiable {
         let id = UUID()
         let title: String
@@ -197,7 +228,7 @@ struct MinerHarloToolsPage: View {
             }
             ForEach(Array(schedules.enumerated()), id: \.offset) { _, s in
                 HStack {
-                    Text(scheduleSummary(s)).fleetFont(.caption, design: .monospaced)
+                    Text(harloScheduleSummary(s)).fleetFont(.caption, design: .monospaced)
                     Spacer()
                     if let id = s["id"]?.intValue {
                         Button(role: .destructive) {
@@ -377,12 +408,6 @@ struct MinerHarloToolsPage: View {
         }
     }
 
-    private func scheduleSummary(_ s: [String: JSONValue]) -> String {
-        let days = (s["days"]?.arrayValue ?? []).compactMap(\.intValue).compactMap { Self.dayNames[safe: $0] }.joined(separator: ",")
-        let path = s["path"]?.stringValue ?? ""
-        return "#\(s["id"]?.intValue ?? 0) \(s["enabled"]?.boolValue == true ? "On" : "Off") \(days) \(s["time"]?.stringValue ?? "") \(path)"
-    }
-
     private func card<Content: View>(_ title: String, _ subtitle: String, _ symbol: String,
                                      @ViewBuilder content: @escaping () -> Content) -> some View {
         MinerControlsCard {
@@ -459,6 +484,39 @@ struct MinerHarloToolsPage: View {
     }
 }
 
+#if DEBUG
+/// Already-loaded Harlo data so tests render the populated cards without contacting a miner.
+struct HarloPreview {
+    var updates: [String: JSONValue] = [:]
+    var time: [String: JSONValue] = [:]
+    var schedules: [[String: JSONValue]] = []
+    var lighting: [String: JSONValue] = [:]
+    var discord: [String: JSONValue] = [:]
+    var matter: [String: JSONValue] = [:]
+    var network: [String: JSONValue] = [:]
+    var fleet: [String: JSONValue] = [:]
+    var wifiNetworks: [String] = []
+    var message: String?
+    var failure: String?
+    var minerName = ""
+    var ntpServer = ""
+    var timezone = ""
+    var webhook = ""
+    var plugCode = ""
+    var plugAddress = ""
+    var wifiSSID = ""
+}
+#endif
+
 private extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
+}
+
+private func harloScheduleSummary(_ schedule: [String: JSONValue]) -> String {
+    let names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    let days = (schedule["days"]?.arrayValue ?? []).compactMap(\.intValue)
+        .compactMap { names[safe: $0] }.joined(separator: ",")
+    let path = schedule["path"]?.stringValue ?? ""
+    let state = schedule["enabled"]?.boolValue == true ? "On" : "Off"
+    return "#\(schedule["id"]?.intValue ?? 0) \(state) \(days) \(schedule["time"]?.stringValue ?? "") \(path)"
 }

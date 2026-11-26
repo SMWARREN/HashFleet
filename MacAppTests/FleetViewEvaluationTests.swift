@@ -280,7 +280,7 @@ struct FleetViewEvaluationTests {
             preferences: FleetTemperatureAlertPreferences(defaults: store.defaults),
             isDemo: store.isDemo
         ))
-        evaluate(DeveloperTipJarSection(service: DeveloperTipJarService.shared))
+        evaluate(DeveloperTipJarSection(service: DeveloperTipJarService(startUpdatesListener: false)))
         evaluate(DeveloperSupportSection())
         evaluate(FleetWidgetSettingsPage(store: store, coordinator: coordinator))
         evaluate(FleetLiveActivitySettingsPage(store: store, coordinator: coordinator))

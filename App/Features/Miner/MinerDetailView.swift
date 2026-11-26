@@ -67,6 +67,7 @@ struct MinerDetailView: View {
     var usesNumberFirstDetail: Bool {
         #if os(macOS)
         !store.isPoolIconDemo && (!guidedDemo || guidedEssentials) && !isXMRig
+            && !showsClassicDetailForTesting
         #else
         (guidedEssentials || (store.isDemo ? NumberFirstPreview.minerDetail : NumberFirstPreview.usesLivePhoneLayouts))
             && !store.isPoolIconDemo && (!guidedDemo || guidedEssentials)
@@ -93,6 +94,25 @@ struct MinerDetailView: View {
             market: coin.flatMap { insights?.coinMarkets[$0] }
         )
     }
+
+    #if DEBUG
+    /// Seeds the identity disclosure for offline evaluation. Production code never calls this.
+    init(
+        device: MinerDevice,
+        store: FleetStore,
+        insights: MiningInsightsStore? = nil,
+        liveConnectionError: String? = nil,
+        isLive: Bool = false,
+        showsIdentity: Bool = false
+    ) {
+        self.device = device
+        self.store = store
+        self.insights = insights
+        self.liveConnectionError = liveConnectionError
+        self.isLive = isLive
+        _showsIdentity = State(initialValue: showsIdentity)
+    }
+    #endif
 
     var body: some View {
         if FleetReleaseFeatures.includes(currentDevice.kind) {
@@ -419,6 +439,9 @@ struct MinerDetailView: View {
         detailColumnCount >= 2 && !dynamicTypeSize.isAccessibilitySize
     }
 
+    /// Tests set this to render the classic detail sections, which the Mac layout otherwise skips.
+    var showsClassicDetailForTesting = false
+
     var embedsControlsInWideTelemetry: Bool {
         (dashboardMode == .essentials || usesWideDetail) && info != nil && !isXMRig
     }
@@ -428,7 +451,9 @@ struct MinerDetailView: View {
     var isDetailOnline: Bool {
         snapshot?.isReconnecting != true && snapshot?.error == nil && info != nil
     }
+}
 
+extension MinerDetailView {
     /// One line instead of the previous four-line masthead. The navigation bar already shows the
     /// device name, so repeating it as a large title only pushed the readings off-screen. The address
     /// stays selectable here and is repeated in full inside Identity.

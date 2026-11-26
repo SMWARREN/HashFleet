@@ -86,6 +86,30 @@ struct MinerTuningPreview: View {
         _draftIdentity = State(initialValue: MinerInlineActionState.identity(from: info))
     }
 
+    #if DEBUG
+    init(mode: FleetPreferences.DashboardMode, device: MinerDevice, store: FleetStore, info: MinerInfo, isDemo: Bool,
+         canEdit: Bool, insights: MiningInsightsStore?, draft: MinerTuningPreviewDraft? = nil,
+         error: String? = nil, statusMessage: String? = nil, applied: MinerTuningPreviewDraft.Review? = nil,
+         review: MinerTuningPreviewDraft.Review? = nil, showsInlineAdvanced: Bool = false, showsFullAdvanced: Bool = false) {
+        self.mode = mode
+        self.device = device
+        self.store = store
+        self.info = info
+        self.isDemo = isDemo
+        readings = MinerTuningPreviewReadings(info: info)
+        self.canEdit = canEdit
+        self.insights = insights
+        _draft = State(initialValue: draft ?? MinerTuningPreviewDraft(info: info))
+        _draftIdentity = State(initialValue: MinerInlineActionState.identity(from: info))
+        _error = State(initialValue: error)
+        _statusMessage = State(initialValue: statusMessage)
+        _applied = State(initialValue: applied)
+        _review = State(initialValue: review)
+        _showsInlineAdvanced = State(initialValue: showsInlineAdvanced)
+        _showsFullAdvanced = State(initialValue: showsFullAdvanced)
+    }
+    #endif
+
     private var pinsReadings: Bool {
         #if os(iOS)
         !textSize.isAccessibilitySize && verticalSizeClass != .compact
