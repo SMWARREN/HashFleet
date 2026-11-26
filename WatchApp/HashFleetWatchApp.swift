@@ -1,5 +1,6 @@
 import HashFleetWatchCore
 import SwiftUI
+import WidgetKit
 
 /// Independent watchOS entry point. It owns the Watch-local miner list and never depends on a paired iPhone.
 @main
@@ -35,6 +36,9 @@ struct HashFleetWatchApp: App {
                 activity: activity
             )
             .tint(.hashGold)
+            .task {
+                WidgetCenter.shared.reloadTimelines(ofKind: "HashFleet.OpenWatch")
+            }
         }
     }
 }
