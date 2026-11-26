@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from .assets import emulator_asset, firmware_asset, install_asset
+from .assets import board_assets, emulator_asset, install_asset
 from .config import FIRMWARE_TAG, LabError, Miner, load
 from .supervisor import control, control_path, instance_settings, private_directory, supervise
 
@@ -73,7 +73,13 @@ def _check(miner: Miner, directory: Path, wait: int) -> dict:
                     is_fixture = response.getheader("X-Virtual-Miner-Fixture") == "api-only"
                     if is_fixture != (miner.backend == "api-fixture"):
                         raise LabError(f"{miner.name}: HTTP backend did not match the selected mode")
-                    if miner.backend == "esp-emu" and (
+                    if miner.backend == "esp-emu" and thor and (
+                        not str(data.get("version") or "").startswith(miner.profile.version + " ")
+                        or data.get("boardVersion") != miner.profile.model
+                        or data.get("ASICModel") != miner.profile.asic
+                    ):
+                        raise LabError(f"{miner.name}: response does not match the pinned ThorOS identity")
+                    if miner.backend == "esp-emu" and not thor and (
                         data.get("version") != FIRMWARE_TAG
                         or data.get("boardVersion") != miner.profile.revision
                         or data.get("ASICModel") != miner.profile.asic
@@ -155,7 +161,8 @@ def _execute(args: argparse.Namespace) -> None:
         private_directory(cache)
         if not (profiles := {miner.profile for miner in miners.values() if miner.backend == "esp-emu"}):
             raise LabError("no real firmware selected; API fixtures need no downloads")
-        for asset in (emulator_asset(), *sorted(map(firmware_asset, profiles), key=lambda item: item.file)):
+        assets = {asset.file: asset for profile in profiles for asset in board_assets(profile)}
+        for asset in (emulator_asset(), *sorted(assets.values(), key=lambda item: item.file)):
             path = install_asset(cache, asset)
             print(f"{asset.sha256}  {path}")
         return

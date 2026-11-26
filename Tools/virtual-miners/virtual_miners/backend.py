@@ -108,16 +108,23 @@ class Guest:
 
 @contextmanager
 def run_guest(miner: Miner, assets: Path, directory: Path):
-    runner, original = prepare_offline(assets, miner.profile, directory)
+    runner, original, boot = prepare_offline(assets, miner.profile, directory)
     image = directory / "flash.bin"
-    digest = provision(original, image, miner)
+    thoros = miner.profile.api == "thoros"
+    if thoros:
+        from .thoros_flash import compose
+
+        digest = compose(boot, original, image)
+    else:
+        digest = provision(original, image, miner)
     # Simulated boards have distinct hostname/ports and independent Wi-Fi, flash and state.
     guest_port, *board_ports = _ports(3 if miner.hardware == "board" else 1, miner.http_port)
     listener_ports = (guest_port, *board_ports)
     net = f"user,restrict=yes,dns=127.0.0.1,net=10.0.2.0/24,hostfwd=tcp:127.0.0.1:{guest_port}-:80"
     argv = [
         str(runner), "--chip", "esp32s3", "--firmware", str(image),
-        "--wifi-ssid", SSID, "--wifi-password", PASSWORD, "--net", net, "--log-color", "never",
+        *(() if thoros else ("--wifi-ssid", SSID, "--wifi-password", PASSWORD)),
+        "--net", net, "--log-color", "never",
     ]
     if board_ports:
         cosim_port, uart_port = board_ports
@@ -132,9 +139,11 @@ def run_guest(miner: Miner, assets: Path, directory: Path):
     stop = threading.Event()
     sidecars: list[threading.Thread] = []
     with log.open("xb") as serial:
-        serial.write(f"# ESP-Miner {FIRMWARE_TAG}; native esp-emu {EMULATOR_TAG}\n".encode())
-        serial.write(f"# factory sha256 {miner.profile.flash_sha256}\n".encode())
-        serial.write(f"# local NVS-only overlay flash sha256 {digest}\n".encode())
+        firmware = miner.profile.flash_asset if thoros else f"ESP-Miner {FIRMWARE_TAG}"
+        serial.write(f"# {firmware}; native esp-emu {EMULATOR_TAG}\n".encode())
+        serial.write(f"# {'vendor app' if thoros else 'factory'} sha256 {miner.profile.flash_sha256}\n".encode())
+        overlay = "composed bootloader/table/NVS" if thoros else "local NVS-only overlay"
+        serial.write(f"# {overlay} flash sha256 {digest}\n".encode())
         serial.flush()
         child = subprocess.Popen(
             isolated_command(argv, listener_ports=listener_ports),

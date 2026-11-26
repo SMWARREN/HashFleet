@@ -12,7 +12,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .config import Board, FIRMWARE_TAG, LabError
+from .config import (
+    Board, FIRMWARE_TAG, LabError, THOROS_BOOT_FILE, THOROS_BOOT_REPO, THOROS_BOOT_SHA256, THOROS_BOOT_TAG,
+)
 
 
 @dataclass(frozen=True)
@@ -45,7 +47,15 @@ def emulator_asset() -> Asset:
 
 
 def firmware_asset(board: Board) -> Asset:
-    return Asset("bitaxeorg/ESP-Miner", FIRMWARE_TAG, board.flash_asset, board.flash_sha256)
+    return Asset(board.repo, board.tag or FIRMWARE_TAG, board.flash_asset, board.flash_sha256)
+
+
+def thoros_boot_asset() -> Asset:
+    return Asset(THOROS_BOOT_REPO, THOROS_BOOT_TAG, THOROS_BOOT_FILE, THOROS_BOOT_SHA256)
+
+
+def board_assets(board: Board) -> tuple[Asset, ...]:
+    return (firmware_asset(board), thoros_boot_asset()) if board.api == "thoros" else (firmware_asset(board),)
 
 
 def sha256(path: Path) -> str:
@@ -120,13 +130,13 @@ def extract_runner(archive: Path, destination: Path) -> Path:
     return path
 
 
-def prepare_offline(cache: Path, board: Board, destination: Path) -> tuple[Path, Path]:
+def prepare_offline(cache: Path, board: Board, destination: Path) -> tuple[Path, Path, Path | None]:
     emulator = emulator_asset()
-    firmware = firmware_asset(board)
-    for asset in (emulator, firmware):
+    for asset in (emulator, *board_assets(board)):
         path = cache / asset.file
         if not path.is_file():
             raise LabError(f"missing {asset.file}. Run 'setup' to download pinned artifacts")
         if sha256(path) != asset.sha256:
             raise LabError(f"refusing to run: digest mismatch for {asset.file}")
-    return extract_runner(cache / emulator.file, destination), cache / firmware.file
+    boot = cache / THOROS_BOOT_FILE if board.api == "thoros" else None
+    return extract_runner(cache / emulator.file, destination), cache / board.flash_asset, boot

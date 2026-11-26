@@ -17,7 +17,11 @@ from typing import Any
 # Verified as GET routes in ESP-Miner v2.15.4 main/http_server/openapi.yaml.
 # Exclude logs and Wi-Fi scan. The info response itself may contain sensitive
 # device configuration, so callers must handle it as sensitive data.
-READ_ONLY_PATHS = frozenset({"/api/system/info", "/api/system/statistics"})
+# ThorOS read routes are from the official THOR API Reference V1.0.0 (sections 1-2).
+READ_ONLY_PATHS = frozenset({
+    "/api/system/info", "/api/system/statistics",
+    "/v2/device/info", "/v2/device/status", "/v2/miner/status", "/v2/miner/config",
+})
 
 
 class GatewayServer(ThreadingHTTPServer):

@@ -125,7 +125,12 @@ class HttpGatewayTests(unittest.TestCase):
                         urlopen(request, timeout=2)
                     self.assertEqual(error.exception.code, 405)
                     self.assertEqual(error.exception.headers["Allow"], "GET")
-                self.assertEqual(READ_ONLY_PATHS, {"/api/system/info", "/api/system/statistics"})
+                # AxeOS reads plus the four documented ThorOS GET routes. Writes and
+                # /v2/device/reboot, /v2/logs/history and Wi-Fi scan stay excluded.
+                self.assertEqual(READ_ONLY_PATHS, {
+                    "/api/system/info", "/api/system/statistics",
+                    "/v2/device/info", "/v2/device/status", "/v2/miner/status", "/v2/miner/config",
+                })
         finally:
             upstream.shutdown()
             upstream.server_close()

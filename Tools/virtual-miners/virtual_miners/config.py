@@ -21,7 +21,18 @@ class Board:
     api: str = "axeos"
     model: str = ""
     emulated: bool = True
+    repo: str = "bitaxeorg/ESP-Miner"
+    tag: str = ""
+    version: str = ""
 
+
+# Hammer publishes only OTA app images. ThorOS boards boot that unmodified app on a
+# composed flash (see thoros_flash.py) whose bootloader comes from this pinned public
+# ESP-IDF v5.5 ESP32-S3 factory image.
+THOROS_BOOT_REPO = "liaojinguu/bitfortun-BS-1"
+THOROS_BOOT_TAG = "v1.0.36"
+THOROS_BOOT_FILE = "BS-1-rev1.3.bin"
+THOROS_BOOT_SHA256 = "3f3a84665f047c5f1cbf05e3ea83b8eb550e98f49e710f5fc0fbd09966f8315e"
 
 BOARDS = {
     "gamma-601": Board(
@@ -29,20 +40,20 @@ BOARDS = {
         "esp-miner-factory-601-v2.15.4.bin",
         "d6307ce762d3fad529b705ad9c3b8fae96b66bd35125585b006f132c9de10184",
     ),
-    # Hammer ThorOS is closed source and published only as OTA app images (no bootloader,
-    # partition table or factory flash), so these profiles are API fixtures only. Routes and
-    # field names come from the web console embedded in the pinned update images below.
+    # Hammer ThorOS is closed source and published only as OTA app images. With backend
+    # "esp-emu" the unmodified app boots in esp-emu on a composed flash (thoros_flash.py);
+    # backend "api-fixture" serves the documented THOR API shape without firmware.
     "thor-x1": Board(
         "V00", "BM1373", 1,
         "thorx1-1.0.6-20260916-update.bin",
         "726b8d7b2416bbebcaea81066346df2473d5e33d9ea7fb7ac4d811b288f99abc",
-        api="thoros", model="THOR X1", emulated=False,
+        api="thoros", model="THOR X1", repo="HammerMiner/X1", tag="v1.0.6-20260916", version="1.0.6",
     ),
     "thor-p2": Board(
         "V00", "BM1373", 2,
         "thorp2-1.1.0-20261113-update.bin",
         "a84dc68c538b3f756db1f0c18b272522fd01dd7baaeb2aab0a8803bcef7dfbe0",
-        api="thoros", model="THOR P2", emulated=False,
+        api="thoros", model="THOR P2", repo="HammerMiner/P2", tag="v1.1.0-20261113", version="1.1.0",
     ),
 }
 FIRMWARE_TAG = "v2.15.4"
@@ -104,6 +115,8 @@ def load(path: Path) -> dict[str, Miner]:
             raise LabError(f"{miner.name}: hardware must be board or bare")
         if miner.backend == "esp-emu" and miner.hardware == "bare" and miner.scenario != "normal":
             raise LabError(f"{miner.name}: bare firmware does not support board fault scenarios")
+        if miner.backend == "esp-emu" and miner.profile.api == "thoros" and miner.hardware != "bare":
+            raise LabError(f"{miner.name}: ThorOS firmware has no board sidecar yet; use hardware = \"bare\"")
         for key, value, low, high in (
             ("temperature_c", miner.temperature_c, 0, 110), ("power_w", miner.power_w, 0, 40),
         ):
