@@ -288,12 +288,15 @@ struct FleetChainCard: View {
                         Text(window.shortLabel)
                             .fleetFont(.caption2, weight: .semibold).monospacedDigit()
                             .foregroundStyle(selected ? FleetTheme.panelAccent : FleetTheme.panelSecondary)
-                            .fleetPillPadding()
-                            .frame(minWidth: 44, minHeight: 44)
-                            .background(
-                                selected ? FleetTheme.panelAccent.opacity(0.16) : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 6)
-                            )
+                            .frame(minWidth: 44, minHeight: 24)
+                            .background {
+                                if selected {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(FleetTheme.panelAccent.opacity(0.16))
+                                        .padding(2)
+                                }
+                            }
+                            .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
                 }
@@ -303,12 +306,11 @@ struct FleetChainCard: View {
                 .accessibilityIdentifier("dashboard.soloOddsWindow.\(window.rawValue)")
             }
         }
-        .padding(compactPreview ? 0 : 4)
         .background {
             if compactPreview {
                 Capsule().fill(FleetTheme.raised).frame(height: 24)
             } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(FleetTheme.charcoal)
+                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(FleetTheme.charcoal).frame(height: 24)
             }
         }
         .accessibilityElement(children: .contain)
