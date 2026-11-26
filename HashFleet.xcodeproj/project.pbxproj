@@ -863,6 +863,7 @@
 		B1C0FFEE000FB1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */; };
 		B1C0FFEE0010B1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */; };
 		B1C0FFEE0011B1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */; };
+		B1C0FFEE0013B1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */; };
 		B1C0FFEE0012B1C0FFEE0012 /* SeededModeAndEmptySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0012A1C0FFEE0012 /* SeededModeAndEmptySearchTests.swift */; };
 		B1C0FFEE0004B1C0FFEE0004 /* MinerPageActionsEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0004A1C0FFEE0004 /* MinerPageActionsEvaluationTests.swift */; };
 		CC02CCCF06D9CB266423ECAA /* FleetMinerCardObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE70F9787CD1055E5527290 /* FleetMinerCardObservationTests.swift */; };
@@ -1441,6 +1442,7 @@
 		A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerDetailIdentityFixtureTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarFocusOrderEvaluationTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCoolingAccessibilityFixtureTests.swift; sourceTree = "<group>"; };
+		A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededCompatibilitySummaryTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0012A1C0FFEE0012 /* SeededModeAndEmptySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededModeAndEmptySearchTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0004A1C0FFEE0004 /* MinerPageActionsEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerPageActionsEvaluationTests.swift; sourceTree = "<group>"; };
 		57D0DB31BB95FDAA78BA2A97 /* ConnectedPoolsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedPoolsStore.swift; sourceTree = "<group>"; };
@@ -2442,6 +2444,7 @@
 				A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */,
 				A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */,
 				A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */,
+				A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */,
 				A1C0FFEE0012A1C0FFEE0012 /* SeededModeAndEmptySearchTests.swift */,
 				A1C0FFEE0004A1C0FFEE0004 /* MinerPageActionsEvaluationTests.swift */,
 				44D92D5FC8459125E62CBB88 /* MinerDiscoverySessionTests.swift */,
@@ -4530,6 +4533,7 @@
 				B1C0FFEE000FB1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift in Sources */,
 				B1C0FFEE0010B1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift in Sources */,
 				B1C0FFEE0011B1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift in Sources */,
+				B1C0FFEE0013B1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift in Sources */,
 				B1C0FFEE0012B1C0FFEE0012 /* SeededModeAndEmptySearchTests.swift in Sources */,
 				B1C0FFEE0004B1C0FFEE0004 /* MinerPageActionsEvaluationTests.swift in Sources */,
 				C46AFCE7DC5D2CB05B9B5797 /* MinerDiscoverySessionTests.swift in Sources */,
