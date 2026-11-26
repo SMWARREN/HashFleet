@@ -29,8 +29,10 @@ struct FleetChainCard: View {
                 if compactPreview {
                     previewHeader
                 } else {
-                    standardHeader(now: timeline.date)
-                    oddsWindowHeader
+                    VStack(alignment: .leading, spacing: 2) {
+                        standardHeader(now: timeline.date)
+                        oddsWindowHeader
+                    }
                 }
                 coinRows(now: timeline.date)
                 if compactPreview && showingAssumptions {
@@ -203,7 +205,7 @@ struct FleetChainCard: View {
                 Text("Network")
                     .lineLimit(1)
             }
-            .fleetFont(.caption, weight: .semibold).frame(minHeight: 44)
+            .fleetFont(.caption, weight: .semibold).frame(minHeight: 28)
         }
         .accessibilityIdentifier("dashboard.networkDetails")
     }
@@ -222,7 +224,7 @@ struct FleetChainCard: View {
                 .fleetFont(.caption2, weight: .semibold)
                 .foregroundStyle(FleetTheme.panelSecondary)
                 .lineLimit(1)
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(minWidth: 44, minHeight: 28)
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Coins to show")
@@ -282,7 +284,7 @@ struct FleetChainCard: View {
                             .background {
                                 if selected { Capsule().fill(cardInk.opacity(0.13)).padding(2) }
                             }
-                            .frame(minHeight: 44)
+                            .frame(minHeight: 28)
                             .contentShape(Rectangle())
                     } else {
                         Text(window.shortLabel)
@@ -296,7 +298,7 @@ struct FleetChainCard: View {
                                         .padding(2)
                                 }
                             }
-                            .frame(minHeight: 44)
+                            .frame(minHeight: 28)
                             .contentShape(Rectangle())
                     }
                 }
