@@ -111,7 +111,7 @@ public struct FleetDiscoveryScanPlan: Equatable, Sendable {
 /// portals and unrelated JSON, and never sends a write or retries a failed host.
 public enum FleetNetworkDiscovery {
     private static let batchSize = 32
-    private static let requestTimeout: TimeInterval = 1
+    private static let requestTimeout: TimeInterval = 1.5
     private static let resourceTimeout: TimeInterval = 8
 
     public static func scanCurrent() async -> [FleetDiscoveryCandidate] {

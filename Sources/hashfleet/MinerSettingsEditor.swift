@@ -5,6 +5,8 @@ import Foundation
 final class MinerSettingsEditor {
     private enum Page { case fields, editing, review, saving, result, discard }
     let device: MinerDevice
+    private let driverFamily: String
+    private let categories: [MinerSettingsCategory]
     private var original: MinerInfo
     private let writable: Bool
     private let unavailableReason: String?
@@ -24,26 +26,37 @@ final class MinerSettingsEditor {
     private(set) var quit = false
 
     init(miner: MinerStatusSnapshot, demo: Bool) {
-        device = miner.device
-        original = miner.info ?? MinerInfo(raw: [:])
+        let info = miner.info ?? MinerInfo(raw: [:])
+        let resolved = MinerDriverProfile.resolvedDevice(miner.device, info: info)
+        let family = MinerDriverProfile.resolvedFamily(device: resolved, info: info)
+        let caps = MinerDriverProfile.capabilities(device: resolved, info: info)
+        let available = MinerDriverProfile.availableCategories(device: resolved, info: info)
+        device = resolved
+        driverFamily = family
+        categories = available
+        original = info
+        category = available.first ?? .general
         let slots = (try? MinerPoolSettings.slots(original)) ?? [:]
         let primary = MinerPoolSettings.exactID(original.raw["primaryPoolIndex"])
         selectedSlot = primary.flatMap { slots[$0] == nil ? nil : $0 } ?? slots.keys.sorted().first
-        writable = !demo && miner.isOnline && miner.kind == .espMiner
+        writable = !demo && miner.isOnline && miner.kind == .espMiner && !caps.isReadOnly && !available.isEmpty
         unavailableReason = demo ? "DEMO · preview only. No changes will be sent."
             : !miner.isOnline ? "Miner offline. Reconnect and refresh before editing."
-            : miner.kind == .xmrig ? "This editor supports ESP-Miner settings. XMRig controls are available in the app." : nil
+            : miner.kind == .xmrig ? "XMRig controls are available in the app."
+            : caps.isReadOnly || available.isEmpty ? "This firmware (\(family)) is read-only." : nil
     }
 
     func cancel() { task?.cancel() }
 
     private var fields: [MinerSetting] {
         if poolSlots { return selectedSlot.map { MinerPoolSettings.fields(slot: $0) } ?? MinerPoolSettings.roles }
-        return MinerSetting.all.filter { $0.category == category }
+        return MinerDriverProfile.fields(for: category, device: device, info: original)
     }
-    private var field: MinerSetting { fields[min(selection, fields.count - 1)] }
+    private var field: MinerSetting? { fields.isEmpty ? nil : fields[min(selection, fields.count - 1)] }
     private var draftText: String { String(lossyUTF8: textBytes) }
-    private var poolSlots: Bool { category == .pools && MinerSetting.usesPoolSlots(original) }
+    private var poolSlots: Bool {
+        category == .pools && MinerDriverProfile.isAxeOS(driverFamily) && MinerSetting.usesPoolSlots(original)
+    }
     private var poolUnavailableReason: String? {
         guard poolSlots else { return nil }
         do {
@@ -51,7 +64,9 @@ final class MinerSettingsEditor {
             return slots.isEmpty ? "No configured pool slots were reported. Configure a slot on the miner, then reopen settings." : nil
         } catch { return error.localizedDescription }
     }
-    private var reviewFields: [MinerSetting] { changes.keys.sorted().compactMap { MinerSetting.field(key: $0) } }
+    private var reviewFields: [MinerSetting] {
+        changes.keys.sorted().compactMap { MinerDriverProfile.field(key: $0, device: device, info: original) }
+    }
 
     /// Return true when changing screens, so buffered keystrokes cannot also confirm a write.
     func handle(_ key: TerminalKey) -> Bool {
@@ -75,6 +90,7 @@ final class MinerSettingsEditor {
         switch key {
         case .escape: page = .fields; message = ""; return true
         case .byte(13), .byte(10):
+            guard let field else { page = .fields; return true }
             do {
                 let value = try field.parse(draftText)
                 if field.matches(value, field.observed(in: original)) {
@@ -140,11 +156,13 @@ final class MinerSettingsEditor {
             if changes.isEmpty { closed = true } else { page = .discard }
             return true
         case .byte(13), .byte(10):
-            guard writable, poolUnavailableReason == nil else { return false }
+            guard writable, poolUnavailableReason == nil, let field else { return false }
             let value = changes[field.key] ?? field.observed(in: original)
             textBytes = Array((field.isSecret ? value?.stringValue ?? "" : value == nil ? "" : field.display(value)).utf8)
             page = .editing; message = ""; return true
-        case .byte(117): changes.removeValue(forKey: field.key); message = ""
+        case .byte(117):
+            if let field { changes.removeValue(forKey: field.key) }
+            message = ""
         case .byte(114):
             guard writable, !changes.isEmpty else { message = "Edit a value with Enter first."; return false }
             do {
@@ -160,20 +178,24 @@ final class MinerSettingsEditor {
     private func handleFieldNavigation(_ key: TerminalKey) {
         switch key {
         case .up, .byte(107): selection = max(0, selection - 1); message = ""
-        case .down, .byte(106): selection = min(fields.count - 1, selection + 1); message = ""
+        case .down, .byte(106): selection = fields.isEmpty ? 0 : min(fields.count - 1, selection + 1); message = ""
         case .left: changeCategory(-1)
         case .right, .byte(9): changeCategory(1)
         case .byte(91): changeSlot(-1)
         case .byte(93): changeSlot(1)
         case .byte(let byte) where (49...53).contains(byte):
-            category = MinerSettingsCategory.allCases[Int(byte - 49)]; selection = 0; message = ""
+            let index = Int(byte - 49)
+            if categories.indices.contains(index) {
+                category = categories[index]; selection = 0; message = ""
+            }
         default: break
         }
     }
 
     private func changeCategory(_ direction: Int) {
-        let all = MinerSettingsCategory.allCases
-        category = all[(all.firstIndex(of: category)! + direction + all.count) % all.count]
+        guard !categories.isEmpty else { return }
+        let current = categories.firstIndex(of: category) ?? 0
+        category = categories[(current + direction + categories.count) % categories.count]
         selection = 0; message = ""
     }
 
@@ -237,6 +259,7 @@ final class MinerSettingsEditor {
         case .fields:
             return renderFields(&lines, width: width, height: height, palette: palette)
         case .editing:
+            guard let field else { return " Esc back" }
             note(field.reviewTitle, palette.gold)
             note("Current: \(field.display(field.observed(in: original)))", palette.secondary)
             note(field.hint, palette.secondary)
@@ -262,19 +285,21 @@ final class MinerSettingsEditor {
 
     private func renderFields(_ lines: inout [DashboardLine], width: Int, height: Int, palette: DashboardPalette) -> String {
         func note(_ text: String, _ style: String) { Self.note(&lines, text, style, width: width) }
-        let tabs = MinerSettingsCategory.allCases.enumerated().map { index, value in
-            (" \(index + 1) \(value.rawValue) ", value == category ? palette.selection : palette.secondary)
+        if !categories.isEmpty {
+            let tabs = categories.enumerated().map { index, value in
+                (" \(index + 1) \(value.rawValue) ", value == category ? palette.selection : palette.secondary)
+            }
+            if width >= 64 {
+                lines.append(DashboardLine(runs: tabs))
+            } else {
+                note("\(category.rawValue) · 1–\(categories.count)/Tab change section", palette.gold)
+            }
+            note("\(changes.count) pending changes · driver: \(driverFamily) · Enter edits the selected field", palette.secondary)
         }
-        if width >= 64 {
-            lines.append(DashboardLine(runs: tabs))
-        } else {
-            note("\(category.rawValue) · 1–5/Tab change section", palette.gold)
-        }
-        note("\(changes.count) pending changes · Enter edits the selected field", palette.secondary)
         if let unavailableReason { note(unavailableReason, palette.warning) }
         if let poolUnavailableReason {
             note(poolUnavailableReason, palette.warning)
-        } else {
+        } else if !fields.isEmpty {
             if poolSlots, let selectedSlot {
                 let primary = MinerPoolSettings.exactID(changes["primaryPoolIndex"] ?? original.raw["primaryPoolIndex"])
                 let backup = MinerPoolSettings.exactID(changes["secondaryPoolIndex"] ?? original.raw["secondaryPoolIndex"])
@@ -285,7 +310,8 @@ final class MinerSettingsEditor {
             renderFieldRows(&lines, width: width, height: height, palette: palette)
         }
         if !message.isEmpty { note(message, palette.warning) }
-        return width >= 80 ? " 1–5/Tab section · ↑↓ select · Enter edit · r review · u undo · Esc back"
+        let range = categories.count > 1 ? "1–\(categories.count)/Tab section · " : ""
+        return width >= 80 ? " \(range)↑↓ select · Enter edit · r review · u undo · Esc back"
             : width >= 60 ? " ↑↓ select · Enter edit · r review · u undo · Esc back"
             : " ↑↓ pick · Enter edit · r review · Esc back"
     }

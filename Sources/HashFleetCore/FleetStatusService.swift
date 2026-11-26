@@ -34,7 +34,13 @@ public enum FleetStatusService {
             case .xmrig:
                 info = try await XMRigAPIClient(device: device, bearerToken: xmrigBearerToken).summary()
             }
-            return MinerStatusSnapshot(device: device, info: info)
+            var resolved = device
+            if (resolved.firmwareFamily ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               device.kind == .espMiner,
+               let detected = MinerFirmwareAdapter.detectedFamily(from: info) ?? info.raw["firmwareFamily"]?.stringValue {
+                resolved.firmwareFamily = detected
+            }
+            return MinerStatusSnapshot(device: resolved, info: info)
         } catch {
             return MinerStatusSnapshot(device: device, error: error.localizedDescription)
         }
