@@ -233,7 +233,8 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
 
         // Port 4028 cgminer probe (Avalon Nano 3/3s, Braiins, LuxOS)
         #if canImport(Darwin)
-        let timeout: TimeInterval = 0.5
+        guard !Task.isCancelled else { return nil }
+        let timeout: TimeInterval = min(policy.perHostDeadline, 1.5)
         if let cgData = try? await WatchMinerHTTPClient.queryCgminer(
             host: address, port: 4028, command: "version", timeout: timeout
         ),

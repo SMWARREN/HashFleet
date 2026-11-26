@@ -192,17 +192,19 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
             return try WatchMinerInfoDecoder.reading(from: data, minerID: miner.id, observedAt: now())
         } catch {
             if Task.isCancelled { throw CancellationError() }
-            if (error as? WatchMinerFetchError) == .timedOut { throw error }
-
             #if canImport(Darwin)
-            if let endpoint = try? WatchEndpoint.normalize(miner.address), endpoint.port == 4028 {
+            if let endpoint = try? WatchEndpoint.normalize(miner.address),
+               endpoint.port == 4028 || endpoint.port == 80 {
+                let cgTimeout = endpoint.port == 4028 ? Self.requestTimeout : min(Self.requestTimeout, 2.0)
                 if let cgReading = try? await Self.queryCgminerReading(
-                    host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: Self.requestTimeout
+                    host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: cgTimeout
                 ) {
                     return cgReading
                 }
             }
             #endif
+
+            if (error as? WatchMinerFetchError) == .timedOut { throw error }
 
             for fallbackPath in Self.fallbackPaths {
                 guard let fallbackReq = try? Self.request(for: miner, path: fallbackPath) else { continue }
@@ -279,73 +281,77 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
         let connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
         let queue = DispatchQueue(label: "app.hashfleet.watch.cgminer")
 
-        return try await withCheckedThrowingContinuation { continuation in
-            final class SafeContinuation: @unchecked Sendable {
-                private let lock = NSLock()
-                private var continuation: CheckedContinuation<Data, any Error>?
-                private weak var connection: NWConnection?
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                final class SafeContinuation: @unchecked Sendable {
+                    private let lock = NSLock()
+                    private var continuation: CheckedContinuation<Data, any Error>?
+                    private weak var connection: NWConnection?
 
-                init(continuation: CheckedContinuation<Data, any Error>, connection: NWConnection) {
-                    self.continuation = continuation
-                    self.connection = connection
-                }
-
-                func resume(with result: Result<Data, any Error>) {
-                    lock.lock()
-                    guard let cont = continuation else {
-                        lock.unlock()
-                        return
+                    init(continuation: CheckedContinuation<Data, any Error>, connection: NWConnection) {
+                        self.continuation = continuation
+                        self.connection = connection
                     }
-                    continuation = nil
-                    let conn = connection
-                    lock.unlock()
-                    conn?.stateUpdateHandler = nil
-                    conn?.cancel()
-                    cont.resume(with: result)
-                }
-            }
 
-            let safe = SafeContinuation(continuation: continuation, connection: connection)
-
-            queue.asyncAfter(deadline: .now() + timeout) {
-                safe.resume(with: .failure(WatchMinerFetchError.timedOut))
-            }
-
-            connection.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    let cmd = Data("{\"command\":\"\(command)\"}\n".utf8)
-                    connection.send(content: cmd, completion: .contentProcessed { error in
-                        if let error {
-                            safe.resume(with: .failure(error))
+                    func resume(with result: Result<Data, any Error>) {
+                        lock.lock()
+                        guard let cont = continuation else {
+                            lock.unlock()
                             return
                         }
-                        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { data, _, _, error in
+                        continuation = nil
+                        let conn = connection
+                        lock.unlock()
+                        conn?.stateUpdateHandler = nil
+                        conn?.cancel()
+                        cont.resume(with: result)
+                    }
+                }
+
+                let safe = SafeContinuation(continuation: continuation, connection: connection)
+
+                queue.asyncAfter(deadline: .now() + timeout) {
+                    safe.resume(with: .failure(WatchMinerFetchError.timedOut))
+                }
+
+                connection.stateUpdateHandler = { state in
+                    switch state {
+                    case .ready:
+                        let cmd = Data("{\"command\":\"\(command)\"}\n".utf8)
+                        connection.send(content: cmd, completion: .contentProcessed { error in
                             if let error {
                                 safe.resume(with: .failure(error))
-                            } else if let data, !data.isEmpty {
-                                let cleanData: Data
-                                if let nullIdx = data.firstIndex(of: 0) {
-                                    cleanData = data.prefix(upTo: nullIdx)
-                                } else {
-                                    cleanData = data
-                                }
-                                safe.resume(with: .success(cleanData))
-                            } else {
-                                safe.resume(with: .failure(WatchMinerFetchError.invalidResponse))
+                                return
                             }
-                        }
-                    })
-                case .failed(let error):
-                    safe.resume(with: .failure(error))
-                case .cancelled:
-                    safe.resume(with: .failure(WatchMinerFetchError.unreachable))
-                default:
-                    break
+                            connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { data, _, _, error in
+                                if let error {
+                                    safe.resume(with: .failure(error))
+                                } else if let data, !data.isEmpty {
+                                    let cleanData: Data
+                                    if let nullIdx = data.firstIndex(of: 0) {
+                                        cleanData = data.prefix(upTo: nullIdx)
+                                    } else {
+                                        cleanData = data
+                                    }
+                                    safe.resume(with: .success(cleanData))
+                                } else {
+                                    safe.resume(with: .failure(WatchMinerFetchError.invalidResponse))
+                                }
+                            }
+                        })
+                    case .failed(let error):
+                        safe.resume(with: .failure(error))
+                    case .cancelled:
+                        safe.resume(with: .failure(WatchMinerFetchError.unreachable))
+                    default:
+                        break
+                    }
                 }
-            }
 
-            connection.start(queue: queue)
+                connection.start(queue: queue)
+            }
+        } onCancel: {
+            connection.cancel()
         }
     }
     #endif
