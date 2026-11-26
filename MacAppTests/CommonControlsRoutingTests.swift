@@ -37,6 +37,24 @@ struct CommonControlsRoutingTests {
         #expect(try draft.liveChanges(from: MinerCoolingPreviewDraft(info: info)) == ["autofanspeed": .integer(1)])
     }
 
+    @Test func thorOSFanUsesSharedCoolingWithoutTemperatureTarget() throws {
+        let info = MinerInfo(raw: ["firmwareFamily": .string("thorOS"), "autofanspeed": .integer(1),
+                                   "manualFanSpeed": .integer(60), "fanspeed": .number(60)])
+        var draft = MinerCoolingPreviewDraft(info: info)
+        #expect(draft.hasControls && draft.reportsMode && draft.automatic == true)
+        #expect(draft.supportsMode(automatic: true) && draft.supportsMode(automatic: false))
+        draft.select(automatic: false)
+        draft.adjust(.manual, increasing: true)
+        #expect(try draft.liveChanges(from: MinerCoolingPreviewDraft(info: info))
+                == ["autofanspeed": .integer(0), "manualFanSpeed": .integer(61)])
+        let manualInfo = MinerInfo(raw: ["firmwareFamily": .string("thorOS"), "autofanspeed": .integer(0),
+                                         "manualFanSpeed": .integer(80)])
+        var toAuto = MinerCoolingPreviewDraft(info: manualInfo)
+        toAuto.select(automatic: true)
+        #expect(try toAuto.liveChanges(from: MinerCoolingPreviewDraft(info: manualInfo))
+                == ["autofanspeed": .integer(1)])
+    }
+
     @Test func avalonTuningIsFrequencyOnly() {
         let info = MinerInfo(raw: ["firmwareFamily": .string("canaan"), "frequency": .number(575),
                                    "coreVoltage": .number(3210)])

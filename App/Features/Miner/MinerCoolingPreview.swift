@@ -38,12 +38,15 @@ struct MinerCoolingPreviewDraft: Equatable {
     private(set) var manualMinimum = 0
     /// Wire value for automatic mode. NerdQAxe / BS-1 PID (the mode that follows the target) is 2.
     private(set) var automaticValue: Int64 = 1
+    /// False for firmwares like ThorOS that report auto/manual fan mode without a temperature target.
+    private(set) var requiresAutoTarget = true
 
     init(info: MinerInfo?) {
         let raw = info?.raw ?? [:]
         let family = (raw["firmwareFamily"]?.stringValue ?? "").lowercased()
         manualMinimum = MinerDriverCapabilities.forFamily(family.isEmpty ? nil : family, info: info).fanMinPct
         if ["nerdqaxe", "nerdoctaxe", "bitfortun"].contains(family) { automaticValue = 2 }
+        if family == "thoros" { requiresAutoTarget = false }
         if family == "canaan" {
             reportsMode = false
             if let duty = raw["fanspeed"]?.doubleValue, duty.isFinite {
@@ -96,7 +99,9 @@ struct MinerCoolingPreviewDraft: Equatable {
 
     func supportsMode(automatic: Bool) -> Bool {
         if !reportsMode { return automatic || self[.manual] != nil }
-        return self.automatic != nil && self[automatic ? .target : .manual] != nil
+        guard self.automatic != nil else { return false }
+        if automatic { return !requiresAutoTarget || self[.target] != nil }
+        return self[.manual] != nil
     }
 
     mutating func select(automatic: Bool) {
@@ -154,6 +159,9 @@ struct MinerCoolingPreviewDraft: Equatable {
         }
         guard let automatic, baseline.supportsMode(automatic: automatic), supportsMode(automatic: automatic) else {
             throw MinerToolError.message("Cooling configuration is unavailable. Refresh the miner first.")
+        }
+        if automatic && !requiresAutoTarget && self[.target] == nil {
+            return automatic != baseline.automatic ? ["autofanspeed": .integer(automaticValue)] : [:]
         }
         var validated = try MinerTuningDraft.coolingPayload(
             automatic: automatic, manualSpeed: self[.manual].map(String.init) ?? "",
@@ -319,7 +327,7 @@ struct MinerCoolingPreview: View {
                 .accessibilityAddTraits(.isHeader)
             modeSelector
             Text(draft.automatic == true
-                 ? (draft.reportsMode ? "Adjusts fan speed to reach your target." : "The miner adjusts its own fan speed.")
+                 ? (draft.reportsMode && draft[.target] != nil ? "Adjusts fan speed to reach your target." : "The miner adjusts its own fan speed.")
                  : draft.automatic == false ? "Keeps the fan at the speed you set."
                  : "This miner does not report its fan mode. Choose Automatic or Manual.")
                 .fleetFont(.caption).foregroundStyle(FleetTheme.secondary)
