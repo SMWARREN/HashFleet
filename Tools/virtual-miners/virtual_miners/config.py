@@ -115,8 +115,6 @@ def load(path: Path) -> dict[str, Miner]:
             raise LabError(f"{miner.name}: hardware must be board or bare")
         if miner.backend == "esp-emu" and miner.hardware == "bare" and miner.scenario != "normal":
             raise LabError(f"{miner.name}: bare firmware does not support board fault scenarios")
-        if miner.backend == "esp-emu" and miner.profile.api == "thoros" and miner.hardware != "bare":
-            raise LabError(f"{miner.name}: ThorOS firmware has no board sidecar yet; use hardware = \"bare\"")
         for key, value, low, high in (
             ("temperature_c", miner.temperature_c, 0, 110), ("power_w", miner.power_w, 0, 40),
         ):

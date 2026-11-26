@@ -259,7 +259,7 @@ def attach(port: int, model: Miner | GammaBoard, stop: threading.Event,
            *, scl: int = 48, sda: int = 47) -> None:
     """Connect to esp-emu TCP cosim bound to loopback and serve board I2C."""
     if not 1 <= port <= 65535: raise ValueError("invalid co-simulation port")
-    board = model if isinstance(model, GammaBoard) else GammaBoard(
+    board = model if hasattr(model, "transfer") else GammaBoard(
         model.temperature_c, power_w=model.power_w, scenario=model.scenario)
     claims = () if isinstance(model, Miner) and model.hardware == "bare" else board.addresses
     registration = _vfield(1, 1) + _bytes_field(2, b"gamma-board") + b"".join(

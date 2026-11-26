@@ -24,14 +24,14 @@ class ThorOSFixtureTests(unittest.TestCase):
             with urlopen(f"{fixture.base_url}/api/system/info", timeout=2) as response:
                 self.assertEqual(response.headers.get_content_type(), "text/html")
 
-    def test_thor_profile_cannot_select_emulator(self) -> None:
+    def test_thor_profile_accepts_emulator_board_mode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "lab.toml"
             path.write_text(
                 '[[miner]]\nname = "thor"\nboard = "thor-x1"\nbackend = "esp-emu"\nhttp_port = 18190\n'
             )
-            with self.assertRaises(LabError):
-                load(path)
+            miners = load(path)
+            self.assertEqual(miners["thor"].hardware, "board")
 
 
 if __name__ == "__main__":

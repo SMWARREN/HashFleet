@@ -135,6 +135,10 @@ def run_guest(miner: Miner, assets: Path, directory: Path):
             "--cosim-tcp", f"127.0.0.1:{cosim_port}",
             "--uart1-tcp", f"127.0.0.1:{uart_port}",
         ]
+        if thoros:
+            from .thoros_cosim import i2c_dev_args
+
+            argv += ["--console", "usb-jtag", *i2c_dev_args(miner)]
     log = directory / "serial.log"
     stop = threading.Event()
     sidecars: list[threading.Thread] = []
@@ -157,7 +161,12 @@ def run_guest(miner: Miner, assets: Path, directory: Path):
         guest = Guest(child, guest_port, directory)
         try:
             if board_ports:
-                from .cosim import attach, attach_uart1
+                if thoros:
+                    from .thoros_cosim import attach_thor_i2c as i2c_service
+                    from .thoros_cosim import attach_thor_uart1 as uart_service
+                else:
+                    from .cosim import attach as i2c_service
+                    from .cosim import attach_uart1 as uart_service
 
                 def peripheral(kind: str, service: Callable, port: int) -> None:
                     try:
@@ -178,7 +187,7 @@ def run_guest(miner: Miner, assets: Path, directory: Path):
                             serial.flush()
                             guest.failures.put(error)
 
-                for kind, service, port in (("I2C", attach, cosim_port), ("UART1", attach_uart1, uart_port)):
+                for kind, service, port in (("I2C", i2c_service, cosim_port), ("UART1", uart_service, uart_port)):
                     sidecar = threading.Thread(target=peripheral, args=(kind, service, port), daemon=True)
                     sidecars.append(sidecar)
                     sidecar.start()

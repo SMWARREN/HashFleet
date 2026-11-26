@@ -5,11 +5,11 @@ name = "thor-x1"
 board = "thor-x1"
 backend = "esp-emu"
 http_port = 18293
-hardware = "bare"
+hardware = "board"
 
 [[miner]]
 name = "thor-p2"
 board = "thor-p2"
 backend = "esp-emu"
 http_port = 18294
-hardware = "bare"
+hardware = "board"

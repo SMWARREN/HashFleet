@@ -39,6 +39,13 @@ class ThorOSFlashTests(unittest.TestCase):
         self.assertEqual(second[8:21], b"selftest_done")
         self.assertEqual(second[24], 1)
 
+    def test_nvs_page_encodes_network_strings_and_u16(self):
+        page = thoros_flash.selftest_done_page({"wifi_ssid": "LabNet", "pool_port": 3333})
+        self.assertIn(b"wifi_ssid\0", page)
+        self.assertIn(b"LabNet\0", page)
+        self.assertIn(b"pool_port\0", page)
+        self.assertIn(struct.pack("<H", 3333), page)
+
     def test_compose_keeps_vendor_app_bytes_and_relocates_table(self):
         app = b"\xe9" + b"thor_cfg\0selftest_done\0".ljust(4095, b"\x5a")
         with tempfile.TemporaryDirectory() as tmp:

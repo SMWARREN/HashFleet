@@ -62,20 +62,54 @@ def partition_table() -> bytes:
     return bytes(rows.ljust(0xC00, b"\xff"))
 
 
-def selftest_done_page() -> bytes:
+def _nvs_entry(namespace: int, kind: int, key: bytes, value: bytes) -> bytes:
+    row = bytearray(b"\xff" * 32)
+    row[:4] = bytes((namespace, kind, 1, 0xFF))
+    row[8:24] = key.ljust(16, b"\0")
+    row[24:24 + len(value)] = value
+    struct.pack_into("<I", row, 4, _crc(row[:4] + row[8:]))
+    return bytes(row)
+
+
+def _nvs_string(namespace: int, key: bytes, text: str) -> bytes:
+    """ESP-IDF NVS v2 string: header entry plus 32-byte data entries."""
+    data = text.encode("ascii") + b"\0"
+    if len(key) > 15 or len(data) > 32 * 8:
+        raise LabError("ThorOS NVS lab value is too long")
+    span = 1 + (len(data) + 31) // 32
+    row = bytearray(b"\xff" * 32)
+    row[:4] = bytes((namespace, 0x21, span, 0xFF))
+    row[8:24] = key.ljust(16, b"\0")
+    struct.pack_into("<HHI", row, 24, len(data), 0xFFFF, _crc(data))
+    struct.pack_into("<I", row, 4, _crc(row[:4] + row[8:]))
+    return bytes(row) + data.ljust((span - 1) * 32, b"\xff")
+
+
+def selftest_done_page(network: dict[str, str | int] | None = None) -> bytes:
+    """One ``thor_cfg`` NVS page: self-test done, plus optional lab Wi-Fi/pool values.
+
+    ``network`` keys are ThorOS's own NVS names (``wifi_ssid``, ``pool_url`` ...).
+    Strings are stored as NVS strings, integers as u16 (ThorOS reads ports and
+    flags with ``nvs_get_u16``; NVS keeps one item per key, so no second type). Only lab-owned values are ever passed: the emulator's private AP and
+    the loopback zero-reward Stratum fixture, never a real pool or wallet.
+    """
     page = bytearray(b"\xff" * PAGE)
     struct.pack_into("<IIB", page, 0, 0xFFFFFFFE, 0, 0xFE)
     struct.pack_into("<I", page, 28, _crc(page[4:28]))
 
-    def entry(namespace: int, kind: int, key: bytes, value: bytes) -> bytes:
-        row = bytearray(b"\xff" * 32)
-        row[:4] = bytes((namespace, kind, 1, 0xFF))
-        row[8:24] = key.ljust(16, b"\0")
-        row[24:24 + len(value)] = value
-        struct.pack_into("<I", row, 4, _crc(row[:4] + row[8:]))
-        return bytes(row)
-
-    records = entry(0, 0x01, b"thor_cfg", b"\x01") + entry(1, 0x01, b"selftest_done", b"\x01")
+    records = _nvs_entry(0, 0x01, b"thor_cfg", b"\x01") + _nvs_entry(1, 0x01, b"selftest_done", b"\x01")
+    for name, value in (network or {}).items():
+        key = name.encode("ascii")
+        if isinstance(value, bool) or not isinstance(value, (str, int)):
+            raise LabError("ThorOS NVS lab value must be text or an integer")
+        if isinstance(value, str):
+            records += _nvs_string(1, key, value)
+        else:
+            if not 0 <= value <= 0xFFFF:
+                raise LabError("ThorOS NVS lab integer out of range")
+            records += _nvs_entry(1, 0x02, key, struct.pack("<H", value))
+    if 64 + len(records) > PAGE:
+        raise LabError("ThorOS NVS lab page overflow")
     page[64:64 + len(records)] = records
     for index in range(len(records) // 32):
         page[32 + index // 4] &= ~(1 << (2 * (index % 4)))
@@ -104,7 +138,8 @@ def _relocated_bootloader(reference: bytes) -> bytes:
     return bytes(boot)
 
 
-def compose(reference: Path, app: Path, destination: Path) -> str:
+def compose(reference: Path, app: Path, destination: Path,
+            network: dict[str, str | int] | None = None) -> str:
     """Write a private flash image and return its SHA-256."""
     application = app.read_bytes()
     if application[:1] != b"\xe9" or not 0 < len(application) <= APP_LIMIT:
@@ -115,7 +150,7 @@ def compose(reference: Path, app: Path, destination: Path) -> str:
     image[:BOOTLOADER_SIZE] = _relocated_bootloader(reference.read_bytes())
     table = partition_table()
     image[TABLE_OFFSET:TABLE_OFFSET + len(table)] = table
-    image[NVS_OFFSET:NVS_OFFSET + PAGE] = selftest_done_page()
+    image[NVS_OFFSET:NVS_OFFSET + PAGE] = selftest_done_page(network)
     image[APP_OFFSET:APP_OFFSET + len(application)] = application
     destination.write_bytes(image)
     return sha256(image).hexdigest()
