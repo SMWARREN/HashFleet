@@ -47,7 +47,7 @@ struct SeededCompatibilitySummaryTests {
             // Neither read implemented by the firmware.
             MinerCapabilityReport(
                 infoStatus: .unsupported(statusCode: 501), asicStatus: .unsupported(statusCode: 405)
-            ),
+            )
         ]
         for report in reports {
             let (store, defaults, suite) = makeStore(device)

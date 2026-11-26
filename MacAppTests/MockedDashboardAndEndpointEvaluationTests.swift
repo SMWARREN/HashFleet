@@ -9,7 +9,7 @@ import HashFleetCore
 /// and no socket is opened. Every view is hosted off-screen so its body and branches execute.
 @Suite("Mocked dashboard and endpoint evaluation", .serialized)
 @MainActor
-struct MockedDashboardAndEndpointEvaluationTests {
+struct MockedDashboardEvaluationTests {
     private func makeStore(demo: Bool) -> (FleetStore, UserDefaults, String) {
         let suite = "app.hashfleet.mac.mockeddash.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

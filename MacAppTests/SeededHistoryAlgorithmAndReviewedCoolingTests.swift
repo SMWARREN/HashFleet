@@ -10,7 +10,7 @@ import HashFleetCore
 ///    and the environment is set on MinerSettingsView itself, the view that reads dynamicTypeSize.
 @Suite("Seeded history algorithm controls and reviewed cooling accessibility", .serialized)
 @MainActor
-struct SeededHistoryAlgorithmAndReviewedCoolingTests {
+struct SeededHistoryAndCoolingTests {
     private func evaluate<V: View>(_ view: V, width: CGFloat = 900, height: CGFloat = 1400) {
         let host = NSHostingView(rootView: NavigationStack { view })
         host.frame = NSRect(x: 0, y: 0, width: width, height: height)

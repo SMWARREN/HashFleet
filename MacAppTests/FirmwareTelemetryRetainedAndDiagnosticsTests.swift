@@ -8,7 +8,7 @@ import HashFleetCore
 /// in FirmwareTelemetryView. Completely offline: uses in-memory MinerInfo and view modifiers.
 @Suite("Firmware Telemetry Retained And Diagnostics Evaluation", .serialized)
 @MainActor
-struct FirmwareTelemetryRetainedAndDiagnosticsTests {
+struct FirmwareTelemetryDiagnosticsTests {
     private func evaluate<V: View>(_ view: V, width: CGFloat = 800, height: CGFloat = 1000) {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(x: 0, y: 0, width: width, height: height)

@@ -430,7 +430,9 @@ struct AddMinerView: View {
             AddMinerMultiSelection.alreadyPresent(candidates: candidates, devices: store.devices)
         )
     }
+}
 
+extension AddMinerView {
     func addMiner() {
         guard localNetwork.isGranted else { return }
         guard FleetReleaseFeatures.includes(minerKind) else { return }

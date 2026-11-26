@@ -17,6 +17,23 @@ struct MinerFirmwareExtrasPage: View {
     @State private var message: String?
     @State private var failure: String?
 
+    #if DEBUG
+    init(device: MinerDevice, store: FleetStore) {
+        self.device = device
+        self.store = store
+    }
+
+    /// Seeds documents the page would otherwise fetch, so tests render the editors with reported values.
+    init(device: MinerDevice, store: FleetStore, documents: [String: [String: JSONValue]],
+         message: String? = nil, failure: String? = nil) {
+        self.device = device
+        self.store = store
+        _documents = State(initialValue: documents)
+        _message = State(initialValue: message)
+        _failure = State(initialValue: failure)
+    }
+    #endif
+
     struct Pending: Identifiable {
         let id = UUID()
         let control: MinerFirmwareExtra?

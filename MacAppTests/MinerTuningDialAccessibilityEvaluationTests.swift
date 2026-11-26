@@ -8,7 +8,7 @@ import HashFleetCore
 /// and DialRing shape evaluation.
 @Suite("Miner Tuning Dial Accessibility Evaluation", .serialized)
 @MainActor
-struct MinerTuningDialAccessibilityEvaluationTests {
+struct MinerTuningDialAccessibilityTests {
     private func evaluate<V: View>(_ view: V, width: CGFloat = 800, height: CGFloat = 1000) {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(x: 0, y: 0, width: width, height: height)
