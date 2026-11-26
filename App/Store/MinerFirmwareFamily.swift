@@ -46,6 +46,17 @@ enum MinerFirmwareFamily: String, Codable, Equatable, Sendable, CaseIterable {
         }
     }
 
+    /// Hammer miners check `version.json` in each board repo, not the newest GitHub release. The
+    /// manifest can pin an older build while a newer beta is published (P2 pinned 1.0.4 while
+    /// 1.1.0 was a "beta test" release), so Thor families read the manifest only.
+    var updateManifestURL: URL? {
+        switch self {
+        case .thorX1: URL(string: "https://raw.githubusercontent.com/HammerMiner/X1/HEAD/version.json")
+        case .thorP2: URL(string: "https://raw.githubusercontent.com/HammerMiner/P2/HEAD/version.json")
+        default: nil
+        }
+    }
+
     /// Whether the pinned upstream registrar serves `/api/ws/live`. Only ESP-Miner does. NerdQAxe and
     /// Bitfortun register only the text log socket `/api/ws`, and AxeForge registers no WebSocket.
     /// Monitoring must poll HTTP for the others instead of expecting a live stream.

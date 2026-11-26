@@ -2,9 +2,11 @@ import Foundation
 
 // MARK: - ThorOS (Hammer Miner Thor X1 / Thor P2) Read Driver
 
-/// Hammer Miner's closed-source ThorOS firmware does not speak the AxeOS `/api/system/*` API. Its
-/// embedded web console (extracted from the published `thorx1-1.0.6` and `thorp2-1.1.0` update
-/// images) reads three GET routes and merges them:
+/// Hammer Miner's closed-source ThorOS firmware does not speak the AxeOS `/api/system/*` API. Routes
+/// and fields follow the official "THOR Miner Complete API Reference" V1.0.0 (firmware v2.0.0,
+/// 2026-07-28, altairtech.io/wp-content/uploads/2026/07/THOR_API_Reference_V1.0.0_EN.pdf) and were
+/// cross-checked against the web console in the `thorx1-1.0.6` / `thorp2-1.1.0` update images.
+/// The client reads three GET routes and merges them:
 ///
 /// - `GET /v2/device/info`: `device_model`, `firmware_version`, `hardware_version`, `mac_address`,
 ///   `chip_type`, `detected_chips_count`, `serial_number`.

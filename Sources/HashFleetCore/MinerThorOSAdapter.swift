@@ -135,6 +135,8 @@ extension MinerFirmwareAdapter {
         }
     }
 
+    /// The official API reference documents `core_voltage` as volts but its examples use `120`
+    /// (centivolts), so the unit is ambiguous and voltage writes stay disabled until verified.
     /// Translates an AxeOS-style settings PATCH into ThorOS config keys. Core voltage is never
     /// forwarded: ThorOS uses board-specific series-string units that HashFleet has not verified.
     private func executeThorOSSettingsBody(_ body: Data?) async throws -> Data {

@@ -318,4 +318,16 @@ struct MinerThorOSFirmwareFamilyTests {
         #expect(MinerFirmwareFamily.thorP2.releaseFeedURL.absoluteString.contains("HammerMiner/P2"))
         #expect(!MinerFirmwareFamily.thorP2.supportsLiveWebSocket)
     }
+
+    @Test func thorFamiliesReadVendorManifestNotReleaseList() throws {
+        #expect(MinerFirmwareFamily.thorP2.updateManifestURL?.absoluteString.hasSuffix("HammerMiner/P2/HEAD/version.json") == true)
+        #expect(MinerFirmwareFamily.thorX1.updateManifestURL?.absoluteString.hasSuffix("HammerMiner/X1/HEAD/version.json") == true)
+        #expect(MinerFirmwareFamily.bitaxe.updateManifestURL == nil)
+        let json = Data(#"{"version":"1.0.4","app_url":"https://github.com/HammerMiner/P2/releases/download/v1.0.4-20261113/thorp2-1.0.4-20261113-update.bin","claw_url":""}"#.utf8)
+        let release = try #require(FirmwareUpdateManifest.release(from: json))
+        #expect(release.version == "1.0.4")
+        #expect(release.url?.lastPathComponent == "thorp2-1.0.4-20261113-update.bin")
+        #expect(FirmwareUpdateManifest.release(from: Data(#"{"version":" "}"#.utf8)) == nil)
+        #expect(FirmwareUpdateManifest.release(from: Data("<html>".utf8)) == nil)
+    }
 }
