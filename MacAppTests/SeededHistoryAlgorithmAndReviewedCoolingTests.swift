@@ -37,9 +37,10 @@ struct SeededHistoryAlgorithmAndReviewedCoolingTests {
         let xmrig = MinerDevice(name: "Xmrig Host", address: "192.168.1.70", kind: .xmrig, firmwareFamily: "xmrig")
         let (store, defaults, suite) = makeStore(devices: [esp, xmrig], fields: MinerFixtures.healthyFields())
         defer { defaults.removePersistentDomain(forName: suite) }
-        // Both kinds are present, so FleetHistoryKind.available returns two entries and the picker renders.
+        // FleetReleaseFeatures.xmrigEnabled is false, so store.visibleDevices drops XMRig. Pass the seeded
+        // list directly so both kinds reach FleetHistoryKind.available and the picker body renders.
         let card = FleetHistoryCard(
-            devices: store.visibleDevices,
+            devices: [esp, xmrig],
             snapshots: store.snapshots,
             isDemo: true,
             initialRecentRange: .oneMinute,
