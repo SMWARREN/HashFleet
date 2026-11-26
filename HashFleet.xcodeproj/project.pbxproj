@@ -866,6 +866,7 @@
 		B1C0FFEE0014B1C0FFEE0014 /* SeededPoolStatsHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0014A1C0FFEE0014 /* SeededPoolStatsHubTests.swift */; };
 		B1C0FFEE001AB1C0FFEE001A /* ActivityPopupBestSharePreferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE001AA1C0FFEE001A /* ActivityPopupBestSharePreferenceTests.swift */; };
 		B1C0FFEE001DB1C0FFEE001D /* MinerTuningDialAccessibilityEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE001DA1C0FFEE001D /* MinerTuningDialAccessibilityEvaluationTests.swift */; };
+		B1C0FFEE001FB1C0FFEE001F /* MinerSettingsPoolsSectionEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE001FA1C0FFEE001F /* MinerSettingsPoolsSectionEvaluationTests.swift */; };
 		B1C0FFEE001BB1C0FFEE001B /* FirmwareTelemetryRetainedAndDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE001BA1C0FFEE001B /* FirmwareTelemetryRetainedAndDiagnosticsTests.swift */; };
 		B1C0FFEE0019B1C0FFEE0019 /* MockedHeroCardReadingStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0019A1C0FFEE0019 /* MockedHeroCardReadingStateTests.swift */; };
 		B1C0FFEE0018B1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */; };
@@ -1454,6 +1455,7 @@
 		A1C0FFEE0014A1C0FFEE0014 /* SeededPoolStatsHubTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededPoolStatsHubTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE001AA1C0FFEE001A /* ActivityPopupBestSharePreferenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPopupBestSharePreferenceTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE001DA1C0FFEE001D /* MinerTuningDialAccessibilityEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerTuningDialAccessibilityEvaluationTests.swift; sourceTree = "<group>"; };
+		A1C0FFEE001FA1C0FFEE001F /* MinerSettingsPoolsSectionEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerSettingsPoolsSectionEvaluationTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE001BA1C0FFEE001B /* FirmwareTelemetryRetainedAndDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareTelemetryRetainedAndDiagnosticsTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0019A1C0FFEE0019 /* MockedHeroCardReadingStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockedHeroCardReadingStateTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededSplitNavigationDestinationTests.swift; sourceTree = "<group>"; };
@@ -2465,6 +2467,7 @@
 				A1C0FFEE0014A1C0FFEE0014 /* SeededPoolStatsHubTests.swift */,
 				A1C0FFEE001AA1C0FFEE001A /* ActivityPopupBestSharePreferenceTests.swift */,
 				A1C0FFEE001DA1C0FFEE001D /* MinerTuningDialAccessibilityEvaluationTests.swift */,
+				A1C0FFEE001FA1C0FFEE001F /* MinerSettingsPoolsSectionEvaluationTests.swift */,
 				A1C0FFEE001BA1C0FFEE001B /* FirmwareTelemetryRetainedAndDiagnosticsTests.swift */,
 				A1C0FFEE0019A1C0FFEE0019 /* MockedHeroCardReadingStateTests.swift */,
 				A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */,
@@ -4563,6 +4566,7 @@
 				B1C0FFEE0014B1C0FFEE0014 /* SeededPoolStatsHubTests.swift in Sources */,
 				B1C0FFEE001AB1C0FFEE001A /* ActivityPopupBestSharePreferenceTests.swift in Sources */,
 				B1C0FFEE001DB1C0FFEE001D /* MinerTuningDialAccessibilityEvaluationTests.swift in Sources */,
+				B1C0FFEE001FB1C0FFEE001F /* MinerSettingsPoolsSectionEvaluationTests.swift in Sources */,
 				B1C0FFEE001BB1C0FFEE001B /* FirmwareTelemetryRetainedAndDiagnosticsTests.swift in Sources */,
 				B1C0FFEE0019B1C0FFEE0019 /* MockedHeroCardReadingStateTests.swift in Sources */,
 				B1C0FFEE0018B1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift in Sources */,
