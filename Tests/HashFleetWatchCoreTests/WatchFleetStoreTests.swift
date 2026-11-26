@@ -326,6 +326,28 @@ import Testing
         #expect(try store.importMiners(transfer.miners) == 2)
     }
 
+    @Test func importWithUpdateExistingRenamesMatchingEndpointAndPreservesReading() async throws {
+        let url = temporaryStorageURL(); defer { cleanUp(url) }
+        let client = ScriptedClient()
+        let store = WatchFleetStore(storageURL: url, client: client)
+        try store.addMiner(name: "192.168.1.1", address: "192.168.1.1")
+        await store.refresh()
+        let originalID = store.miners[0].id
+        let cachedBefore = store.readings
+
+        let added = try store.importMiners(
+            [try incoming(1, name: "Thor X1"), try incoming(2, name: "Thor P2")],
+            updateExisting: true
+        )
+        #expect(added == 1)
+        #expect(store.miners.count == 2)
+        #expect(store.miners[0].id == originalID)
+        #expect(store.miners[0].name == "Thor X1")
+        #expect(store.miners[1].name == "Thor P2")
+        #expect(store.readings == cachedBefore)
+        #expect(WatchFleetStore(storageURL: url, client: client).miners[0].name == "Thor X1")
+    }
+
     // MARK: Demo
 
     @Test func demoIsIsolatedReadOnlyAndNeverContactsMiners() async throws {

@@ -49,7 +49,7 @@ struct WatchRootView: View {
         .onChange(of: setup.pending?.id) { _, id in
             guard id != nil, let transfer = setup.pending, let store, demoStore == nil else { return }
             if store.miners.isEmpty {
-                _ = try? store.importMiners(transfer.miners)
+                _ = try? store.importMiners(transfer.miners, updateExisting: true)
                 setup.finish()
                 Task { await store.refresh() }
             } else if scenePhase == .active {
@@ -96,7 +96,7 @@ struct WatchRootView: View {
             setup.start()
             if let transfer = setup.pending, let store {
                 if store.miners.isEmpty {
-                    _ = try? store.importMiners(transfer.miners)
+                    _ = try? store.importMiners(transfer.miners, updateExisting: true)
                     setup.finish()
                     Task { await store.refresh() }
                 } else {
