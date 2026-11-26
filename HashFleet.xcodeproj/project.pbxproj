@@ -863,6 +863,7 @@
 		B1C0FFEE000FB1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */; };
 		B1C0FFEE0010B1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */; };
 		B1C0FFEE0011B1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */; };
+		B1C0FFEE0018B1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */; };
 		B1C0FFEE0017B1C0FFEE0017 /* SeededCoinSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0017A1C0FFEE0017 /* SeededCoinSelectionTests.swift */; };
 		B1C0FFEE0015B1C0FFEE0015 /* SeededHistoryAlgorithmAndReviewedCoolingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0015A1C0FFEE0015 /* SeededHistoryAlgorithmAndReviewedCoolingTests.swift */; };
 		B1C0FFEE0013B1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */; };
@@ -1444,6 +1445,7 @@
 		A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinerDetailIdentityFixtureTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarFocusOrderEvaluationTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCoolingAccessibilityFixtureTests.swift; sourceTree = "<group>"; };
+		A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededSplitNavigationDestinationTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0017A1C0FFEE0017 /* SeededCoinSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededCoinSelectionTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0015A1C0FFEE0015 /* SeededHistoryAlgorithmAndReviewedCoolingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededHistoryAlgorithmAndReviewedCoolingTests.swift; sourceTree = "<group>"; };
 		A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeededCompatibilitySummaryTests.swift; sourceTree = "<group>"; };
@@ -2448,6 +2450,7 @@
 				A1C0FFEE000FA1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift */,
 				A1C0FFEE0010A1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift */,
 				A1C0FFEE0011A1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift */,
+				A1C0FFEE0018A1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift */,
 				A1C0FFEE0017A1C0FFEE0017 /* SeededCoinSelectionTests.swift */,
 				A1C0FFEE0015A1C0FFEE0015 /* SeededHistoryAlgorithmAndReviewedCoolingTests.swift */,
 				A1C0FFEE0013A1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift */,
@@ -4539,6 +4542,7 @@
 				B1C0FFEE000FB1C0FFEE000F /* MinerDetailIdentityFixtureTests.swift in Sources */,
 				B1C0FFEE0010B1C0FFEE0010 /* SidebarFocusOrderEvaluationTests.swift in Sources */,
 				B1C0FFEE0011B1C0FFEE0011 /* SettingsCoolingAccessibilityFixtureTests.swift in Sources */,
+				B1C0FFEE0018B1C0FFEE0018 /* SeededSplitNavigationDestinationTests.swift in Sources */,
 				B1C0FFEE0017B1C0FFEE0017 /* SeededCoinSelectionTests.swift in Sources */,
 				B1C0FFEE0015B1C0FFEE0015 /* SeededHistoryAlgorithmAndReviewedCoolingTests.swift in Sources */,
 				B1C0FFEE0013B1C0FFEE0013 /* SeededCompatibilitySummaryTests.swift in Sources */,
