@@ -54,4 +54,26 @@ struct SeededSplitNavigationDestinationTests {
         settings.append(FleetMinerSettingsRoute(deviceID: device.id, category: .general))
         evaluate(split(path: settings, store: store))
     }
+
+    @Test func evaluateSplitDestinationsForNonTuningCategoriesAndMissingDevice() {
+        let suite = "app.hashfleet.mac.splitcats.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let device = MinerFixtures.device(name: "Category Rig")
+        let store = FleetStore(defaults: defaults, session: URLSession(configuration: .ephemeral))
+        store.devices = [device]
+        store.snapshots[device.id] = MinerFixtures.snapshot(MinerFixtures.healthyFields())
+
+        // Each non-tuning category pushes its own page. The tuning category is excluded because it is write-adjacent.
+        for category in [MinerSettingsCategory.cooling, .display, .pools, .advanced] {
+            var path = NavigationPath()
+            path.append(FleetMinerSettingsRoute(deviceID: device.id, category: category))
+            evaluate(split(path: path, store: store))
+        }
+
+        // A route whose device is not in visibleDevices takes the empty fallback in the destination closure.
+        var missing = NavigationPath()
+        missing.append(FleetMinerSettingsRoute(deviceID: UUID(), category: .general))
+        evaluate(split(path: missing, store: store))
+    }
 }
