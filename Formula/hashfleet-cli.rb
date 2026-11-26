@@ -1,8 +1,8 @@
 class HashfleetCli < Formula
   desc "Terminal dashboard and reviewed controls for your mining fleet"
   homepage "https://hashfleet.app"
-  url "https://github.com/SMWARREN/HashFleet/releases/download/v1.0.0/hashfleet-cli-1.0.0-macos-arm64.tar.gz"
-  sha256 "4536a37f83a0ed0341f9214b7fa534c32245900aef9b69c0eca37de2a0e2dfe3"
+  url "https://github.com/SMWARREN/HashFleet/releases/download/v1.0.1/hashfleet-cli-1.0.1-macos-arm64.tar.gz"
+  sha256 "d4e1892bf20fe14dd08a50b5067fc04c42e31dba60adf90207dcdf8fcbc1c8f5"
   license "GPL-3.0-only"
 
   depends_on :macos
