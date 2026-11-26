@@ -193,13 +193,15 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
         } catch {
             if Task.isCancelled { throw CancellationError() }
             #if canImport(Darwin)
-            if let endpoint = try? WatchEndpoint.normalize(miner.address),
-               endpoint.port == 4028 || endpoint.port == 80 {
-                let cgTimeout = endpoint.port == 4028 ? Self.requestTimeout : min(Self.requestTimeout, 2.0)
-                if let cgReading = try? await Self.queryCgminerReading(
-                    host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: cgTimeout
-                ) {
-                    return cgReading
+            if let endpoint = try? WatchEndpoint.normalize(miner.address) {
+                let effectivePort = endpoint.port ?? endpoint.scheme.defaultPort
+                if effectivePort == 4028 || effectivePort == 80 {
+                    let cgTimeout = effectivePort == 4028 ? Self.requestTimeout : min(Self.requestTimeout, 2.0)
+                    if let cgReading = try? await Self.queryCgminerReading(
+                        host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: cgTimeout
+                    ) {
+                        return cgReading
+                    }
                 }
             }
             #endif
