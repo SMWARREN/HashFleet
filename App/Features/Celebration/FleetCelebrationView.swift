@@ -130,6 +130,7 @@ struct FleetCelebrationView: View {
     let celebration: FleetCelebration
     let onViewMiner: () -> Void
     let onDismiss: () -> Void
+    var onDismissAll: (() -> Void)?
     var onDisableSessionBestAlerts: (() -> Void)?
     var onSupport: (() -> Void)?
     var pendingCount: Int = 0
@@ -147,7 +148,12 @@ struct FleetCelebrationView: View {
     var body: some View {
         ZStack {
             backdrop
-            if !reduceMotion { RaysView(color: amber, isBlock: celebration.isBlock).opacity(appeared ? 1 : 0) }
+                .ignoresSafeArea()
+            if !reduceMotion {
+                RaysView(color: amber, isBlock: celebration.isBlock)
+                    .opacity(appeared ? 1 : 0)
+                    .ignoresSafeArea()
+            }
             if dynamicTypeSize.isAccessibilitySize {
                 ScrollView {
                     content.padding(.vertical, 24)
@@ -161,12 +167,48 @@ struct FleetCelebrationView: View {
                 }
             }
         }
-        .ignoresSafeArea()
+        .overlay(alignment: .topTrailing) {
+            topMenu
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("celebration.screen")
         .accessibilityValue(ProcessInfo.processInfo.arguments.contains("--ui-testing") ? celebration.id.uuidString : "")
         .sensoryFeedback(celebration.isBlock ? .success : .impact(weight: .heavy), trigger: hapticTrigger)
         .onAppear(perform: start)
+    }
+
+    @ViewBuilder
+    private var topMenu: some View {
+        if let onDismissAll {
+            Menu {
+                Button(role: .destructive, action: onDismissAll) {
+                    Label(
+                        pendingCount > 0 ? "Clear all (\(pendingCount + 1))" : "Clear all",
+                        systemImage: "trash"
+                    )
+                }
+                .accessibilityIdentifier("celebration.dismissAll")
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.14), in: Circle())
+                    .contentShape(Circle())
+            }
+            #if os(macOS)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            #else
+            .buttonStyle(.plain)
+            #endif
+            .accessibilityLabel("More options")
+            .accessibilityIdentifier("celebration.moreMenu")
+            .padding(.top, 12)
+            .padding(.trailing, 16)
+            .opacity(appeared ? 1 : 0)
+            .animation(entrance(delay: 0.2), value: appeared)
+        }
     }
 
     private var backdrop: some View {

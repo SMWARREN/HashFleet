@@ -113,6 +113,12 @@ struct FleetCelebrationQueue {
         perform { try $0.acknowledgeHead() }
     }
 
+    /// Acknowledges every unacknowledged record in the queue.
+    @discardableResult
+    mutating func dismissAll() -> Bool {
+        perform { _ = try $0.acknowledgeAll() }
+    }
+
     /// Hides the queue (Review later) without acknowledging anything.
     @discardableResult
     mutating func pause() -> Bool {

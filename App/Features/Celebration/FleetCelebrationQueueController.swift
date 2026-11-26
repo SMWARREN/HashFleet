@@ -19,6 +19,7 @@ final class FleetCelebrationQueueController {
         case close
         case present(FleetCelebration, sessionEnabled: Bool)
         case dismiss(UUID)
+        case dismissAll(UUID)
         case pause(UUID)
         case acknowledgeAndPause(UUID)
         case resume(sessionEnabled: Bool)
@@ -98,7 +99,7 @@ actor FleetCelebrationQueueWorker {
             preconditionFailure("Close is handled before opening storage")
         case let .present(event, sessionEnabled):
             accepted = handlePresent(event: event, sessionEnabled: sessionEnabled, in: &queue!)
-        case .dismiss(let id), .pause(let id), .acknowledgeAndPause(let id):
+        case .dismiss(let id), .dismissAll(let id), .pause(let id), .acknowledgeAndPause(let id):
             let outcome = handleTargetedAction(command: command, id: id, in: &queue!)
             accepted = outcome.accepted
             stale = outcome.stale
@@ -134,6 +135,7 @@ actor FleetCelebrationQueueWorker {
         let accepted: Bool
         switch command {
         case .dismiss: accepted = queue.dismiss()
+        case .dismissAll: accepted = queue.dismissAll()
         case .pause: accepted = queue.pause()
         case .acknowledgeAndPause: accepted = queue.acknowledgeAndPause()
         default: accepted = false
