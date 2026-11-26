@@ -96,58 +96,29 @@ def _validate_config(config: FixtureConfig | Mapping[str, Any] | Any) -> tuple[s
     return name.strip(), board.strip(), port, scenario
 
 
-def _thoros_routes(name: str, board: str, scenario: str) -> dict[str, dict[str, Any]] | None:
-    """Synthetic ThorOS GET routes for a Thor board profile, else ``None``."""
+def _thoros_device(name: str, board: str, scenario: str):
+    """Stateful synthetic ThorOS device for a Thor board profile, else ``None``."""
 
     from .config import BOARDS
+    from .thoros_device import ThorDevice
 
     profile = BOARDS.get(board)
     if profile is None or profile.api != "thoros":
         return None
-    degraded = scenario == "degraded"
-    per_chip_ths = 0.0 if degraded else 3.2
-    info = {
-        "device_model": profile.model,
-        "firmware_version": "api-fixture",
-        "hardware_version": profile.revision,
-        "mac_address": "02:00:00:00:00:01",
-        "chip_type": profile.asic,
-        "detected_chips_count": 0 if degraded else profile.count,
-    }
-    status = {"uptime_seconds": 0, "wifi_rssi": -50, "free_heap_bytes": 0}
-    miner = {
-        "hostname": name,
-        "current_hashrate": per_chip_ths * profile.count * 1e12,
-        "power_consumption": 0.0,
-        "temp_board": 95.0 if degraded else 50.0,
-        "temp_vcore": 50.0,
-        "input_voltage": 12.0,
-        "core_voltage_actual": 0.0,
-        "frequency": 0,
-        "fan_speed_rpm": 0,
-        "fan_target_speed": 0,
-        "fan_mode": 0,
-        "shares_accepted": 0,
-        "shares_rejected": 0,
-        "pool_url": "pool.invalid",
-        "pool_port": 3333,
-    }
-    return {
-        "/v2/device/info": {"ok": True, "data": info},
-        "/v2/device/status": {"ok": True, "data": status},
-        "/v2/miner/status": {"ok": True, "data": miner},
-    }
+    return ThorDevice(name, profile.model, profile.revision, profile.asic, profile.count, scenario == "degraded")
 
 
 def make_fixture(config: FixtureConfig | Mapping[str, Any] | Any) -> FixtureServer:
     """Bind the fixture synchronously on IPv4 loopback, without a thread.
 
-    Exact routes are GET /api/system/info and GET /healthz. Every other path
-    returns 404 and non-GET methods return 405.
+    Exact routes are GET /api/system/info and GET /healthz. ThorOS boards add
+    the stateful THOR API V1.0.0 subset: GET /v2/device/{info,status},
+    GET /v2/miner/{status,config,hashrate}, PUT /v2/miner/config and
+    POST /v2/device/reboot. Every other path returns 404 and other methods 405.
     """
 
     name, board, port, scenario = _validate_config(config)
-    routes = _thoros_routes(name, board, scenario)
+    thor = _thoros_device(name, board, scenario)
     # Minimal typed subset of ESP-Miner's documented SystemInfo schema. Values
     # are synthetic test data and do not represent a running miner.
     info = {
@@ -187,10 +158,16 @@ def make_fixture(config: FixtureConfig | Mapping[str, Any] | Any) -> FixtureServ
             self.wfile.write(body)
 
         def do_GET(self) -> None:
-            if routes is not None:
-                if self.path in routes:
-                    self._send(200, routes[self.path])
-                elif self.path == "/healthz":
+            if thor is not None:
+                path, _, query = self.path.partition("?")
+                getters = {
+                    "/v2/device/info": thor.info, "/v2/device/status": thor.status,
+                    "/v2/miner/status": thor.miner, "/v2/miner/config": thor.miner_config,
+                    "/v2/miner/hashrate": thor.hashrate_history,
+                }
+                if path in getters:
+                    self._send(200, {"ok": True, "data": getters[path]()})
+                elif path == "/healthz":
                     self._send(200, {**health, "api": "thoros"})
                 else:
                     # ThorOS serves its single-page console for unknown routes, including
@@ -214,13 +191,39 @@ def make_fixture(config: FixtureConfig | Mapping[str, Any] | Any) -> FixtureServ
 
         def _deny(self) -> None:
             self.send_response(405)
-            self.send_header("Allow", "GET")
+            allow = "GET"
+            if thor is not None:
+                allow = {"/v2/miner/config": "GET, PUT", "/v2/device/reboot": "POST"}.get(
+                    self.path.split("?", 1)[0], "GET"
+                )
+            self.send_header("Allow", allow)
             self.send_header("Content-Length", "0")
             self.end_headers()
 
+        def _read_json(self) -> Any:
+            length = self.headers.get("Content-Length", "0")
+            if not length.isdigit() or int(length) > 16 * 1024:
+                return None
+            raw = self.rfile.read(int(length)) if int(length) else b""
+            try:
+                return json.loads(raw) if raw else None
+            except ValueError:
+                return None
+
+        def do_PUT(self) -> None:
+            if thor is None or self.path != "/v2/miner/config":
+                self._deny()
+                return
+            status, payload = thor.update(self._read_json())
+            self._send(status, payload)
+
+        def do_POST(self) -> None:
+            if thor is None or self.path != "/v2/device/reboot":
+                self._deny()
+                return
+            self._send(200, thor.reboot())
+
         do_HEAD = _deny
-        do_POST = _deny
-        do_PUT = _deny
         do_PATCH = _deny
         do_DELETE = _deny
         do_OPTIONS = _deny
