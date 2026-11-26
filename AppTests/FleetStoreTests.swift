@@ -36,23 +36,42 @@ struct FleetStoreTests {
         #expect(FleetStore(defaults: defaults).devices.isEmpty)
     }
 
-    @Test func distinctAddressesWithSameMACStaySeparateAfterRefresh() async throws {
+    @Test func sameMinerAddedByIPAndHostnameCollapsesToOneAfterRefresh() async throws {
         let fleetEnv = try fixture()
         let store = fleetEnv.store
         let defaults = fleetEnv.defaults
         let suite = fleetEnv.suite
         defer { store.cancelRefresh(); defaults.removePersistentDomain(forName: suite) }
 
-        // Distinct host:port pairs stay separate even if they report the same hardware MAC
-        // (e.g. virtual miners or port-forwarded endpoints).
-        try store.add(name: "By IP", address: "gamma.test")
+        // A miner added by IP and by mDNS/hostname on the same port collapses after refresh.
+        try store.add(name: "By IP", address: "192.0.2.10")
         try store.add(name: "By hostname", address: "gamma-alias.test")
         #expect(store.devices.count == 2)
 
         await store.refresh()
-        #expect(store.devices.count == 2)
-        #expect(store.devices.map(\.name) == ["By IP", "By hostname"])
-        #expect(FleetStore(defaults: defaults).devices.count == 2)
+        #expect(store.devices.count == 1)
+        #expect(store.devices.first?.name == "By IP")
+        #expect(FleetStore(defaults: defaults).devices.count == 1)
+    }
+
+    @Test func distinctIPPortMinersWithSameMACStaySeparateAfterRefresh() async throws {
+        let fleetEnv = try fixture()
+        let store = fleetEnv.store
+        let defaults = fleetEnv.defaults
+        let suite = fleetEnv.suite
+        defer { store.cancelRefresh(); defaults.removePersistentDomain(forName: suite) }
+
+        // Distinct literal IP:port pairs stay separate even if they report the same hardware MAC
+        // (e.g. virtual miners or port-forwarded endpoints).
+        try store.add(name: "IP Port 80", address: "192.0.2.10")
+        try store.add(name: "IP Port 8080", address: "192.0.2.10:8080")
+        try store.add(name: "Second IP", address: "192.0.2.11")
+        #expect(store.devices.count == 3)
+
+        await store.refresh()
+        #expect(store.devices.count == 3)
+        #expect(store.devices.map(\.name) == ["IP Port 80", "IP Port 8080", "Second IP"])
+        #expect(FleetStore(defaults: defaults).devices.count == 3)
     }
 
     @Test func explicitGenericNameIsPreservedAndLegacyDefaultUpgrades() async throws {
@@ -466,7 +485,9 @@ class FleetFixtureProtocol: URLProtocol, @unchecked Sendable {
         let fixture = request.value(forHTTPHeaderField: "X-HashFleet-Test-ID") ?? "unknown"
         Self.counter.increment(for: fixture)
         if request.url?.host == "delayed.test" { return }
-        guard ["online.test", "gamma.test", "gamma-alias.test"].contains(request.url?.host ?? ""), let url = request.url else {
+        guard ["online.test", "gamma.test", "gamma-alias.test", "192.0.2.10", "192.0.2.11"].contains(request.url?.host ?? ""),
+            let url = request.url
+        else {
             client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
             return
         }
@@ -477,11 +498,11 @@ class FleetFixtureProtocol: URLProtocol, @unchecked Sendable {
             headerFields: ["Content-Type": "application/json"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        // gamma.test and gamma-alias.test report the same hardware MAC in different formats to
-        // verify distinct endpoints stay separate on refresh and explicit MAC dedup still matches.
+        // gamma.test, 192.0.2.10, 192.0.2.11, and gamma-alias.test report the same hardware MAC
+        // to test both IP+hostname collapse and distinct IP:port preservation.
         let json: String
         switch url.host {
-        case "gamma.test":
+        case "gamma.test", "192.0.2.10", "192.0.2.11":
             json = #"{"hashRate":1200,"power":19,"temp":54,"hostname":"bitaxe","ASICModel":"BM1370","boardVersion":"602","macAddr":"AA:BB:CC:11:22:33"}"#
         case "gamma-alias.test":
             json = #"{"hashRate":1200,"power":19,"temp":54,"hostname":"bitaxe","ASICModel":"BM1370","boardVersion":"602","macAddr":"aa-bb-cc-11-22-33"}"#

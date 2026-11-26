@@ -373,6 +373,9 @@ final class FleetStore {
         if token == generation {
             refreshTask = nil
             isRefreshing = false
+            // Snapshots now carry each miner's MAC, so collapse duplicates reached through a
+            // hostname alias while keeping distinct literal IP:port endpoints separate.
+            await deduplicateDevicesByMAC()
         }
     }
 
