@@ -43,6 +43,24 @@ struct FleetAdaptiveLayoutTests {
         #expect(FleetLayout.cardColumns(for: 1_640) == 4)
     }
 
+    @Test func iphoneDuoUnfoldedRegularSizeClassUsesTwoColumns() {
+        // Outer display / compact width: single column
+        #expect(FleetLayout.cardColumns(for: 430, regularSizeClass: false) == 1)
+        #expect(FleetLayout.cardColumns(for: 559, regularSizeClass: false) == 1)
+        #expect(!FleetLayout.usesTwoColumns(width: 430, regularSizeClass: false))
+
+        // Inner display (unfolded, regular size class): 2 columns to split evenly across the fold
+        #expect(FleetLayout.cardColumns(for: 560, regularSizeClass: true) == 2)
+        #expect(FleetLayout.cardColumns(for: 700, regularSizeClass: true) == 2)
+        #expect(FleetLayout.cardColumns(for: 959, regularSizeClass: true) == 2)
+        #expect(FleetLayout.usesTwoColumns(width: 560, regularSizeClass: true))
+        #expect(FleetLayout.usesTwoColumns(width: 700, regularSizeClass: true))
+
+        // Large / landscape widths continue to scale cleanly
+        #expect(FleetLayout.cardColumns(for: 960, regularSizeClass: true) == 2)
+        #expect(FleetLayout.cardColumns(for: 1_300, regularSizeClass: true) == 3)
+    }
+
     @Test func macDashboardColumnsRespectPreferenceWithoutCrampingNarrowWindows() {
         #expect(FleetLayout.macDashboardCardColumns(for: 699, preferred: 3) == 1)
         #expect(FleetLayout.macDashboardCardColumns(for: 700, preferred: 3) == 2)

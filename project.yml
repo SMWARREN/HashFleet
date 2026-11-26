@@ -207,6 +207,8 @@ targets:
           - FleetTextRecognitionTests.swift
           - FleetTypographyTests.swift
           - FleetViewRenderHarness.swift
+          - iPhoneDuoFullGalleryCaptureTests.swift
+          - iPhoneDuoScreenshotCaptureTests.swift
           - FleetWatchSetupSelectionTests.swift
           - FleetWidgetBrandingTests.swift
           - FleetWidgetRefreshIntegrationTests+Loading.swift

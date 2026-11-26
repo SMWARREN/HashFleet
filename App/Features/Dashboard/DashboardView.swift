@@ -43,7 +43,7 @@ struct DashboardView: View {
     @Namespace var minerTransitionNamespace
     @Environment(\.dynamicTypeSize) var dynamicTypeSize
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
     var usesCompactHorizontalLayout: Bool {
         #if os(macOS)

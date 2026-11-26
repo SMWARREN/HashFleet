@@ -8,8 +8,10 @@ import HashFleetCore
 /// existing single column because their width never reaches the two-column threshold.
 extension DashboardView {
     func isWideDashboard(_ viewport: GeometryProxy) -> Bool {
-        FleetLayout.usesTwoColumns(width: FleetLayout.dashboardAvailableWidth(for: viewport.size.width))
-            && !dynamicTypeSize.isAccessibilitySize
+        FleetLayout.usesTwoColumns(
+            width: FleetLayout.dashboardAvailableWidth(for: viewport.size.width),
+            regularSizeClass: !usesCompactHorizontalLayout
+        ) && !dynamicTypeSize.isAccessibilitySize
     }
 
     /// Places two related cards side by side on wide windows, stacked otherwise.
