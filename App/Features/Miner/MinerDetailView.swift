@@ -94,6 +94,25 @@ struct MinerDetailView: View {
         )
     }
 
+    #if DEBUG
+    /// Seeds the identity disclosure for offline evaluation. Production code never calls this.
+    init(
+        device: MinerDevice,
+        store: FleetStore,
+        insights: MiningInsightsStore? = nil,
+        liveConnectionError: String? = nil,
+        isLive: Bool = false,
+        showsIdentity: Bool = false
+    ) {
+        self.device = device
+        self.store = store
+        self.insights = insights
+        self.liveConnectionError = liveConnectionError
+        self.isLive = isLive
+        _showsIdentity = State(initialValue: showsIdentity)
+    }
+    #endif
+
     var body: some View {
         if FleetReleaseFeatures.includes(currentDevice.kind) {
             releasedContent
