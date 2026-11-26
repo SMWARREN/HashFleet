@@ -174,3 +174,62 @@ class HttpGatewayTests(unittest.TestCase):
             make_gateway(0, 8080, timeout_seconds=0)
         with self.assertRaisesRegex(ValueError, "max_response"):
             make_gateway(0, 8080, max_response_bytes=0)
+
+
+class WriteUpstream(BaseHTTPRequestHandler):
+    def _record(self) -> None:
+        length = int(self.headers.get("Content-Length", "0") or 0)
+        self.server.seen.append((self.command, self.path, self.rfile.read(length),
+                                 self.headers.get("Authorization")))
+        body = b'{"ok":true}'
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_PUT = _record
+    do_POST = _record
+
+    def log_message(self, _format: str, *_args: object) -> None:
+        return
+
+
+class ThorOSWriteGatewayTests(unittest.TestCase):
+    def test_only_documented_thoros_writes_are_relayed(self) -> None:
+        upstream = ThreadingHTTPServer(("127.0.0.1", 0), WriteUpstream)
+        upstream.seen = []
+        thread = start(upstream)
+        try:
+            with running_gateway(upstream.server_address[1]) as gw:
+                put = Request(gw.base_url + "/v2/miner/config", method="PUT",
+                              data=b'{"fan_mode": 1, "fan_target_speed": 90}',
+                              headers={"Authorization": "Bearer nope"})
+                with urlopen(put, timeout=2) as response:
+                    self.assertEqual(response.status, 200)
+                with urlopen(Request(gw.base_url + "/v2/device/reboot", method="POST"), timeout=2) as response:
+                    self.assertEqual(response.status, 200)
+                self.assertEqual(upstream.seen[0][:2], ("PUT", "/v2/miner/config"))
+                self.assertEqual(json.loads(upstream.seen[0][2]), {"fan_mode": 1, "fan_target_speed": 90})
+                self.assertIsNone(upstream.seen[0][3])
+                self.assertEqual(upstream.seen[1][:3], ("POST", "/v2/device/reboot", b""))
+
+                rejected = [
+                    (Request(gw.base_url + "/v2/miner/config", method="PUT", data=b"not json"), 400),
+                    (Request(gw.base_url + "/v2/miner/config", method="PUT", data=b"[]"), 400),
+                    (Request(gw.base_url + "/v2/miner/config", method="PUT", data=b"{" + b" " * 17000 + b"}"), 413),
+                    (Request(gw.base_url + "/v2/device/reboot", method="POST", data=b"{}"), 400),
+                    (Request(gw.base_url + "/v2/miner/config", method="POST", data=b"{}"), 405),
+                    (Request(gw.base_url + "/api/system", method="PUT", data=b"{}"), 405),
+                    (Request(gw.base_url + "/v2/device/reboot?x=1", method="POST"), 405),
+                ]
+                for request, code in rejected:
+                    with self.subTest(path=request.full_url, method=request.method), \
+                            self.assertRaises(HTTPError) as error:
+                        urlopen(request, timeout=2)
+                    self.assertEqual(error.exception.code, code)
+                    error.exception.close()
+                self.assertEqual(len(upstream.seen), 2)
+        finally:
+            upstream.shutdown()
+            upstream.server_close()
+            thread.join(timeout=2)
