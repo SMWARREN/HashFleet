@@ -205,6 +205,26 @@ public final class WatchFleetStore {
         return additions.count
     }
 
+    /// Applies cached readings relayed from the paired iPhone for miners already in this store.
+    /// Newer local readings are preserved.
+    public func applyRelayedReadings(_ incoming: [WatchMinerReading]) {
+        guard !isDemo, !incoming.isEmpty else { return }
+        let knownIDs = Set(miners.map(\.id))
+        var applied = false
+        for reading in incoming {
+            guard knownIDs.contains(reading.minerID) else { continue }
+            if let existing = readings[reading.minerID], existing.observedAt >= reading.observedAt {
+                continue
+            }
+            readings[reading.minerID] = reading
+            failures[reading.minerID] = nil
+            applied = true
+        }
+        if applied, !writesBlocked {
+            try? persist(miners: miners, readings: readings)
+        }
+    }
+
     // MARK: - Refresh
 
     /// Reads every miner once. Concurrent calls share one pass. Cancelling the caller cancels the pass and

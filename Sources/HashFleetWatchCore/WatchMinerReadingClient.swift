@@ -137,16 +137,26 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
 
     private let transport: WatchHTTPTransport
     private let now: @Sendable () -> Date
+    private let cgminerRelay: (@Sendable (WatchMiner, String, Int) async -> WatchMinerReading?)?
 
     /// Uses `makeDefaultSession()` unless a session is injected (for tests).
-    public init(session: URLSession = WatchMinerHTTPClient.makeDefaultSession()) {
+    public init(
+        session: URLSession = WatchMinerHTTPClient.makeDefaultSession(),
+        cgminerRelay: (@Sendable (WatchMiner, String, Int) async -> WatchMinerReading?)? = nil
+    ) {
         self.transport = WatchHTTPTransport(session: session)
         self.now = { Date() }
+        self.cgminerRelay = cgminerRelay
     }
 
-    init(session: URLSession, now: @escaping @Sendable () -> Date) {
+    init(
+        session: URLSession,
+        now: @escaping @Sendable () -> Date,
+        cgminerRelay: (@Sendable (WatchMiner, String, Int) async -> WatchMinerReading?)? = nil
+    ) {
         self.transport = WatchHTTPTransport(session: session)
         self.now = now
+        self.cgminerRelay = cgminerRelay
     }
 
     /// Ephemeral session: no cookies, cache or credential storage, and bounded timeouts.
@@ -177,8 +187,8 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
     public func fetch(_ miner: WatchMiner) async throws -> WatchMinerReading {
         #if canImport(Darwin)
         if let endpoint = try? WatchEndpoint.normalize(miner.address), endpoint.port == 4028 {
-            if let cgReading = try? await Self.queryCgminerReading(
-                host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: Self.requestTimeout
+            if let cgReading = await fetchCgminer(
+                for: miner, host: endpoint.host, port: 4028, timeout: Self.requestTimeout
             ) {
                 return cgReading
             }
@@ -197,8 +207,8 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
                 let effectivePort = endpoint.port ?? endpoint.scheme.defaultPort
                 if effectivePort == 4028 || effectivePort == 80 {
                     let cgTimeout = effectivePort == 4028 ? Self.requestTimeout : min(Self.requestTimeout, 2.0)
-                    if let cgReading = try? await Self.queryCgminerReading(
-                        host: endpoint.host, port: 4028, minerID: miner.id, observedAt: now(), timeout: cgTimeout
+                    if let cgReading = await fetchCgminer(
+                        for: miner, host: endpoint.host, port: 4028, timeout: cgTimeout
                     ) {
                         return cgReading
                     }
@@ -220,7 +230,34 @@ public struct WatchMinerHTTPClient: WatchMinerReadingClient {
     }
 
     #if canImport(Darwin)
-    static func queryCgminerReading(
+    private func fetchCgminer(
+        for miner: WatchMiner,
+        host: String,
+        port: Int,
+        timeout: TimeInterval
+    ) async -> WatchMinerReading? {
+        #if os(watchOS) && !targetEnvironment(simulator)
+        // Real Apple Watch hardware blocks raw TCP NWConnection (Apple TN3135), so try the iPhone relay first.
+        if let relay = cgminerRelay, let relayed = await relay(miner, host, port) {
+            return relayed
+        }
+        return try? await Self.queryCgminerReading(
+            host: host, port: port, minerID: miner.id, observedAt: now(), timeout: timeout
+        )
+        #else
+        if let direct = try? await Self.queryCgminerReading(
+            host: host, port: port, minerID: miner.id, observedAt: now(), timeout: timeout
+        ) {
+            return direct
+        }
+        if let relay = cgminerRelay {
+            return await relay(miner, host, port)
+        }
+        return nil
+        #endif
+    }
+
+    public static func queryCgminerReading(
         host: String,
         port: Int,
         minerID: UUID,

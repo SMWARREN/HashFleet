@@ -42,6 +42,10 @@ struct WatchRootView: View {
         .task {
             setup.start()
         }
+        .onChange(of: setup.latestCachedReadings) { _, transfer in
+            guard let transfer, let store, demoStore == nil else { return }
+            store.applyRelayedReadings(transfer.readings)
+        }
         .onChange(of: setup.pending?.id) { _, id in
             guard id != nil, let transfer = setup.pending, let store, demoStore == nil else { return }
             if store.miners.isEmpty {

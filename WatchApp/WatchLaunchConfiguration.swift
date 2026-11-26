@@ -55,7 +55,9 @@ struct WatchLaunchConfiguration: Sendable {
     /// The real (or UI-testing) inventory store. Call lazily so `--demo` launches never open production storage.
     @MainActor
     func makeRealStore() -> WatchFleetStore {
-        guard isUITesting else { return WatchFleetStore() }
+        guard isUITesting else {
+            return WatchFleetStore(client: WatchMinerHTTPClient(cgminerRelay: WatchConfigurationReceiver.relayCgminer))
+        }
         let client = UITestingReadingClient(isOffline: isOffline, usesStaleReadings: usesStaleReadings, usesSlowRefresh: usesSlowRefresh)
         let store = WatchFleetStore(storageURL: nil, client: client)
         if seedsFixtures {
