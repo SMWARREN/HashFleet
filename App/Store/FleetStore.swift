@@ -368,9 +368,6 @@ final class FleetStore {
         if token == generation {
             refreshTask = nil
             isRefreshing = false
-            // Snapshots now carry each miner's MAC, so collapse any duplicate that was added
-            // under a second address (IP vs mDNS hostname) for the same physical miner.
-            await deduplicateDevicesByMAC()
         }
     }
 

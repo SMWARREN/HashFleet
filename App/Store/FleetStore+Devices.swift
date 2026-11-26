@@ -21,10 +21,8 @@ extension FleetStore {
         guard !existing.contains(where: { (try? $0.validatedURL()) == url }) else {
             throw FleetError.duplicate
         }
-        // A miner added under a second address (its IP and its mDNS hostname both resolve to the
-        // same hardware) cannot be caught here because we do not know the new address's MAC until
-        // it is probed. The post-refresh `deduplicateDevicesByMAC()` collapses that case once a
-        // snapshot arrives.
+        // Distinct host:port pairs always count as separate miners even if they report the same
+        // hardware MAC (e.g. virtual miners or port-forwarded endpoints).
         if isDemo { clearDemo() }
         devices.append(
             MinerDevice(
