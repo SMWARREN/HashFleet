@@ -234,10 +234,16 @@ actor ProgressLog {
         )
         _ = try await scanner.scan { _ in }
         let requests = DiscoveryStubURLProtocol.requests
-        #expect(requests.count == 5)
+        let allowedPaths: Set<String> = [
+            "/api/system/info",
+            "/api/status",
+            "/api/telemetry",
+            WatchMinerHTTPClient.thorOSMinerStatusPath
+        ]
+        #expect(requests.count == 5 * allowedPaths.count)
         for request in requests {
             #expect(request.httpMethod == "GET")
-            #expect(request.url?.path == "/api/system/info")
+            #expect(allowedPaths.contains(request.url?.path ?? ""))
             #expect(request.url?.port == 80)
             #expect(request.httpBody == nil)
             #expect(request.httpShouldHandleCookies == false)
@@ -246,9 +252,13 @@ actor ProgressLog {
             #expect(request.cachePolicy == .reloadIgnoringLocalAndRemoteCacheData)
             #expect(request.timeoutInterval <= 1.0) // per-request timeout ~1s
         }
-        // Each candidate host probed exactly once.
-        let hosts = DiscoveryStubURLProtocol.requestedHosts.sorted()
-        #expect(Set(hosts).count == hosts.count)
+        // Each (host, path) pair probed at most once across the 5 candidate hosts.
+        let hostPaths = requests.compactMap { req -> String? in
+            guard let host = req.url?.host, let path = req.url?.path else { return nil }
+            return "\(host)\(path)"
+        }
+        #expect(Set(hostPaths).count == hostPaths.count)
+        let hosts = DiscoveryStubURLProtocol.requestedHosts
         #expect(Set(hosts) == ["192.168.1.49", "192.168.1.51", "192.168.1.52", "192.168.1.53", "192.168.1.54"])
     }
 

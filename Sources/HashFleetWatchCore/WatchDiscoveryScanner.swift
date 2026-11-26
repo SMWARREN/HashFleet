@@ -199,11 +199,14 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
         var httpStatus: Int?
         var httpData: Data?
         var httpResponse: HTTPURLResponse?
+        var shouldTryAltPaths = false
         do {
             let (data, response) = try await transport.load(request, deadline: policy.perHostDeadline)
             httpData = data
             httpResponse = response
             httpStatus = response.statusCode
+        } catch WatchMinerFetchError.badStatus, WatchMinerFetchError.redirected {
+            shouldTryAltPaths = true
         } catch {
             httpStatus = nil
         }
@@ -216,10 +219,14 @@ public struct WatchLocalMinerDiscovery: WatchMinerDiscovering {
             // ThorOS answers unknown routes with its HTML console instead of a 404.
             let servedHTML = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("html") == true
             if httpStatus == 404 || (300...399).contains(httpStatus) || (httpStatus == 200 && servedHTML) {
-                for altPath in ["/api/status", "/api/telemetry", WatchMinerHTTPClient.thorOSMinerStatusPath] {
-                    if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
-                        return miner
-                    }
+                shouldTryAltPaths = true
+            }
+        }
+
+        if shouldTryAltPaths {
+            for altPath in ["/api/status", "/api/telemetry", WatchMinerHTTPClient.thorOSMinerStatusPath] {
+                if let miner = await probeHTTP(address: address, path: altPath, transport: transport, policy: policy) {
+                    return miner
                 }
             }
         }
