@@ -22,6 +22,24 @@ enum FleetLayout {
     static var sidebarMaximumWidth: CGFloat {
         400
     }
+
+    /// Unfolded foldable iPhones (iPhone Duo inner display, about 669 pt wide) are regular
+    /// width but far narrower than an iPad. There the menu takes the left panel exactly, so
+    /// the split seam sits on the fold. iPad and Mac keep the normal sidebar width (nil).
+    static let foldableInnerWidthRange: ClosedRange<CGFloat> = 560...820
+
+    static func foldSidebarWidth(forWindowWidth width: CGFloat, isPhone: Bool = isPhoneIdiom) -> CGFloat? {
+        guard isPhone, foldableInnerWidthRange.contains(width) else { return nil }
+        return (width / 2).rounded(.down)
+    }
+
+    static var isPhoneIdiom: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
     /// Native workspaces are fluid, including pages that specify an iPad reading limit.
     static var readableWidth: CGFloat { readingMaximumWidth(forMac: isMac) }
     static var listContentWidth: CGFloat { readingMaximumWidth(forMac: isMac) }
@@ -54,8 +72,13 @@ enum FleetLayout {
     static let macDetailTwoColumnThreshold: CGFloat = 760
     static let macDetailThreeColumnThreshold: CGFloat = 1180
 
-    /// Number of card columns for a given viewport width.
-    static func cardColumns(for width: CGFloat) -> Int {
+    /// Number of card columns for a given viewport width and optional size class.
+    /// In a regular size class (e.g. unfolded iPhone Duo or iPad), an even 2-column layout
+    /// is used for widths >= 560 pt to flank the center hinge/fold cleanly.
+    static func cardColumns(for width: CGFloat, regularSizeClass: Bool = false) -> Int {
+        if regularSizeClass && width >= tier1Threshold && width < tier2Threshold {
+            return 2
+        }
         switch width {
         case ..<tier1Threshold: return 1
         case ..<tier2Threshold: return 1
@@ -89,8 +112,8 @@ enum FleetLayout {
         )
     }
 
-    static func dashboardCardColumns(for viewportWidth: CGFloat) -> Int {
-        cardColumns(for: dashboardAvailableWidth(for: viewportWidth))
+    static func dashboardCardColumns(for viewportWidth: CGFloat, regularSizeClass: Bool = false) -> Int {
+        cardColumns(for: dashboardAvailableWidth(for: viewportWidth), regularSizeClass: regularSizeClass)
     }
 
     /// Automatic is the default. An optional user limit never prevents narrower windows
@@ -167,8 +190,11 @@ enum FleetLayout {
         nativeMac || (arguments.contains("--ui-testing") && arguments.contains("--ui-test-desktop-layout"))
     }
 
-    static func usesTwoColumns(width: CGFloat) -> Bool {
-        width >= twoColumnThreshold
+    static func usesTwoColumns(width: CGFloat, regularSizeClass: Bool = false) -> Bool {
+        if regularSizeClass {
+            return width >= tier1Threshold
+        }
+        return width >= twoColumnThreshold
     }
 
     static var dashboardContentWidth: CGFloat {
