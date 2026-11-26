@@ -14,6 +14,7 @@ extension HashFleetApp {
                     onDisableSessionBestAlerts: sessionBestOptOutAction,
                     onSupport: celebrationSupportAction,
                     pendingCount: previewCelebration == nil ? celebrations.pendingCount : 0,
+                    queuedCelebrations: previewCelebration == nil ? ([current] + celebrations.snapshot.pending) : [current],
                     onReviewLater: previewCelebration == nil ? { pauseCelebrations(expectedID: current.id) } : nil
                 )
                 .id(current.id)

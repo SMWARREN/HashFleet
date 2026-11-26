@@ -134,6 +134,7 @@ struct FleetCelebrationView: View {
     var onDisableSessionBestAlerts: (() -> Void)?
     var onSupport: (() -> Void)?
     var pendingCount: Int = 0
+    var queuedCelebrations: [FleetCelebration] = []
     var onReviewLater: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -142,6 +143,7 @@ struct FleetCelebrationView: View {
     @State private var revealedValue = false
     @State private var confettiStart: Date?
     @State private var hapticTrigger = 0
+    @State private var showingQueueSheet = false
 
     private let amber = Color(red: 245 / 255, green: 172 / 255, blue: 38 / 255)
 
@@ -168,47 +170,32 @@ struct FleetCelebrationView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            topMenu
+            if let onDismissAll {
+                FleetCelebrationTopMenu(
+                    totalCount: max(queuedCelebrations.count, pendingCount + 1),
+                    pendingCount: pendingCount,
+                    appeared: appeared,
+                    animation: entrance(delay: 0.2),
+                    onViewAll: { showingQueueSheet = true },
+                    onDismissAll: onDismissAll
+                )
+            }
+        }
+        .sheet(isPresented: $showingQueueSheet) {
+            if let onDismissAll {
+                let items = queuedCelebrations.isEmpty ? [celebration] : queuedCelebrations
+                FleetCelebrationQueueSheet(
+                    celebrations: items,
+                    totalCount: max(items.count, pendingCount + 1),
+                    onClearAll: onDismissAll
+                )
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("celebration.screen")
         .accessibilityValue(ProcessInfo.processInfo.arguments.contains("--ui-testing") ? celebration.id.uuidString : "")
         .sensoryFeedback(celebration.isBlock ? .success : .impact(weight: .heavy), trigger: hapticTrigger)
         .onAppear(perform: start)
-    }
-
-    @ViewBuilder
-    private var topMenu: some View {
-        if let onDismissAll {
-            Menu {
-                Button(role: .destructive, action: onDismissAll) {
-                    Label(
-                        pendingCount > 0 ? "Clear all (\(pendingCount + 1))" : "Clear all",
-                        systemImage: "trash"
-                    )
-                }
-                .accessibilityIdentifier("celebration.dismissAll")
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.white.opacity(0.14), in: Circle())
-                    .contentShape(Circle())
-            }
-            #if os(macOS)
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            #else
-            .buttonStyle(.plain)
-            #endif
-            .accessibilityLabel("More options")
-            .accessibilityIdentifier("celebration.moreMenu")
-            .padding(.top, 12)
-            .padding(.trailing, 16)
-            .opacity(appeared ? 1 : 0)
-            .animation(entrance(delay: 0.2), value: appeared)
-        }
     }
 
     private var backdrop: some View {
