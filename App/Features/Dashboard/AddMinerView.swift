@@ -27,6 +27,40 @@ struct AddMinerView: View {
     @State var addedAddresses: Set<String> = []
     @FocusState var focusedField: Field?
 
+    #if DEBUG
+    init(
+        store: FleetStore,
+        onBulkAddSuccess: (() -> Void)? = nil,
+        minerKind: MinerDevice.Kind = .espMiner,
+        name: String = "",
+        address: String = "",
+        bearerToken: String = "",
+        isValidating: Bool = false,
+        isFindingThisMac: Bool = false,
+        validationError: String? = nil,
+        discoveryAddError: String? = nil,
+        discovery: MinerDiscoveryCoordinator = MinerDiscoveryCoordinator(),
+        localNetwork: LocalNetworkAuthorization = LocalNetworkAuthorization(),
+        isManualExpanded: Bool = false,
+        addedAddresses: Set<String> = []
+    ) {
+        self.store = store
+        self.onBulkAddSuccess = onBulkAddSuccess
+        _minerKind = State(initialValue: minerKind)
+        _name = State(initialValue: name)
+        _address = State(initialValue: address)
+        _bearerToken = State(initialValue: bearerToken)
+        _isValidating = State(initialValue: isValidating)
+        _isFindingThisMac = State(initialValue: isFindingThisMac)
+        _validationError = State(initialValue: validationError)
+        _discoveryAddError = State(initialValue: discoveryAddError)
+        _discovery = State(initialValue: discovery)
+        _localNetwork = State(initialValue: localNetwork)
+        _isManualExpanded = State(initialValue: isManualExpanded)
+        _addedAddresses = State(initialValue: addedAddresses)
+    }
+    #endif
+
     enum Field { case name, address, token }
 
     var body: some View {
