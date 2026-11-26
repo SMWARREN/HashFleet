@@ -409,14 +409,12 @@ struct FleetSidebarView: View {
 
     #if os(macOS)
     private func moveSidebarFocus(_ direction: MoveCommandDirection, from destination: FleetSidebarDestination) {
-        var destinations: [FleetSidebarDestination] = [.overview] + filteredDevices.map { .miner($0.id) }
-        if isEssentials { destinations.append(.monitoring) }
-        if !isEssentials || showsMoreTools {
-            destinations += analyticsDestinations
-            destinations.append(.backup)
-            if !isEssentials { destinations.append(.monitoring) }
-            destinations += [.about, .support]
-        }
+        let destinations = Self.sidebarFocusOrder(
+            filteredDevices: filteredDevices.map(\.id),
+            analytics: analyticsDestinations,
+            isEssentials: isEssentials,
+            showsMoreTools: showsMoreTools
+        )
         guard let index = destinations.firstIndex(of: destination) else { return }
         let next: Int
         switch direction {
@@ -426,6 +424,24 @@ struct FleetSidebarView: View {
         }
         focusedDestination = destinations[next]
         activate(destinations[next])
+    }
+
+    /// The ordered keyboard focus list for the macOS sidebar. Pure, so it can be tested offline.
+    static func sidebarFocusOrder(
+        filteredDevices: [UUID],
+        analytics: [FleetSidebarDestination],
+        isEssentials: Bool,
+        showsMoreTools: Bool
+    ) -> [FleetSidebarDestination] {
+        var destinations: [FleetSidebarDestination] = [.overview] + filteredDevices.map { .miner($0) }
+        if isEssentials { destinations.append(.monitoring) }
+        if !isEssentials || showsMoreTools {
+            destinations += analytics
+            destinations.append(.backup)
+            if !isEssentials { destinations.append(.monitoring) }
+            destinations += [.about, .support]
+        }
+        return destinations
     }
 
     private func closeSidebarSearch() {
