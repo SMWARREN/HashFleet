@@ -271,7 +271,12 @@ final class FleetStore {
         guard device.name != name || device.usesAutomaticName != true else { return false }
         devices[index].name = name
         devices[index].usesAutomaticName = true
-        if persistImmediately { persist() }
+        if persistImmediately {
+            persist()
+            #if os(iOS)
+            FleetWatchSetupCoordinator.syncIfPossible(devices: devices, isDemo: isDemo)
+            #endif
+        }
         return true
     }
 

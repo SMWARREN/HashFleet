@@ -81,6 +81,9 @@ extension FleetStore {
             ? MinerDisplayName.automatic(info: snapshots[device.id]?.info, address: devices[index].address)
             : name
         persist()
+        #if os(iOS)
+        FleetWatchSetupCoordinator.syncIfPossible(devices: devices, isDemo: isDemo)
+        #endif
     }
 
     func validatedLocalName(_ name: String) throws -> String {
